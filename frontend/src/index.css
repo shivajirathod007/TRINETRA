@@ -1,68 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  /* Core Color Palette */
+  --bg-navy-black: #0A0D14;
+  --surface-card: #111827;
+  --surface-card-hover: #1e293b;
+  --border-divider: #1F2937;
+  --border-highlight: #374151;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Accents & Status */
+  --primary-indigo: #6366F1;
+  --primary-indigo-glow: rgba(99, 102, 241, 0.3);
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  --status-critical: #EF4444;
+  /* Red */
+  --status-critical-glow: rgba(239, 68, 68, 0.3);
+
+  --status-high: #F97316;
+  /* Orange */
+  --status-high-glow: rgba(249, 115, 22, 0.3);
+
+  --status-medium: #EAB308;
+  /* Yellow */
+  --status-medium-glow: rgba(234, 179, 8, 0.3);
+
+  --status-pqc: #3B82F6;
+  /* Blue - PQC Ready */
+  --status-pqc-glow: rgba(59, 130, 246, 0.3);
+
+  --status-safe: #22C55E;
+  /* Green - Fully Safe */
+  --status-safe-glow: rgba(34, 197, 94, 0.3);
+
+  /* Typography */
+  --text-primary: #F9FAFB;
+  --text-secondary: #9CA3AF;
+  --text-muted: #6B7280;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color-scheme: dark;
+  color: var(--text-primary);
+  background-color: var(--bg-navy-black);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-navy-black);
+  color: var(--text-primary);
+  min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+.mono {
+  font-family: 'JetBrains Mono', monospace;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+/* Scrollbar styling for terminal feel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
+::-webkit-scrollbar-track {
+  background: var(--bg-navy-black);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-divider);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-highlight);
+}
+
+/* Base Utility Classes */
+.glass-card {
+  background: var(--surface-card);
+  border: 1px solid var(--border-divider);
+  border-radius: 12px;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease-in-out;
+}
+
+.glow-critical {
+  box-shadow: 0 0 20px var(--status-critical-glow);
+}
+
+/* Animations */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
   }
-  a:hover {
-    color: #747bff;
+
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.5);
   }
-  button {
-    background-color: #f9f9f9;
+
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
   }
+}
+
+.animate-pulse-subtle {
+  animation: pulse 2s infinite;
+}
+
+@keyframes scan-sweep {
+  0% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.scan-progress {
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.4), transparent);
+  background-size: 200% 100%;
+  animation: scan-sweep 2s infinite linear;
 }
