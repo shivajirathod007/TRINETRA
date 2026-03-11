@@ -24,7 +24,7 @@ function App() {
           <Route path="/scan/:domain" element={<LiveScanPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />
-          <Route path="/explorer" element={<CBOMExplorer />} />
+          <Route path="/cbom" element={<CBOMExplorer />} />
           <Route path="/certificates" element={<CertificatesPage />} />
           <Route path="/history" element={<HistoryPage />} />
         </Route>
