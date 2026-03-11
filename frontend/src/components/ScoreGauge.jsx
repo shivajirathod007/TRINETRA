@@ -1,44 +1,64 @@
-import React from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
+import React, { useEffect, useState } from 'react';
 
-const ScoreGauge = ({ score }) => {
-    const data = [
-        { name: 'Risk', value: score },
-        { name: 'Safe', value: 100 - score },
-    ];
+const ScoreGauge = ({ score, size = 120, strokeWidth = 10, animate = true }) => {
+    const [currentScore, setCurrentScore] = useState(animate ? 0 : score);
 
-    // Colors based on risk levels
-    const getRiskColor = (val) => {
-        if (val >= 70) return '#ef4444'; // Red
-        if (val >= 30) return '#f59e0b'; // Amber
-        return '#10b981'; // Green
+    useEffect(() => {
+        if (animate) {
+            const timer = setTimeout(() => {
+                setCurrentScore(score);
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [score, animate]);
+
+    const getColor = (val) => {
+        if (val < 20) return '#EF4444'; // Red
+        if (val < 40) return '#F97316'; // Orange
+        if (val < 60) return '#EAB308'; // Yellow
+        if (val < 80) return '#3B82F6'; // Blue
+        return '#22C55E'; // Green
     };
 
-    const COLORS = [getRiskColor(score), '#374151'];
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (currentScore / 100) * circumference;
+
+    const color = getColor(score);
 
     return (
-        <div className="gauge-container" style={{ width: '100%', height: 250 }}>
-            <ResponsiveContainer>
-                <PieChart>
-                    <Pie
-                        data={data}
-                        cx="50%"
-                        cy="100%"
-                        startAngle={180}
-                        endAngle={0}
-                        innerRadius={80}
-                        outerRadius={100}
-                        paddingAngle={0}
-                        dataKey="value"
-                    >
-                        {data.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                    </Pie>
-                </PieChart>
-            </ResponsiveContainer>
-            <div className="gauge-label">
-                <span className="gauge-score">{score}</span>
+        <div className="relative inline-flex items-center justify-center font-mono" style={{ width: size, height: size }}>
+            {/* Background circle */}
+            <svg className="transform -rotate-90 w-full h-full">
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke="#1F2937"
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                />
+                {/* Progress circle */}
+                <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={radius}
+                    stroke={color}
+                    strokeWidth={strokeWidth}
+                    fill="transparent"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={offset}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 ease-out"
+                    style={{
+                        filter: `drop-shadow(0 0 4px ${color}80)`
+                    }}
+                />
+            </svg>
+            {/* Absolute positioning for text */}
+            <div className="absolute flex flex-col items-center justify-center">
+                <span className="text-2xl font-bold" style={{ color }}>{Math.round(currentScore)}</span>
+                <span className="text-[10px] text-[#9CA3AF]">/ 100</span>
             </div>
         </div>
     );
