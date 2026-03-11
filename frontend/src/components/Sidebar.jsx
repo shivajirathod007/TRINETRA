@@ -1,60 +1,61 @@
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, FileJson, ShieldCheck, History, BookOpen, Activity } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { LayoutDashboard, FileJson, ShieldCheck, History, Activity } from 'lucide-react';
+
+const navItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'CBOM Explorer', path: '/cbom', icon: FileJson },
+    { name: 'Certificates', path: '/certificates', icon: ShieldCheck },
+    { name: 'History', path: '/history', icon: History },
+];
 
 const Sidebar = () => {
-    const navItems = [
-        { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-        { name: 'CBOM Explorer', path: '/explorer', icon: FileJson },
-        { name: 'Certificates', path: '/certificates', icon: ShieldCheck },
-        { name: 'History', path: '/history', icon: History },
-    ];
-
     return (
-        <div className="w-16 md:w-64 h-screen bg-[#0A0D14] border-r border-[#1F2937] flex flex-col justify-between transition-all duration-300">
+        <nav className="sidebar">
             <div>
-                {/* Logo Section */}
-                <div className="h-16 flex items-center justify-center md:justify-start md:px-6 border-b border-[#1F2937]">
-                    <Activity className="text-[#6366F1] flex-shrink-0" size={28} />
-                    <span className="hidden md:ml-3 md:block font-bold text-lg tracking-wider">TRINETRA</span>
+                <div className="sidebar-logo">
+                    <div className="flex items-center gap-2">
+                        <Activity className="text-primary-indigo animate-pulse-subtle" size={24} />
+                        {/* Hide text on mobile */}
+                        <span className="font-bold text-lg tracking-widest uppercase md-block" style={{ display: 'none' }}>
+                            TRINETRA
+                        </span>
+                    </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="mt-6 flex flex-col gap-2 px-2 md:px-4">
+                <div className="sidebar-nav">
                     {navItems.map((item) => {
                         const Icon = item.icon;
                         return (
                             <NavLink
-                                key={item.name}
+                                key={item.path}
                                 to={item.path}
-                                className={({ isActive }) =>
-                                    `flex items-center justify-center md:justify-start px-2 md:px-4 py-3 rounded-lg transition-colors ${isActive
-                                        ? 'bg-[#1e293b] text-[#F9FAFB]'
-                                        : 'text-[#9CA3AF] hover:bg-[#111827] hover:text-[#F9FAFB]'
-                                    }`
-                                }
+                                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
                                 title={item.name}
                             >
-                                <Icon size={20} className="flex-shrink-0" />
-                                <span className="hidden md:block ml-3 font-medium text-sm">{item.name}</span>
+                                <Icon size={20} className="nav-icon" />
+                                <span className="nav-text">{item.name}</span>
                             </NavLink>
                         );
                     })}
-                </nav>
+                </div>
             </div>
 
-            {/* Bottom Section */}
-            <div className="p-4 border-t border-[#1F2937]">
-                <NavLink
-                    to="/"
-                    title="Docs"
-                    className="flex items-center justify-center md:justify-start px-2 md:px-0 py-2 text-[#9CA3AF] hover:text-[#F9FAFB] transition-colors"
-                >
-                    <BookOpen size={20} className="flex-shrink-0" />
-                    <span className="hidden md:block ml-3 font-medium text-sm">Documentation</span>
-                </NavLink>
+            <div className="sidebar-footer text-xs text-secondary text-center">
+                <div className="nav-text">
+                    <div className="font-mono mb-1">v1.2.0-beta</div>
+                    <div className="flex items-center justify-center gap-2">
+                        <span className="badge-dot badge-dot-safe"></span> System Online
+                    </div>
+                </div>
             </div>
-        </div>
+            {/* Inline styles for responsive typography missing from base CSS */}
+            <style>{`
+        @media (min-width: 768px) {
+          .md-block { display: block !important; }
+        }
+      `}</style>
+        </nav>
     );
 };
 

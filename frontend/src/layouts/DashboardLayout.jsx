@@ -4,13 +4,14 @@ import Sidebar from '../components/Sidebar';
 
 const DashboardLayout = () => {
     return (
-        <div className="flex bg-[#0A0D14] min-h-screen text-[#F9FAFB] font-sans">
+        <div className="dashboard-layout">
             <Sidebar />
-            <div className="flex-1 overflow-x-hidden overflow-y-auto">
-                <main className="p-6 md:p-8">
+            <main className="dashboard-main relative">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-primary-indigo-glow filter blur-[150px] opacity-10 pointer-events-none"></div>
+                <div className="max-w-7xl mx-auto w-full">
                     <Outlet />
-                </main>
-            </div>
+                </div>
+            </main>
         </div>
     );
 };

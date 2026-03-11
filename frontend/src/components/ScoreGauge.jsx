@@ -1,64 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 
-const ScoreGauge = ({ score, size = 120, strokeWidth = 10, animate = true }) => {
-    const [currentScore, setCurrentScore] = useState(animate ? 0 : score);
-
-    useEffect(() => {
-        if (animate) {
-            const timer = setTimeout(() => {
-                setCurrentScore(score);
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [score, animate]);
-
-    const getColor = (val) => {
-        if (val < 20) return '#EF4444'; // Red
-        if (val < 40) return '#F97316'; // Orange
-        if (val < 60) return '#EAB308'; // Yellow
-        if (val < 80) return '#3B82F6'; // Blue
-        return '#22C55E'; // Green
-    };
-
+const ScoreGauge = ({ score, size = 180, strokeWidth = 12 }) => {
     const radius = (size - strokeWidth) / 2;
     const circumference = radius * 2 * Math.PI;
-    const offset = circumference - (currentScore / 100) * circumference;
+    const offset = circumference - (score / 100) * circumference;
+
+    const getColor = (s) => {
+        if (s >= 75) return 'var(--status-critical)';
+        if (s >= 50) return 'var(--status-high)';
+        if (s >= 25) return 'var(--status-medium)';
+        return 'var(--status-safe)';
+    };
 
     const color = getColor(score);
 
     return (
-        <div className="relative inline-flex items-center justify-center font-mono" style={{ width: size, height: size }}>
-            {/* Background circle */}
-            <svg className="transform -rotate-90 w-full h-full">
+        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+            {/* Background Track */}
+            <svg className="absolute inset-0" width={size} height={size}>
                 <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke="#1F2937"
+                    fill="none"
+                    stroke="var(--border-highlight)"
                     strokeWidth={strokeWidth}
-                    fill="transparent"
+                    strokeDasharray={`${circumference} ${circumference}`}
+                    strokeDashoffset={circumference * 0.25} // Quarter open at bottom
+                    strokeLinecap="round"
+                    style={{ transform: 'rotate(135deg)', transformOrigin: '50% 50%' }}
                 />
-                {/* Progress circle */}
+            </svg>
+
+            {/* Progress Arc */}
+            <svg className="absolute inset-0" width={size} height={size}>
                 <circle
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
+                    fill="none"
                     stroke={color}
                     strokeWidth={strokeWidth}
-                    fill="transparent"
-                    strokeDasharray={circumference}
-                    strokeDashoffset={offset}
+                    strokeDasharray={`${circumference} ${circumference}`}
+                    strokeDashoffset={circumference * 0.25 + offset * 0.75} // Scale offset for 270deg arc
                     strokeLinecap="round"
-                    className="transition-all duration-1000 ease-out"
                     style={{
-                        filter: `drop-shadow(0 0 4px ${color}80)`
+                        transform: 'rotate(135deg)',
+                        transformOrigin: '50% 50%',
+                        transition: 'stroke-dashoffset 1s ease-in-out',
+                        filter: `drop-shadow(0 0 8px ${color})`
                     }}
                 />
             </svg>
-            {/* Absolute positioning for text */}
-            <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold" style={{ color }}>{Math.round(currentScore)}</span>
-                <span className="text-[10px] text-[#9CA3AF]">/ 100</span>
+
+            {/* Score Text */}
+            <div className="flex flex-col items-center justify-center text-center mt-4">
+                <span className="text-4xl font-bold font-mono tracking-tighter" style={{ color }}>
+                    {score}
+                </span>
+                <span className="text-xs text-secondary uppercase tracking-widest mt-1">
+                    {score >= 75 ? 'Critical' : score >= 50 ? 'High' : score >= 25 ? 'Medium' : 'Low'}
+                </span>
             </div>
         </div>
     );

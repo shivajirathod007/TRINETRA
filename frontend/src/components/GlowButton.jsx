@@ -1,25 +1,35 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { ArrowRight } from 'lucide-react';
 
-const GlowButton = ({ children, onClick, active = false, className = '' }) => {
+const GlowButton = ({
+    children,
+    onClick,
+    className = '',
+    type = 'button',
+    icon = <ArrowRight size={16} />,
+    active = false
+}) => {
+    const [isHovered, setIsHovered] = useState(false);
+
     return (
         <button
+            type={type}
             onClick={onClick}
-            className={`
-        relative px-6 py-3 font-bold text-sm tracking-widest uppercase transition-all duration-300
-        border border-[#6366F1] rounded-md overflow-hidden group
-        ${active ? 'bg-[#6366F1] text-white shadow-[0_0_20px_rgba(99,102,241,0.5)]' : 'bg-transparent text-[#6366F1] hover:text-white'}
-        ${className}
-      `}
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className={`btn-glow ${active || isHovered ? 'active' : ''} ${className}`}
         >
-            {/* Background glow effect on hover */}
-            <div className={`absolute inset-0 bg-[#6366F1] transition-all duration-300 ease-out z-0 
-        ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-            </div>
-
-            {/* Content */}
-            <span className="relative z-10 flex items-center justify-center">
+            <div className="btn-glow-bg"></div>
+            <div className="btn-glow-content gap-2">
                 {children}
-            </span>
+                <span style={{
+                    transform: isHovered ? 'translateX(4px)' : 'translateX(0)',
+                    transition: 'transform 0.2s ease-in-out',
+                    display: 'flex'
+                }}>
+                    {icon}
+                </span>
+            </div>
         </button>
     );
 };

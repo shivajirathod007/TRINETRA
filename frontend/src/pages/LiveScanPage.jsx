@@ -1,225 +1,179 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Terminal, Shield, Cpu, Activity, Server, ArrowRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const mockLogs = [
-    "CT Log Mining initiated → crt.sh query",
-    "47 subdomains discovered",
-    "DNS resolution: 38 live assets confirmed",
-    "⚠ 9 SHADOW ASSETS flagged",
-    "Port scanning: 443, 8443, 4433...",
-    "TLS Scanner dispatched → 38 workers",
-    "VPN endpoint detected: vpn.{domain} (Cisco AnyConnect)",
-    "AI Classifier analyzing HTTP responses...",
-    "CBOM generation in progress...",
-    "Scan complete. Redirecting to dashboard..."
+    "Initializing TRINETRA Quantum Exposure Scanner v1.2.0-beta...",
+    "Loading Advanced Heuristics Engine...",
+    "Connecting to Certificate Transparency Logs (crt.sh)...",
+    "Target acquired: pnb.in",
+    "Commencing Layer 7 protocol mapping...",
+    "Discovered endpoint: netbanking.pnb.in",
+    "⚠ WARNING: netbanking.pnb.in operating on TLS 1.2",
+    "Analyzing cipher suite: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384",
+    "Key Exchange: ECDHE (Elliptic Curve Diffie-Hellman Ephemeral)",
+    "⚠ CRITICAL VULNERABILITY: ECDHE is vulnerable to Shor's Algorithm.",
+    "Certificate Signature: RSA-2048",
+    "⚠ CRITICAL VULNERABILITY: RSA-2048 is not quantum safe.",
+    "Discovered endpoint: api-legacy.pnb.in",
+    "⚠ CRITICAL WARNING: TLS 1.0 detected. Deprecated protocol.",
+    "Deep Packet Inspection routing active...",
+    "Discovered shadow asset: test-payments.pnb.in (Not in inventory)",
+    "Probing VPN gateway: vpn.pnb.in",
+    "Generating Cryptographic Bill of Materials (CBOM)...",
+    "Validating against NIST FIPS 203 & 204 draft standards...",
+    "Scan complete. Aggregating telemetry..."
 ];
 
-const STAGES = ['INPUT', 'ENUMERATION', 'CRYPTO SCAN', 'ANALYSIS', 'OUTPUT'];
-
 const LiveScanPage = () => {
-    const { domain } = useParams();
-    const navigate = useNavigate();
     const [logs, setLogs] = useState([]);
-    const [activeStage, setActiveStage] = useState(0);
-    const [stats, setStats] = useState({
-        discovered: 0,
-        live: 0,
-        shadow: 0,
-        vpn: 0,
-        api: 0,
-        tlsComplete: 0,
-        aiComplete: 0
-    });
-
+    const [logIndex, setLogIndex] = useState(0);
+    const [tlsProgress, setTlsProgress] = useState(0);
+    const [aiProgress, setAiProgress] = useState(0);
+    const [discovered, setDiscovered] = useState(0);
     const bottomRef = useRef(null);
-
-    const scanId = `TRN-2026-${Math.floor(Math.random() * 1000).toString().padStart(4, '0')}`;
-    const startTime = new Date().toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' }) + ' IST';
+    const navigate = useNavigate();
 
     useEffect(() => {
-        let currentLogIndex = 0;
+        if (logIndex < mockLogs.length) {
+            const timer = setTimeout(() => {
+                setLogs(prev => [...prev, mockLogs[logIndex]]);
+                setLogIndex(prev => prev + 1);
+                setDiscovered(prev => prev + Math.floor(Math.random() * 3));
+                setTlsProgress(prev => Math.min(100, prev + 5));
+                setAiProgress(prev => Math.min(100, prev + 4));
+            }, 300 + Math.random() * 500);
+            return () => clearTimeout(timer);
+        } else {
+            setTimeout(() => navigate('/dashboard'), 2000);
+        }
+    }, [logIndex, navigate]);
 
-        // Auto-scroll terminal
-        const scrollToBottom = () => bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-
-        const interval = setInterval(() => {
-            if (currentLogIndex < mockLogs.length) {
-                const timeStr = new Date().toLocaleTimeString('en-IN', { hour12: false, timeZone: 'Asia/Kolkata' });
-                let logText = mockLogs[currentLogIndex].replace('{domain}', domain || 'example.com');
-
-                setLogs(prev => [...prev, `[${timeStr}] ${logText}`]);
-
-                // Update stats based on log index to simulate progress
-                setStats(prev => ({
-                    discovered: currentLogIndex >= 1 ? 47 : prev.discovered,
-                    live: currentLogIndex >= 2 ? 38 : prev.live,
-                    shadow: currentLogIndex >= 3 ? 9 : prev.shadow,
-                    vpn: currentLogIndex >= 6 ? 3 : prev.vpn,
-                    api: currentLogIndex >= 7 ? 14 : prev.api,
-                    tlsComplete: currentLogIndex >= 5 ? Math.min(31 + currentLogIndex, 38) : prev.tlsComplete,
-                    aiComplete: currentLogIndex >= 7 ? Math.min(22 + currentLogIndex, 38) : prev.aiComplete
-                }));
-
-                // Update pipeline stage
-                if (currentLogIndex === 1) setActiveStage(1);
-                if (currentLogIndex === 4) setActiveStage(2);
-                if (currentLogIndex === 7) setActiveStage(3);
-                if (currentLogIndex === 8) setActiveStage(4);
-
-                if (currentLogIndex === mockLogs.length - 1) {
-                    setTimeout(() => navigate('/dashboard'), 1500);
-                }
-
-                currentLogIndex++;
-                setTimeout(scrollToBottom, 50);
-            } else {
-                clearInterval(interval);
-            }
-        }, 1200);
-
-        return () => clearInterval(interval);
-    }, [domain, navigate]);
+    useEffect(() => {
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [logs]);
 
     return (
-        <div className="h-[calc(100vh-4rem)] flex flex-col gap-6">
+        <div className="flex flex-col h-full gap-6">
 
             {/* Header */}
-            <div className="flex justify-between items-center bg-[#111827] p-4 rounded-lg border border-[#1F2937]">
+            <div className="page-header">
                 <div className="flex items-center gap-4">
-                    <Loader2 className="animate-spin text-[#6366F1]" size={24} />
-                    <h1 className="text-xl font-bold">Scanning: <span className="text-[#6366F1]">{domain}</span></h1>
+                    <Terminal className="text-primary-indigo" size={24} />
+                    <div>
+                        <h1 className="text-xl font-bold">Active Reconnaissance</h1>
+                        <p className="text-xs text-secondary font-mono">Target: pnb.in | Mode: Deep Inspection</p>
+                    </div>
                 </div>
-                <div className="flex gap-6 text-sm text-[#9CA3AF] font-mono">
-                    <span>Scan ID: <span className="text-[#F9FAFB]">{scanId}</span></span>
-                    <span>Started: <span className="text-[#F9FAFB]">{startTime}</span></span>
+                <div className="badge badge-high animate-pulse-subtle">
+                    SCAN IN PROGRESS
                 </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
-
-                {/* Left Panel: Terminal Log */}
-                <div className="flex-1 glass-card flex flex-col overflow-hidden border-[#1F2937]">
-                    <div className="bg-[#1e293b] px-4 py-2 text-xs font-mono text-[#9CA3AF] border-b border-[#1F2937]">
-                        TRINETRA SCAN AGENT v2.4.1 — LIVE LOG
+            <div className="flex flex-col lg-flex-row gap-6 flex-1 min-h-[500px]">
+                {/* Terminal Log */}
+                <div className="flex-1 glass-card flex flex-col overflow-hidden">
+                    <div className="p-4 border-b bg-surface-card-hover flex items-center gap-2">
+                        <div className="flex gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-status-critical"></div>
+                            <div className="w-3 h-3 rounded-full bg-status-medium"></div>
+                            <div className="w-3 h-3 rounded-full bg-status-safe"></div>
+                        </div>
+                        <span className="text-xs font-mono text-secondary ml-2">root@trinetra-node-01:~#</span>
                     </div>
-                    <div className="p-4 font-mono text-sm leading-relaxed overflow-y-auto flex-1">
+                    <div className="p-4 font-mono text-sm overflow-y-auto flex-1 bg-navy-black/50" style={{ lineHeight: '1.6' }}>
                         {logs.map((log, i) => (
-                            <div key={i} className={`mb-1 ${log.includes('⚠') ? 'text-[#EF4444]' : 'text-[#3B82F6]'}`}>
-                                <span className="text-[#9CA3AF] mr-2">{log.substring(0, 10)}</span>
-                                <span className={log.includes('⚠') ? 'text-[#EF4444] font-bold' : 'text-[#e2e8f0]'}>
-                                    {log.substring(10)}
-                                </span>
+                            <div key={i} className={`mb-1 ${log.includes('⚠') ? 'text-status-critical font-medium glow-critical-text' : 'text-status-pqc'}`} style={log.includes('⚠') ? { textShadow: '0 0 8px rgba(239, 68, 68, 0.4)' } : {}}>
+                                <span className="text-secondary mr-2">[{new Date().toLocaleTimeString()}]</span>
+                                <span className="animate-fade-in">{log}</span>
                             </div>
                         ))}
-                        <div className="animate-pulse inline-block w-2 h-4 bg-[#6366F1] ml-1 align-middle mt-1"></div>
                         <div ref={bottomRef} />
                     </div>
                 </div>
 
-                {/* Right Panel: Live Counters */}
-                <div className="w-full lg:w-96 glass-card p-6 flex flex-col gap-6 overflow-y-auto">
-                    <h2 className="text-lg font-bold border-b border-[#1F2937] pb-2">Real-time Discovery</h2>
+                {/* Live Counters */}
+                <div className="w-full lg-w-96 glass-card p-6 flex flex-col gap-6 overflow-y-auto">
+                    <h2 className="font-bold border-b pb-2">Real-Time Telemetry</h2>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-[#0A0D14] p-3 rounded border border-[#1F2937]">
-                            <div className="text-xs text-[#9CA3AF] uppercase mb-1">Assets Discovered</div>
-                            <div className="text-2xl font-bold text-[#F9FAFB] font-mono">{stats.discovered}</div>
+                        <div className="p-4 bg-surface-card-hover rounded border">
+                            <div className="text-xs text-secondary uppercase tracking-widest mb-1">Discovered</div>
+                            <div className="text-2xl font-bold font-mono">{discovered}</div>
                         </div>
-                        <div className="bg-[#0A0D14] p-3 rounded border border-[#1F2937]">
-                            <div className="text-xs text-[#9CA3AF] uppercase mb-1">Live Assets</div>
-                            <div className="text-2xl font-bold text-[#F9FAFB] font-mono">{stats.live}</div>
+                        <div className="p-4 bg-surface-card-hover rounded border">
+                            <div className="text-xs text-secondary uppercase tracking-widest mb-1">Live Host</div>
+                            <div className="text-2xl font-bold font-mono text-status-safe">{Math.max(0, discovered - 2)}</div>
                         </div>
                     </div>
 
-                    <div className="bg-[#EF4444]/10 border border-[#EF4444]/50 p-4 rounded glow-critical relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-1 h-full bg-[#EF4444]"></div>
-                        <div className="text-xs font-bold text-[#EF4444] uppercase mb-1 flex items-center justify-between">
-                            Shadow Assets
-                            {stats.shadow > 0 && <span className="w-2 h-2 rounded-full bg-[#EF4444] animate-pulse"></span>}
-                        </div>
-                        <div className="text-3xl font-bold text-[#EF4444] font-mono">{stats.shadow}</div>
-                    </div>
-
-                    <div className="flex gap-4">
-                        <div className="flex-1 bg-[#0A0D14] p-3 rounded border border-[#1F2937]">
-                            <div className="text-xs text-[#9CA3AF] uppercase mb-1">VPN Endpoints</div>
-                            <div className="text-xl font-bold text-[#EAB308] font-mono">{stats.vpn}</div>
-                        </div>
-                        <div className="flex-1 bg-[#0A0D14] p-3 rounded border border-[#1F2937]">
-                            <div className="text-xs text-[#9CA3AF] uppercase mb-1">APIs Detected</div>
-                            <div className="text-xl font-bold text-[#3B82F6] font-mono">{stats.api}</div>
-                        </div>
+                    <div className="p-4 border-l-high bg-status-high/5 rounded">
+                        <div className="text-xs text-status-high uppercase tracking-widest mb-1 font-bold">Shadow Assets Detected</div>
+                        <div className="text-3xl font-bold font-mono text-status-high animate-pulse-subtle">{Math.floor(discovered / 8)}</div>
                     </div>
 
                     <div className="space-y-4 mt-2">
                         <div>
                             <div className="flex justify-between text-xs mb-1">
-                                <span className="text-[#9CA3AF] uppercase">TLS Scans Complete</span>
-                                <span className="font-mono text-[#F9FAFB]">{stats.tlsComplete} / 38</span>
+                                <span className="text-secondary flex items-center gap-1"><Shield size={12} /> TLS Scanners</span>
+                                <span className="font-mono">{tlsProgress}%</span>
                             </div>
-                            <div className="h-2 w-full bg-[#1F2937] rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-[#6366F1] transition-all duration-300 relative"
-                                    style={{ width: `${(stats.tlsComplete / 38) * 100}%` }}
-                                >
-                                    <div className="absolute top-0 right-0 bottom-0 left-0 scan-progress"></div>
-                                </div>
+                            <div className="w-full bg-surface-card-hover rounded-full h-1.5 overflow-hidden">
+                                <div className="h-full bg-primary-indigo" style={{ width: `${tlsProgress}%`, transition: 'width 0.3s' }}></div>
                             </div>
                         </div>
 
                         <div>
                             <div className="flex justify-between text-xs mb-1">
-                                <span className="text-[#9CA3AF] uppercase">AI Classifications</span>
-                                <span className="font-mono text-[#F9FAFB]">{stats.aiComplete} / 38</span>
+                                <span className="text-secondary flex items-center gap-1"><Cpu size={12} /> AI Classifier</span>
+                                <span className="font-mono">{aiProgress}%</span>
                             </div>
-                            <div className="h-2 w-full bg-[#1F2937] rounded-full overflow-hidden">
-                                <div
-                                    className="h-full bg-[#3B82F6] transition-all duration-300 relative"
-                                    style={{ width: `${(stats.aiComplete / 38) * 100}%` }}
-                                >
-                                    <div className="absolute top-0 right-0 bottom-0 left-0 scan-progress"></div>
-                                </div>
+                            <div className="w-full bg-surface-card-hover rounded-full h-1.5 overflow-hidden">
+                                <div className="h-full bg-primary-indigo" style={{ width: `${aiProgress}%`, transition: 'width 0.3s' }}></div>
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
-            {/* Bottom Pipeline Progress Bar */}
-            <div className="glass-card p-6 border-[#1F2937]">
+            {/* Pipeline Progress Bar */}
+            <div className="glass-card p-6 border">
                 <div className="flex items-center justify-between relative">
-                    {/* Connecting line background */}
-                    <div className="absolute left-0 right-0 h-0.5 bg-[#1F2937] top-1/2 -translate-y-1/2 z-0"></div>
+                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border-divider -z-10 -translate-y-1/2"></div>
 
-                    {/* Animated fill line */}
-                    <div
-                        className="absolute left-0 h-0.5 bg-[#6366F1] top-1/2 -translate-y-1/2 z-0 transition-all duration-1000"
-                        style={{ width: `${(activeStage / (STAGES.length - 1)) * 100}%` }}
-                    ></div>
-
-                    {STAGES.map((stage, idx) => {
-                        const isActive = idx <= activeStage;
-                        const isCurrent = idx === activeStage;
-                        return (
-                            <div key={stage} className="relative z-10 flex flex-col items-center gap-2 bg-[#111827] px-2">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-colors duration-500
-                  ${isActive ? 'bg-[#6366F1] border-[#6366F1] text-white shadow-[0_0_15px_rgba(99,102,241,0.5)]' : 'bg-[#0A0D14] border-[#374151] text-[#374151]'}
-                `}>
-                                    {isActive ? <CheckCircle2 size={16} /> : <span className="text-xs font-bold">{idx + 1}</span>}
-                                </div>
-                                <span className={`text-xs font-bold tracking-wider transition-colors duration-500
-                  ${isCurrent ? 'text-[#F9FAFB]' : isActive ? 'text-[#9CA3AF]' : 'text-[#374151]'}
-                `}>
-                                    {stage}
-                                </span>
+                    {[
+                        { step: 1, name: 'INPUT', active: true, done: true },
+                        { step: 2, name: 'ENUMERATION', active: tlsProgress > 0, done: tlsProgress === 100 },
+                        { step: 3, name: 'CRYPTO SCAN', active: tlsProgress > 50, done: tlsProgress === 100 },
+                        { step: 4, name: 'ANALYSIS', active: aiProgress > 0, done: aiProgress === 100 },
+                        { step: 5, name: 'OUTPUT', active: logIndex >= mockLogs.length - 1, done: false }
+                    ].map((stage, idx) => (
+                        <div key={idx} className="flex flex-col items-center gap-2 bg-navy-black px-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${stage.done ? 'bg-status-safe text-navy-black glow-safe' :
+                                    stage.active ? 'bg-primary-indigo text-white glow-indigo animate-pulse-subtle' :
+                                        'bg-surface-card border text-secondary'
+                                }`}>
+                                {stage.done ? '✓' : stage.step}
                             </div>
-                        )
-                    })}
+                            <span className={`text-[10px] font-bold tracking-widest ${stage.active ? 'text-primary' : 'text-secondary'}`}>{stage.name}</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
+            <style>{`
+        @media (min-width: 1024px) {
+          .lg-flex-row { flex-direction: row !important; }
+          .lg-w-96 { width: 24rem !important; }
+        }
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out forwards;
+        }
+      `}</style>
         </div>
     );
 };
