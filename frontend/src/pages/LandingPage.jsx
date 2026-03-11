@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Server, FileSearch, Fingerprint, Search } from 'lucide-react';
+import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight } from 'lucide-react';
 import GlowButton from '../components/GlowButton';
 import AnimatedCounters from '../components/AnimatedCounters';
 
@@ -80,7 +80,7 @@ const LandingPage = () => {
                                 {/* Provide width 100 on mobile, auto on sm+ */}
                                 <style>{`@media(min-width: 640px) { .sm-w-auto { width: auto !important; } }`}</style>
                                 <GlowButton type="submit" className="w-full">
-                                    INITIATE SCAN
+                                    INITIATE SCAN <ArrowRight size={16} />
                                 </GlowButton>
                             </div>
                         </div>

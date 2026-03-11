@@ -162,6 +162,10 @@ input {
   flex: 1;
 }
 
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
 /* Grid utilities */
 .grid {
   display: grid;
@@ -608,7 +612,13 @@ input {
 .dashboard-main {
   flex: 1;
   overflow-y: auto;
-  padding: 1.5rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .dashboard-main {
+    padding: 1.5rem;
+  }
 }
 
 /* Sidebar Components */
@@ -786,8 +796,14 @@ input {
   flex: 1;
   display: flex;
   align-items: center;
-  padding-left: 1rem;
+  padding-left: 0.5rem;
   width: 100%;
+}
+
+@media (min-width: 640px) {
+  .search-input-wrapper {
+    padding-left: 1rem;
+  }
 }
 
 .search-icon {
@@ -801,8 +817,14 @@ input {
   color: var(--text-primary);
   border: none;
   outline: none;
-  padding: 0 1rem;
+  padding: 0 0.5rem;
   font-size: 1rem;
+}
+
+@media (min-width: 640px) {
+  .search-input {
+    padding: 0 1rem;
+  }
 }
 
 .toggle-chip {
@@ -849,9 +871,17 @@ input {
 }
 
 .stats-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 2rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -862,6 +892,15 @@ input {
 
 .stat-divider {
   border-right: none;
+  border-bottom: 1px solid rgba(31, 41, 55, 0.5);
+  padding-bottom: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .stat-divider {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
 }
 
 @media (min-width: 768px) {
