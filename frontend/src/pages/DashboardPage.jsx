@@ -57,7 +57,7 @@ const DashboardPage = () => {
                         CRQC vulnerability scanner found <span className="text-primary font-mono">api-legacy.pnb.in</span> and <span className="text-primary font-mono">test-payments.pnb.in</span> operating outside known inventory. Immediate investigation required.
                     </p>
                 </div>
-                <button className="btn-primary" style={{ backgroundColor: 'var(--status-critical)', color: 'white' }}>Review</button>
+                <button className="badge-critical px-4 py-1.5 rounded font-bold uppercase tracking-wider text-xs hover:scale-105 transition-transform" style={{ cursor: 'pointer' }}>Review</button>
             </div>
 
             {/* KPI Row */}
@@ -186,7 +186,7 @@ const DashboardPage = () => {
                                             <Cell key={`cell-${index}`} fill={entry.color} />
                                         ))}
                                     </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: '#fff' }} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -208,7 +208,7 @@ const DashboardPage = () => {
                                 <BarChart data={algoData} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                                     <XAxis type="number" hide />
                                     <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                    <Tooltip cursor={{ fill: 'var(--surface-card-hover)' }} contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)' }} />
+                                    <Tooltip cursor={{ fill: 'var(--surface-card-hover)' }} contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
                                     <Bar dataKey="count" fill="var(--primary-indigo)" radius={[0, 4, 4, 0]} barSize={12} />
                                 </BarChart>
                             </ResponsiveContainer>

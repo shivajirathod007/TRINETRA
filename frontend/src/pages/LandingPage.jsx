@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight } from 'lucide-react';
+import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight, Sun, Moon } from 'lucide-react';
 import GlowButton from '../components/GlowButton';
 import AnimatedCounters from '../components/AnimatedCounters';
+import { useTheme } from '../context/ThemeContext';
 
 const LandingPage = () => {
     const [domain, setDomain] = useState('');
     const [activeChip, setActiveChip] = useState('Web Portals');
     const navigate = useNavigate();
+    const { isDarkMode, toggleTheme } = useTheme();
 
     const handleScan = (e) => {
         e.preventDefault();
@@ -39,6 +41,9 @@ const LandingPage = () => {
                     <a href="#" className="text-sm font-medium text-secondary hover:text-primary">API</a>
                     <button onClick={() => navigate('/dashboard')} className="text-sm font-bold text-primary-indigo hover:text-primary-indigo-hover">
                         Dashboard
+                    </button>
+                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-surface-card-hover text-secondary hover:text-primary transition-colors ml-2" title="Toggle Theme">
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
                 </div>
             </nav>

@@ -1,8 +1,8 @@
 :root {
   /* Core Color Palette */
   --bg-navy-black: #0A0D14;
-  --surface-card: #111827;
-  --surface-card-hover: #1e293b;
+  --surface-card: rgba(17, 24, 39, 0.7);
+  --surface-card-hover: rgba(30, 41, 59, 0.8);
   --border-divider: #1F2937;
   --border-highlight: #374151;
 
@@ -42,6 +42,22 @@
   color-scheme: dark;
   color: var(--text-primary);
   background-color: var(--bg-navy-black);
+}
+
+.light-theme {
+  /* Core Color Palette */
+  --bg-navy-black: #F3F4F6;
+  --surface-card: rgba(255, 255, 255, 0.7);
+  --surface-card-hover: rgba(249, 250, 251, 0.9);
+  --border-divider: #E5E7EB;
+  --border-highlight: #D1D5DB;
+
+  /* Typography */
+  --text-primary: #111827;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
+
+  color-scheme: light;
 }
 
 * {
@@ -431,6 +447,23 @@ input {
 
 .rounded-full {
   border-radius: 9999px;
+}
+
+/* Opacities */
+.opacity-5 {
+  opacity: 0.05;
+}
+
+.opacity-10 {
+  opacity: 0.1;
+}
+
+.opacity-20 {
+  opacity: 0.2;
+}
+
+.opacity-50 {
+  opacity: 0.5;
 }
 
 /* Glows */

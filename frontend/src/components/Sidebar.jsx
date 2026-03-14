@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileJson, ShieldCheck, History, Activity } from 'lucide-react';
+import { LayoutDashboard, FileJson, ShieldCheck, History, Activity, Moon, Sun } from 'lucide-react';
+import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -10,6 +11,8 @@ const navItems = [
 ];
 
 const Sidebar = () => {
+    const { isDarkMode, toggleTheme } = useTheme();
+
     return (
         <nav className="sidebar">
             <div>
@@ -42,7 +45,18 @@ const Sidebar = () => {
             </div>
 
             <div className="sidebar-footer text-xs text-secondary text-center">
+                <button
+                    onClick={toggleTheme}
+                    className="flex justify-center md:hidden items-center p-2 mb-4 w-full rounded hover:bg-[#111827] transition-colors"
+                    title="Toggle Theme"
+                >
+                    {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                </button>
                 <div className="nav-text">
+                    <button onClick={toggleTheme} className="flex items-center gap-2 p-2 mb-4 rounded w-full hover:bg-[#111827] text-secondary hover:text-[#F9FAFB] transition-colors">
+                        {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+                        <span className="text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+                    </button>
                     <div className="font-mono mb-1">v1.2.0-beta</div>
                     <div className="flex items-center justify-center gap-2">
                         <span className="badge-dot badge-dot-safe"></span> System Online

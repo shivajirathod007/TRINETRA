@@ -164,7 +164,7 @@ const CBOMExplorer = () => {
                                     <BarChart data={algoData} margin={{ top: 0, right: 30, left: 0, bottom: 0 }}>
                                         <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
                                         <YAxis tick={{ fill: 'var(--text-secondary)' }} axisLine={false} tickLine={false} />
-                                        <Tooltip cursor={{ fill: 'var(--surface-card-hover)' }} contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: '#fff' }} />
+                                        <Tooltip cursor={{ fill: 'var(--surface-card-hover)' }} contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
                                         <Bar dataKey="count" fill="var(--primary-indigo)" radius={[4, 4, 0, 0]} barSize={40} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -190,7 +190,7 @@ const CBOMExplorer = () => {
                                                 <Cell key={`cell-${index}`} fill={entry.color} />
                                             ))}
                                         </Pie>
-                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: '#fff' }} />
+                                        <Tooltip contentStyle={{ backgroundColor: 'var(--bg-navy-black)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
                                     </PieChart>
                                 </ResponsiveContainer>
 
