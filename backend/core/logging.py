@@ -7,7 +7,7 @@ Every log line includes scan_id and asset_url when in scan context.
 import logging
 import sys
 import structlog
-from backend.core.config import settings
+from core.config import settings
 
 
 def configure_logging() -> None:

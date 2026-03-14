@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
-from backend.core.config import settings
+from core.config import settings
 
 # ─── Async Engine ─────────────────────────────────────────────────────────────
 # pool_pre_ping: validate connections before use (handles DB restarts)

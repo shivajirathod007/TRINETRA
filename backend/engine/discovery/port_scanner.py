@@ -10,8 +10,8 @@ import socket
 from dataclasses import dataclass, field
 from typing import Optional
 
-from backend.core.constants import VPN_PORTS
-from backend.core.logging import get_logger
+from core.constants import VPN_PORTS
+from core.logging import get_logger
 
 log = get_logger(__name__)
 

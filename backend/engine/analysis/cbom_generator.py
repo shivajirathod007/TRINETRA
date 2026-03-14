@@ -13,14 +13,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from backend.core.logging import get_logger
-from backend.engine.analysis.exposure_scorer import ExposureScoreResult
-from backend.engine.analysis.hndl_engine import HNDLRiskResult
-from backend.engine.scanners.tls_scanner import TLSScanResult
-from backend.engine.scanners.cert_analyzer import CertInfo
-from backend.engine.scanners.api_inspector import APIInspectResult
-from backend.engine.scanners.ssh_probe import SSHScanResult
-from backend.engine.discovery.asset_classifier import ClassifiedAsset
+from core.logging import get_logger
+from engine.analysis.exposure_scorer import ExposureScoreResult
+from engine.analysis.hndl_engine import HNDLRiskResult
+from engine.scanners.tls_scanner import TLSScanResult
+from engine.scanners.cert_analyzer import CertInfo
+from engine.scanners.api_inspector import APIInspectResult
+from engine.scanners.ssh_probe import SSHScanResult
+from engine.discovery.asset_classifier import ClassifiedAsset
 
 log = get_logger(__name__)
 

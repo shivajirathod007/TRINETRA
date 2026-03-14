@@ -14,7 +14,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.db.base import Base
+from db.base import Base
 
 
 def utcnow() -> datetime:

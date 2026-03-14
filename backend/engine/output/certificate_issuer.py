@@ -15,7 +15,7 @@ from datetime import date, timedelta
 from typing import Optional
 import uuid
 
-from backend.core.constants import (
+from core.constants import (
     CERT_TIER_VULNERABLE,
     CERT_TIER_READY,
     CERT_TIER_SAFE,
@@ -23,9 +23,9 @@ from backend.core.constants import (
     CERT_VALIDITY_DAYS,
     NIST_REFERENCES,
 )
-from backend.core.security import sign_certificate, build_certificate_id, get_certificate_validity
-from backend.core.logging import get_logger
-from backend.engine.analysis.exposure_scorer import ExposureScoreResult
+from core.security import sign_certificate, build_certificate_id, get_certificate_validity
+from core.logging import get_logger
+from engine.analysis.exposure_scorer import ExposureScoreResult
 
 log = get_logger(__name__)
 

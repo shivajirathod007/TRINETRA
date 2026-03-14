@@ -13,7 +13,7 @@ from typing import Optional
 
 import httpx
 
-from backend.core.logging import get_logger
+from core.logging import get_logger
 
 log = get_logger(__name__)
 

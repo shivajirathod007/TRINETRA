@@ -8,9 +8,9 @@ import asyncio
 import uuid
 from typing import Optional
 
-from backend.workers.celery_app import celery_app
-from backend.core.config import settings
-from backend.core.logging import get_logger
+from workers.celery_app import celery_app
+from core.config import settings
+from core.logging import get_logger
 
 log = get_logger(__name__)
 
@@ -56,18 +56,18 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     Runs all five scanner workers concurrently on the asset.
     Merges results into a single flat dict for DB storage.
     """
-    from backend.engine.scanners.tls_scanner import TLSScanner
-    from backend.engine.scanners.cert_analyzer import CertAnalyzer
-    from backend.engine.scanners.vpn_detector import VPNDetector
-    from backend.engine.scanners.api_inspector import APIInspector
-    from backend.engine.scanners.ssh_probe import SSHProbe
-    from backend.engine.scanners.smtp_tls import SMTPTLSScanner
-    from backend.engine.analysis.exposure_scorer import ExposureScorer
-    from backend.engine.analysis.hndl_engine import HNDLEngine
-    from backend.engine.analysis.cbom_generator import CBOMGenerator
-    from backend.engine.analysis.migration_planner import MigrationPlanner
-    from backend.engine.output.certificate_issuer import CertificateIssuer
-    from backend.engine.discovery.asset_classifier import ClassifiedAsset
+    from engine.scanners.tls_scanner import TLSScanner
+    from engine.scanners.cert_analyzer import CertAnalyzer
+    from engine.scanners.vpn_detector import VPNDetector
+    from engine.scanners.api_inspector import APIInspector
+    from engine.scanners.ssh_probe import SSHProbe
+    from engine.scanners.smtp_tls import SMTPTLSScanner
+    from engine.analysis.exposure_scorer import ExposureScorer
+    from engine.analysis.hndl_engine import HNDLEngine
+    from engine.analysis.cbom_generator import CBOMGenerator
+    from engine.analysis.migration_planner import MigrationPlanner
+    from engine.output.certificate_issuer import CertificateIssuer
+    from engine.discovery.asset_classifier import ClassifiedAsset
 
     hostname = asset_data["fqdn"]
     port = asset_data.get("port", 443)
@@ -307,8 +307,8 @@ def _extract_primary_algorithm(tls_result, cert_info, ssh_result) -> str:
 def _persist_scan_result(asset_id: str, scan_id: str, result: dict) -> None:
     """Writes scan result to database."""
     import asyncio
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository, CertificateRepository
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository, CertificateRepository
 
     async def _persist():
         async with AsyncSessionLocal() as db:
@@ -336,8 +336,8 @@ def _persist_scan_result(asset_id: str, scan_id: str, result: dict) -> None:
 
 def _persist_failure(asset_id: str, error: str) -> None:
     import asyncio
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository
 
     async def _fail():
         async with AsyncSessionLocal() as db:

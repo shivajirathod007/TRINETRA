@@ -6,8 +6,8 @@ Computes organization-level score and finalizes the scan job.
 
 import uuid
 
-from backend.workers.celery_app import celery_app
-from backend.core.logging import get_logger
+from workers.celery_app import celery_app
+from core.logging import get_logger
 
 log = get_logger(__name__)
 
@@ -27,9 +27,9 @@ def aggregate_scan_results(self, asset_results: list[dict], scan_id: str, domain
         Final scan summary dict
     """
     import asyncio
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository
-    from backend.engine.analysis.exposure_scorer import ExposureScorer
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository
+    from engine.analysis.exposure_scorer import ExposureScorer
 
     log.info(
         "aggregation_started",

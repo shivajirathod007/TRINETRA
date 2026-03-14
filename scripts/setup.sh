@@ -23,7 +23,9 @@ fi
 
 # 3. Install Python deps
 echo "[...] Installing Python dependencies"
-pip install -r requirements.txt --quiet
+python3 -m venv venv
+source venv/bin/activate
+pip install -r backend/requirements.txt --quiet
 echo "[OK] Python dependencies installed"
 
 # 4. Start Docker services
@@ -33,7 +35,7 @@ sleep 3
 
 # 5. Run migrations
 echo "[...] Running database migrations"
-python -m alembic upgrade head
+cd backend && python -m alembic upgrade head && cd ..
 echo "[OK] Database schema created"
 
 # 6. Install frontend deps

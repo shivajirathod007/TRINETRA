@@ -12,8 +12,8 @@ from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from backend.db.models import PQCCertificate, ScannedAsset, ScanJob
-from backend.core.logging import get_logger
+from db.models import PQCCertificate, ScannedAsset, ScanJob
+from core.logging import get_logger
 
 log = get_logger(__name__)
 

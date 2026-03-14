@@ -20,9 +20,9 @@ from typing import Optional
 
 import httpx
 
-from backend.core.constants import VPN_FINGERPRINTS, VPN_PORTS
-from backend.core.logging import get_logger
-from backend.engine.discovery.port_scanner import PortScanResult
+from core.constants import VPN_FINGERPRINTS, VPN_PORTS
+from core.logging import get_logger
+from engine.discovery.port_scanner import PortScanResult
 
 log = get_logger(__name__)
 

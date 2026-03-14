@@ -13,9 +13,9 @@ import dns.asyncresolver
 import dns.exception
 import dns.rdatatype
 
-from backend.core.exceptions import DNSResolutionError
-from backend.core.logging import get_logger
-from backend.engine.discovery.ct_log_miner import CTLogEntry
+from core.exceptions import DNSResolutionError
+from core.logging import get_logger
+from engine.discovery.ct_log_miner import CTLogEntry
 
 log = get_logger(__name__)
 

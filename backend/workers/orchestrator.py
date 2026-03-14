@@ -18,8 +18,8 @@ from typing import Optional
 
 from celery import chord, group, chain
 
-from backend.workers.celery_app import celery_app
-from backend.core.logging import get_logger
+from workers.celery_app import celery_app
+from core.logging import get_logger
 
 log = get_logger(__name__)
 
@@ -32,10 +32,10 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
 
     This task itself is lightweight — it just wires up the pipeline.
     """
-    from backend.workers.tasks.discovery_tasks import (
+    from workers.tasks.discovery_tasks import (
         mine_ct_logs, resolve_dns, scan_ports, classify_assets
     )
-    from backend.workers.tasks.analysis_tasks import finalize_scan
+    from workers.tasks.analysis_tasks import finalize_scan
 
     log.info("scan_pipeline_started", scan_id=scan_id, domain=domain)
 
@@ -57,8 +57,8 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
         _update_scan_stage(scan_id, "scanning", len(assets_data))
 
         # ── Phase 2: Per-asset scanning (parallel fan-out) ────────────────────
-        from backend.workers.tasks.scan_tasks import scan_single_asset
-        from backend.workers.tasks.analysis_tasks import aggregate_scan_results
+        from workers.tasks.scan_tasks import scan_single_asset
+        from workers.tasks.analysis_tasks import aggregate_scan_results
 
         # Create a Celery chord:
         # - group: scan all assets in parallel
@@ -92,12 +92,12 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
     Returns list of asset dicts ready for per-asset scan dispatch.
     """
     import asyncio
-    from backend.engine.discovery.ct_log_miner import CTLogMiner
-    from backend.engine.discovery.dns_resolver import DNSResolver
-    from backend.engine.discovery.port_scanner import PortScanner
-    from backend.engine.discovery.asset_classifier import AssetClassifier
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository
+    from engine.discovery.ct_log_miner import CTLogMiner
+    from engine.discovery.dns_resolver import DNSResolver
+    from engine.discovery.port_scanner import PortScanner
+    from engine.discovery.asset_classifier import AssetClassifier
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository
 
     async def _async_discovery():
         async with AsyncSessionLocal() as db:
@@ -180,8 +180,8 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
 
 def _update_scan_stage(scan_id: str, stage: str, asset_count: int) -> None:
     import asyncio
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository
 
     async def _update():
         async with AsyncSessionLocal() as db:
@@ -198,8 +198,8 @@ def _update_scan_stage(scan_id: str, stage: str, asset_count: int) -> None:
 
 def _mark_scan_failed(scan_id: str, error: str) -> None:
     import asyncio
-    from backend.db.session import AsyncSessionLocal
-    from backend.db.repository import ScanRepository
+    from db.session import AsyncSessionLocal
+    from db.repository import ScanRepository
 
     async def _fail():
         async with AsyncSessionLocal() as db:

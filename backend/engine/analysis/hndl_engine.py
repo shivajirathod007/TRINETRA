@@ -23,9 +23,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Optional
 
-from backend.core.config import settings
-from backend.core.constants import get_algorithm_risk
-from backend.core.logging import get_logger
+from core.config import settings
+from core.constants import get_algorithm_risk
+from core.logging import get_logger
 
 log = get_logger(__name__)
 

@@ -11,8 +11,8 @@ from datetime import date, timedelta
 from typing import Any
 from uuid import uuid4
 
-from backend.core.config import settings
-from backend.core.constants import CERT_VALIDITY_DAYS
+from core.config import settings
+from core.constants import CERT_VALIDITY_DAYS
 
 
 def _get_signing_key() -> bytes:

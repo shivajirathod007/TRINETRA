@@ -5,9 +5,9 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from backend.core.config import settings
-from backend.db.base import Base
-from backend.db import models  # noqa: F401 — imports all models so Alembic sees them
+from core.config import settings
+from db.base import Base
+from db import models  # noqa: F401 — imports all models so Alembic sees them
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)

@@ -14,7 +14,7 @@ Research basis:
 from dataclasses import dataclass
 from typing import Optional
 
-from backend.core.constants import (
+from core.constants import (
     SCORE_WEIGHTS,
     PQC_SAFE_ALGORITHMS,
     PQC_HYBRID_INDICATORS,
@@ -29,7 +29,7 @@ from backend.core.constants import (
     CERT_TIER_SAFE,
     MIGRATION_NIST_MAP,
 )
-from backend.core.logging import get_logger
+from core.logging import get_logger
 
 log = get_logger(__name__)
 

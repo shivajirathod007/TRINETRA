@@ -21,9 +21,9 @@ from sslyze.errors import (
 )
 from sslyze.plugins.scan_commands import ScanCommandExtraArgumentsDict
 
-from backend.core.constants import DEPRECATED_TLS_VERSIONS
-from backend.core.exceptions import TLSScanError, ScanBlockedError
-from backend.core.logging import get_logger
+from core.constants import DEPRECATED_TLS_VERSIONS
+from core.exceptions import TLSScanError, ScanBlockedError
+from core.logging import get_logger
 
 log = get_logger(__name__)
 
