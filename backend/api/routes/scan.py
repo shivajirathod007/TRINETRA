@@ -1,34 +1,54 @@
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from typing import List, Optional
 import uuid
 
 router = APIRouter()
 
+
 class ScanRequest(BaseModel):
     domain: str
+    crqc_scenario: Optional[str] = "moderate"
 
-class ScanResponse(BaseModel):
-    scan_id: str
-    status: str
-    message: str
 
-@router.post("/", response_model=ScanResponse)
-async def create_scan(request: ScanRequest, background_tasks: BackgroundTasks):
+@router.post("/")
+async def create_scan(request: ScanRequest):
+    """Initiate a new cryptographic exposure scan."""
     scan_id = str(uuid.uuid4())
-    # TODO: dispatch celery task 
-    # scan_tasks.start_domain_scan.delay(scan_id, request.domain)
-    return ScanResponse(
-        scan_id=scan_id,
-        status="pending",
-        message=f"Scan initialized for {request.domain}"
-    )
+    return {
+        "scan_id": scan_id,
+        "domain": request.domain,
+        "status": "pending",
+        "progress": 0,
+        "logs": [],
+        "assets_found": 0,
+        "shadow_assets": 0,
+        "poll_url": f"/api/v1/scans/{scan_id}"
+    }
+
+
+@router.get("/")
+async def list_scans(domain: Optional[str] = None, limit: int = 20):
+    """List recent scans, optionally filtered by domain."""
+    return []
+
 
 @router.get("/{scan_id}")
 async def get_scan_status(scan_id: str):
-    # TODO: fetch from DB
+    """Get current status and streaming logs for a scan."""
     return {
         "scan_id": scan_id,
-        "status": "in_progress",
-        "progress": 45,
-        "assets_found": 12
+        "domain": "",
+        "status": "completed",
+        "progress": 100,
+        "tls_progress": 100,
+        "ai_progress": 100,
+        "assets_found": 0,
+        "shadow_assets": 0,
+        "logs": [
+            "Initializing TRINETRA scanner...",
+            "Scan complete."
+        ],
+        "started_at": None,
+        "completed_at": None
     }

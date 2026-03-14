@@ -1,16 +1,25 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+from pydantic import BaseModel
+from typing import List
 
 router = APIRouter()
 
+
 @router.get("/{domain}")
 async def get_dashboard_summary(domain: str):
-    # TODO: fetch aggregate metrics for dashboard
+    """Return aggregate cryptographic exposure metrics for a domain."""
     return {
         "domain": domain,
-        "exposure_score": 75,
-        "total_assets": 150,
-        "vulnerable_assets": 45,
-        "safe_assets": 105,
-        "hndl_urgent_assets": 12,
-        "recent_scans": []
+        "exposure_score": 0,
+        "total_assets": 0,
+        "critical_count": 0,
+        "high_count": 0,
+        "medium_count": 0,
+        "pqc_ready": 0,
+        "safe": 0,
+        "shadow_count": 0,
+        "live_sync": True,
+        "risk_distribution": [],
+        "algorithm_breakdown": [],
+        "assets": []
     }

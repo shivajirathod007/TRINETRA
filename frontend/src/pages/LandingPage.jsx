@@ -1,22 +1,57 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight, Sun, Moon } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import GlowButton from '../components/GlowButton';
 import AnimatedCounters from '../components/AnimatedCounters';
 import { useTheme } from '../context/ThemeContext';
+import { scanApi, setActiveScan } from '../api/index';
+
+/**
+ * Fetch global platform stats (reuse a generic scan list count).
+ * The backend will populate this over time; we default gracefully.
+ */
+async function fetchPlatformStats() {
+    try {
+        const history = await scanApi.list(null, 1000);
+        const totalScans = Array.isArray(history) ? history.length : 0;
+        const totalAssets = history.reduce?.((s, h) => s + (h.assets_found ?? 0), 0) ?? 0;
+        const shadowAssets = history.reduce?.((s, h) => s + (h.shadow_assets ?? 0), 0) ?? 0;
+        const cboms = totalAssets; // 1 CBOM per discovered asset
+        return { totalScans, totalAssets, shadowAssets, cboms, compliance: 100 };
+    } catch {
+        return { totalScans: 0, totalAssets: 0, shadowAssets: 0, cboms: 0, compliance: 100 };
+    }
+}
 
 const LandingPage = () => {
     const [domain, setDomain] = useState('');
     const [activeChip, setActiveChip] = useState('Web Portals');
+    const [isScanning, setIsScanning] = useState(false);
     const navigate = useNavigate();
     const { isDarkMode, toggleTheme } = useTheme();
 
-    const handleScan = (e) => {
-        e.preventDefault();
-        if (domain) navigate(`/scan/${domain}`);
-    };
+    const { data: stats = {} } = useQuery({
+        queryKey: ['platform-stats'],
+        queryFn: fetchPlatformStats,
+        staleTime: 60_000,
+    });
 
     const chips = ['Web Portals', 'APIs', 'VPN Endpoints', 'Shadow Assets'];
+
+    const handleScan = async (e) => {
+        e.preventDefault();
+        if (!domain || isScanning) return;
+        setIsScanning(true);
+        try {
+            const result = await scanApi.initiate(domain.trim().toLowerCase());
+            setActiveScan(domain.trim().toLowerCase(), result.scan_id);
+            navigate(`/scan/${encodeURIComponent(domain.trim().toLowerCase())}`);
+        } catch (err) {
+            console.error('Failed to initiate scan:', err);
+            setIsScanning(false);
+        }
+    };
 
     return (
         <div className="min-h-screen flex flex-col relative overflow-hidden">
@@ -28,7 +63,7 @@ const LandingPage = () => {
                     backgroundImage: 'linear-gradient(to right, #1F2937 1px, transparent 1px), linear-gradient(to bottom, #1F2937 1px, transparent 1px)',
                     backgroundSize: '4rem 4rem'
                 }}
-            ></div>
+            />
 
             {/* Top Navigation */}
             <nav className="landing-nav">
@@ -52,10 +87,10 @@ const LandingPage = () => {
             <main className="flex-1 flex flex-col justify-center">
                 <div className="hero-section">
                     {/* Ambient Glow */}
-                    <div className="hero-bg-glow"></div>
+                    <div className="hero-bg-glow" />
 
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border-highlight bg-surface-card mb-6 mb-8 text-xs font-mono font-medium tracking-wide">
-                        <span className="w-2 h-2 rounded-full bg-status-pqc animate-pulse"></span>
+                        <span className="w-2 h-2 rounded-full bg-status-pqc animate-pulse" />
                         Seeing Tomorrow's Cryptographic Threats Today
                     </div>
 
@@ -65,7 +100,7 @@ const LandingPage = () => {
                     </h1>
 
                     <p className="hero-subtitle pb-4">
-                        Discover every cryptographic vulnerability across your bank's public-facing infrastructure — before quantum computers do.
+                        Discover every cryptographic vulnerability across your organisation's public-facing infrastructure — before quantum computers do.
                     </p>
 
                     <form onSubmit={handleScan} className="search-container">
@@ -79,13 +114,13 @@ const LandingPage = () => {
                                     placeholder="Enter domain — e.g. pnb.in"
                                     className="search-input"
                                     required
+                                    disabled={isScanning}
                                 />
                             </div>
                             <div style={{ width: '100%' }} className="sm-w-auto">
-                                {/* Provide width 100 on mobile, auto on sm+ */}
                                 <style>{`@media(min-width: 640px) { .sm-w-auto { width: auto !important; } }`}</style>
-                                <GlowButton type="submit" className="w-full">
-                                    INITIATE SCAN <ArrowRight size={16} />
+                                <GlowButton type="submit" className="w-full" disabled={isScanning}>
+                                    {isScanning ? 'Initiating...' : 'INITIATE SCAN'} <ArrowRight size={16} />
                                 </GlowButton>
                             </div>
                         </div>
@@ -110,35 +145,35 @@ const LandingPage = () => {
                     </form>
                 </div>
 
-                {/* Global Stats Strip */}
+                {/* Global Stats Strip — live from API */}
                 <section className="stats-section">
                     <div className="container py-8">
                         <div className="stats-grid">
 
                             <div className="text-center px-4 stat-divider">
                                 <div className="text-4xl font-bold mb-1">
-                                    <AnimatedCounters value={4847} />
+                                    <AnimatedCounters value={stats.totalAssets ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">Assets Scanned</div>
                             </div>
 
                             <div className="text-center px-4 stat-divider hidden md-block">
-                                <div className="text-4xl font-bold text-status-critical mb-1 glow-critical" style={{ textShadow: '0 0 15px rgba(239,68,68,0.5)' }}>
-                                    <AnimatedCounters value={312} />
+                                <div className="text-4xl font-bold text-status-critical mb-1" style={{ textShadow: '0 0 15px rgba(239,68,68,0.5)' }}>
+                                    <AnimatedCounters value={stats.shadowAssets ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">Shadow Assets</div>
                             </div>
 
                             <div className="text-center px-4 stat-divider hidden md-block">
-                                <div className="text-4xl font-bold text-primary-indigo mb-1 glow-indigo" style={{ textShadow: '0 0 15px rgba(99,102,241,0.5)' }}>
-                                    <AnimatedCounters value={1204} />
+                                <div className="text-4xl font-bold text-primary-indigo mb-1" style={{ textShadow: '0 0 15px rgba(99,102,241,0.5)' }}>
+                                    <AnimatedCounters value={stats.cboms ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">CBOMs Generated</div>
                             </div>
 
                             <div className="text-center px-4">
-                                <div className="text-4xl font-bold text-status-safe mb-1 glow-safe" style={{ textShadow: '0 0 15px rgba(34,197,94,0.5)' }}>
-                                    100<span className="text-2xl">%</span>
+                                <div className="text-4xl font-bold text-status-safe mb-1" style={{ textShadow: '0 0 15px rgba(34,197,94,0.5)' }}>
+                                    {stats.compliance ?? 100}<span className="text-2xl">%</span>
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">NIST FIPS Compliant</div>
                             </div>
