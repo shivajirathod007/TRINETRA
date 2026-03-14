@@ -1,64 +1,119 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  db:
-    image: postgres:15
+
+  # ─── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: trinetra_postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: trinetra
-      POSTGRES_PASSWORD: supersecretpassword
       POSTGRES_DB: trinetra
+      POSTGRES_USER: trinetra
+      POSTGRES_PASSWORD: trinetra_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trinetra -d trinetra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
+  # ─── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
+    container_name: trinetra_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
-  backend:
+  # ─── FastAPI Backend ─────────────────────────────────────────────────────────
+  api:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    container_name: trinetra_api
+    restart: unless-stopped
+    command: uvicorn backend.api.main:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://trinetra:trinetra_pass@postgres:5432/trinetra
+      - DATABASE_URL_SYNC=postgresql://trinetra:trinetra_pass@postgres:5432/trinetra
+      - REDIS_URL=redis://redis:6379/0
+      - APP_ENV=development
+      - DEBUG=true
+    env_file:
+      - .env
     ports:
       - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://trinetra:supersecretpassword@db:5432/trinetra
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - MODEL_PATH=distilbert-base-uncased
+    volumes:
+      - .:/app
     depends_on:
-      - db
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  celery_worker:
+  # ─── Celery Worker ───────────────────────────────────────────────────────────
+  worker:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: celery -A tasks.celery_app worker --loglevel=info
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    container_name: trinetra_worker
+    restart: unless-stopped
+    command: celery -A backend.workers.celery_app worker --loglevel=info --concurrency=8 -Q scans,discovery,analysis
     environment:
-      - DATABASE_URL=postgresql://trinetra:supersecretpassword@db:5432/trinetra
+      - DATABASE_URL=postgresql+asyncpg://trinetra:trinetra_pass@postgres:5432/trinetra
+      - DATABASE_URL_SYNC=postgresql://trinetra:trinetra_pass@postgres:5432/trinetra
       - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
-      - MODEL_PATH=distilbert-base-uncased
+    env_file:
+      - .env
+    volumes:
+      - .:/app
     depends_on:
-      - db
-      - redis
-      - backend
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2
 
+  # ─── Celery Flower Monitor ───────────────────────────────────────────────────
+  flower:
+    build:
+      context: .
+      dockerfile: infra/Dockerfile.backend
+    container_name: trinetra_flower
+    restart: unless-stopped
+    command: celery -A backend.workers.celery_app flower --port=5555 --broker=redis://redis:6379/0
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - worker
+
+  # ─── React Frontend ──────────────────────────────────────────────────────────
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: ../infra/Dockerfile.frontend
+    container_name: trinetra_frontend
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_BASE_URL=http://localhost:8000
     depends_on:
-      - backend
+      - api
 
 volumes:
-  pgdata:
+  postgres_data:
+    driver: local
