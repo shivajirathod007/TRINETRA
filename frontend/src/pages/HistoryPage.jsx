@@ -5,6 +5,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { scanApi, setActiveScan } from '../api/index';
 
+const BASE = '/api/v1';
+async function fetchQueueHealth() {
+    const r = await fetch(`${BASE}/health/queue`);
+    return r.json();
+}
+
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
@@ -39,17 +45,26 @@ const HistoryPage = () => {
         },
     });
 
-    // Build trend data from real scan history (exposure_score over time)
+    const allQueued = scans.length > 0 && scans.every(s => s.status === 'pending');
+    const { data: queueHealth } = useQuery({
+        queryKey: ['queue-health'],
+        queryFn: fetchQueueHealth,
+        enabled: allQueued,
+        staleTime: 30_000,
+    });
+
+    // Build trend data from completed scans only (exposure_score over time)
     const trendData = scans
-        .filter(s => s.started_at)
+        .filter(s => s.status === 'completed' && s.started_at != null)
         .sort((a, b) => new Date(a.started_at) - new Date(b.started_at))
         .map(s => ({
-            date: s.started_at ? new Date(s.started_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }) : '—',
+            date: new Date(s.started_at).toLocaleDateString('en-IN', { month: 'short', year: '2-digit' }),
             score: s.exposure_score ?? 0,
             assets_found: s.assets_found ?? 0,
         }));
 
-    const latestScore = scans[0]?.exposure_score ?? 0;
+    const completedScans = scans.filter(s => s.status === 'completed');
+    const latestScore = completedScans[0]?.exposure_score ?? scans[0]?.exposure_score;
 
     const handleReviewScan = (scan) => {
         setActiveScan(scan.domain, scan.scan_id);
@@ -86,7 +101,7 @@ const HistoryPage = () => {
                         {trendData.length < 2 ? (
                             <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
                                 <TrendingUp size={28} className="opacity-30" />
-                                <p className="text-sm">Need at least 2 scans to show trend. Run more scans to populate this chart.</p>
+                                <p className="text-sm">Need at least 2 completed scans to show trend. Run scans and wait for them to finish.</p>
                             </div>
                         ) : (
                             <ResponsiveContainer width="100%" height="100%">
@@ -113,16 +128,16 @@ const HistoryPage = () => {
                 <div className="glass-card p-6 border flex flex-col gap-6">
                     <h2 className="font-bold text-lg mb-2">Trend Analysis</h2>
 
-                    {scans.length >= 2 ? (
+                    {completedScans.length >= 2 ? (
                         <div className="bg-surface-card border p-4 rounded flex items-start gap-4">
                             <TrendingUp size={24} className="text-status-safe shrink-0" />
                             <div>
                                 <div className="font-bold text-primary text-sm mb-1">
-                                    Score change: {((scans[0]?.exposure_score ?? 0) - (scans[scans.length - 1]?.exposure_score ?? 0)) > 0 ? '+' : ''}
-                                    {(scans[0]?.exposure_score ?? 0) - (scans[scans.length - 1]?.exposure_score ?? 0)} points
+                                    Score change: {((completedScans[0]?.exposure_score ?? 0) - (completedScans[completedScans.length - 1]?.exposure_score ?? 0)) > 0 ? '+' : ''}
+                                    {(completedScans[0]?.exposure_score ?? 0) - (completedScans[completedScans.length - 1]?.exposure_score ?? 0)} points
                                 </div>
                                 <p className="text-xs text-secondary leading-relaxed">
-                                    Across {scans.length} scans since the first recorded scan.
+                                    Across {completedScans.length} completed scans.
                                 </p>
                             </div>
                         </div>
@@ -144,7 +159,7 @@ const HistoryPage = () => {
                             <ShieldCheck size={64} className="text-primary-indigo" />
                         </div>
                         <div className="text-xl font-bold font-mono text-status-pqc mb-1">
-                            {latestScore} <span className="text-sm font-sans text-secondary">/ 100</span>
+                            {latestScore != null ? latestScore : '—'} <span className="text-sm font-sans text-secondary">/ 100</span>
                         </div>
                         <div className="text-xs font-bold text-secondary uppercase tracking-wider">Current Score</div>
                         <div className="text-[10px] text-primary mt-2 px-2 py-1 rounded inline-block"
@@ -159,10 +174,16 @@ const HistoryPage = () => {
             <div className="glass-card border overflow-hidden mt-2 flex flex-col">
                 <div className="p-4 border-b flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-bold text-lg">Previous Scans</h2>
-                    {scans.length > 0 && scans.every(s => s.status === 'pending') && (
-                        <p className="text-xs text-secondary">
-                            Scans are queued. Ensure Redis and the Celery worker are running for jobs to start.
-                        </p>
+                    {allQueued && (
+                        <div className="flex flex-wrap items-center gap-3 text-xs">
+                            {queueHealth?.redis === 'connected' ? (
+                                <span className="text-status-safe font-medium">Queue connected — start the Celery worker so scans run.</span>
+                            ) : queueHealth?.redis === 'disconnected' ? (
+                                <span className="text-status-high font-medium">Queue unreachable — start Redis and the Celery worker.</span>
+                            ) : (
+                                <span className="text-secondary">Scans are queued. Ensure Redis and the Celery worker are running.</span>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -206,12 +227,16 @@ const HistoryPage = () => {
                                         </td>
                                         <td className="font-mono">{scan.assets_found ?? 0}</td>
                                         <td>
-                                            <span className={`font-mono font-bold ${(scan.exposure_score ?? 0) >= 70 ? 'text-status-pqc'
-                                                    : (scan.exposure_score ?? 0) >= 40 ? 'text-status-medium'
-                                                        : 'text-status-critical'
-                                                }`}>
-                                                {scan.exposure_score ?? 0}
-                                            </span>
+                                            {scan.status === 'completed' && scan.exposure_score != null ? (
+                                                <span className={`font-mono font-bold ${scan.exposure_score >= 70 ? 'text-status-pqc'
+                                                        : scan.exposure_score >= 40 ? 'text-status-medium'
+                                                            : 'text-status-critical'
+                                                    }`}>
+                                                    {scan.exposure_score}
+                                                </span>
+                                            ) : (
+                                                <span className="text-secondary font-mono">—</span>
+                                            )}
                                         </td>
                                         <td>
                                             <span className={`text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1.5 ${scan.status === 'completed' ? 'text-status-safe'

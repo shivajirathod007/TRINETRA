@@ -49,6 +49,20 @@ app.add_middleware(
 async def health_check():
     return {"status": "healthy", "service": "trinetra-api"}
 
+
+# Queue health — so you can verify Redis (and thus Celery) can be reached
+@app.get("/api/v1/health/queue")
+async def health_queue():
+    """Check Redis connectivity. Scans stay 'Queued' if Redis is down or the Celery worker is not running."""
+    try:
+        import redis
+        from core.config import settings
+        r = redis.from_url(settings.redis_url)
+        r.ping()
+        return {"status": "ok", "redis": "connected", "message": "Queue is reachable. Ensure Celery worker is running: celery -A workers.celery_app worker -Q scans,discovery,analysis --loglevel=info"}
+    except Exception as e:
+        return {"status": "degraded", "redis": "disconnected", "error": str(e), "message": "Start Redis and the Celery worker so scans can run."}
+
 # Include routers
 app.include_router(scan.router,        prefix="/api/v1/scans",        tags=["Scans"])
 app.include_router(dashboard.router,   prefix="/api/v1/dashboard",    tags=["Dashboard"])
