@@ -128,7 +128,7 @@ async def get_scan_status(scan_id: str, db: AsyncSession = Depends(get_db)):
     tls_progress = progress_pct if scan.current_stage and "scanning" in (scan.current_stage or "") else (100 if scan.status == "COMPLETED" else min(progress_pct, 90))
     ai_progress = 100 if scan.status == "COMPLETED" else (progress_pct if scan.current_stage == "complete" else 0)
     logs = _stage_logs(scan.current_stage, scan.assets_discovered or 0, scanned)
-    return {
+    payload = {
         "scan_id": scan_id,
         "domain": scan.domain,
         "status": scan.status.lower() if scan.status else "pending",
@@ -141,3 +141,6 @@ async def get_scan_status(scan_id: str, db: AsyncSession = Depends(get_db)):
         "started_at": scan.started_at.isoformat() if scan.started_at else None,
         "completed_at": scan.completed_at.isoformat() if scan.completed_at else None,
     }
+    if scan.organization_score is not None:
+        payload["exposure_score"] = round(scan.organization_score, 0)
+    return payload

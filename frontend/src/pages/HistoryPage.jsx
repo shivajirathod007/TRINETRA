@@ -22,13 +22,21 @@ const CustomTooltip = ({ active, payload, label }) => {
     return null;
 };
 
+const POLL_INTERVAL_ACTIVE = 4_000;  // when there are pending/running scans
+const POLL_INTERVAL_IDLE = 60_000;   // when all scans are completed/failed
+
 const HistoryPage = () => {
     const navigate = useNavigate();
 
     const { data: scans = [], isLoading } = useQuery({
         queryKey: ['scan-history'],
         queryFn: () => scanApi.list(null, 50),
-        staleTime: 30_000,
+        staleTime: 10_000,
+        refetchInterval: (query) => {
+            const data = query.state.data ?? [];
+            const hasActive = data.some(s => (s.status === 'pending' || s.status === 'running'));
+            return hasActive ? POLL_INTERVAL_ACTIVE : POLL_INTERVAL_IDLE;
+        },
     });
 
     // Build trend data from real scan history (exposure_score over time)
@@ -149,8 +157,13 @@ const HistoryPage = () => {
 
             {/* History Table */}
             <div className="glass-card border overflow-hidden mt-2 flex flex-col">
-                <div className="p-4 border-b">
+                <div className="p-4 border-b flex flex-wrap items-center justify-between gap-2">
                     <h2 className="font-bold text-lg">Previous Scans</h2>
+                    {scans.length > 0 && scans.every(s => s.status === 'pending') && (
+                        <p className="text-xs text-secondary">
+                            Scans are queued. Ensure Redis and the Celery worker are running for jobs to start.
+                        </p>
+                    )}
                 </div>
 
                 <div className="table-container">
@@ -201,11 +214,13 @@ const HistoryPage = () => {
                                             </span>
                                         </td>
                                         <td>
-                                            <span className={`text-xs font-bold uppercase tracking-wide ${scan.status === 'completed' ? 'text-status-safe'
+                                            <span className={`text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1.5 ${scan.status === 'completed' ? 'text-status-safe'
                                                     : scan.status === 'failed' ? 'text-status-critical'
-                                                        : 'text-status-high'
+                                                        : scan.status === 'running' ? 'text-primary-indigo'
+                                                            : 'text-status-high'
                                                 }`}>
-                                                {scan.status ?? 'unknown'}
+                                                {scan.status === 'running' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary-indigo animate-pulse" />}
+                                                {scan.status === 'pending' ? 'Queued' : scan.status === 'running' ? 'Running' : scan.status === 'completed' ? 'Completed' : scan.status === 'failed' ? 'Failed' : (scan.status ?? 'Unknown')}
                                             </span>
                                         </td>
                                         <td className="text-right">

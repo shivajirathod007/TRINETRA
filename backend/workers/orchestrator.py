@@ -171,7 +171,7 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
 
         return asset_dicts
 
-    return asyncio.get_event_loop().run_until_complete(_async_discovery())
+    return asyncio.run(_async_discovery())
 
 
 def _update_scan_stage(scan_id: str, stage: str, asset_count: int) -> None:
@@ -189,7 +189,7 @@ def _update_scan_stage(scan_id: str, stage: str, asset_count: int) -> None:
             )
             await db.commit()
 
-    asyncio.get_event_loop().run_until_complete(_update())
+    asyncio.run(_update())
 
 
 def _mark_scan_failed(scan_id: str, error: str) -> None:
@@ -205,4 +205,4 @@ def _mark_scan_failed(scan_id: str, error: str) -> None:
             )
             await db.commit()
 
-    asyncio.get_event_loop().run_until_complete(_fail())
+    asyncio.run(_fail())

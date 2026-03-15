@@ -11,6 +11,7 @@ celery_app = Celery(
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=[
+        "workers.orchestrator",
         "workers.tasks.discovery_tasks",
         "workers.tasks.scan_tasks",
         "workers.tasks.analysis_tasks",
@@ -27,9 +28,10 @@ celery_app.conf.update(
     task_acks_late=True,
     worker_prefetch_multiplier=1,
     task_routes={
+        "orchestrator.run_full_scan": {"queue": "scans"},
         "workers.tasks.discovery_tasks.*": {"queue": "discovery"},
-        "workers.tasks.scan_tasks.*":      {"queue": "scans"},
-        "workers.tasks.analysis_tasks.*":  {"queue": "analysis"},
+        "workers.tasks.scan_tasks.*": {"queue": "scans"},
+        "workers.tasks.analysis_tasks.*": {"queue": "analysis"},
     },
     task_soft_time_limit=120,   # 2 minutes per task
     task_time_limit=180,        # Hard kill after 3 minutes

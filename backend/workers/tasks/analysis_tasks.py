@@ -73,7 +73,7 @@ def aggregate_scan_results(self, asset_results: list[dict], scan_id: str, domain
             )
             await db.commit()
 
-    asyncio.get_event_loop().run_until_complete(_finalize())
+    asyncio.run(_finalize())
 
     summary = {
         "scan_id": scan_id,
