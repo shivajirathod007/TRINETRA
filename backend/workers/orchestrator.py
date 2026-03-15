@@ -92,41 +92,31 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
     from engine.discovery.dns_resolver import DNSResolver
     from engine.discovery.port_scanner import PortScanner
     from engine.discovery.asset_classifier import AssetClassifier
-    from db.session import AsyncSessionLocal
-    from db.repository import ScanRepository
+    import db.sync_db as sync_db
 
     async def _async_discovery():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.update_scan_status(
-                uuid.UUID(scan_id), "RUNNING", current_stage="ct_mining"
-            )
-            await db.commit()
+        sync_db.update_scan_status_sync(
+            scan_id, "RUNNING", current_stage="ct_mining"
+        )
 
         # Step 1: CT Log Mining
         miner = CTLogMiner()
         ct_entries = await miner.mine(domain)
 
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.update_scan_progress(
-                uuid.UUID(scan_id),
-                assets_discovered=len(ct_entries),
-                current_stage="dns_resolution",
-            )
-            await db.commit()
+        sync_db.update_scan_progress_sync(
+            scan_id,
+            assets_discovered=len(ct_entries),
+            current_stage="dns_resolution",
+        )
 
         # Step 2: DNS Resolution
         resolver = DNSResolver()
         live_assets, dead_assets = await resolver.resolve_all(ct_entries)
 
         # Step 3: Port Scanning
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.update_scan_progress(
-                uuid.UUID(scan_id), current_stage="port_scanning"
-            )
-            await db.commit()
+        sync_db.update_scan_progress_sync(
+            scan_id, current_stage="port_scanning"
+        )
 
         scanner = PortScanner()
         port_results = await scanner.scan_all(
@@ -139,35 +129,32 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
         classified = await classifier.classify_all(port_results, shadow_fqdns)
 
         # Persist assets to DB
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            asset_dicts = []
-            for ca in classified:
-                asset = await repo.create_asset(
-                    scan_job_id=uuid.UUID(scan_id),
-                    fqdn=ca.fqdn,
-                    asset_url=ca.asset_url,
-                    asset_type=ca.asset_type,
-                    port=ca.port,
-                    ip_address=ca.ip_address,
-                    is_shadow_asset=ca.is_shadow_asset,
-                )
-                asset_dicts.append({
-                    "asset_id": str(asset.id),
-                    "fqdn": ca.fqdn,
-                    "asset_url": ca.asset_url,
-                    "asset_type": ca.asset_type,
-                    "port": ca.port,
-                    "ip_address": ca.ip_address,
-                    "is_shadow_asset": ca.is_shadow_asset,
-                    "needs_tls_scan": ca.needs_tls_scan,
-                    "needs_api_scan": ca.needs_api_scan,
-                    "needs_vpn_scan": ca.needs_vpn_scan,
-                    "needs_ssh_scan": ca.needs_ssh_scan,
-                    "needs_smtp_scan": ca.needs_smtp_scan,
-                    "vpn_type": ca.vpn_type,
-                })
-            await db.commit()
+        asset_dicts = []
+        for ca in classified:
+            asset_id = sync_db.create_asset_sync(
+                scan_job_id=scan_id,
+                fqdn=ca.fqdn,
+                asset_url=ca.asset_url,
+                asset_type=ca.asset_type,
+                port=ca.port,
+                ip_address=ca.ip_address,
+                is_shadow_asset=ca.is_shadow_asset,
+            )
+            asset_dicts.append({
+                "asset_id": asset_id,
+                "fqdn": ca.fqdn,
+                "asset_url": ca.asset_url,
+                "asset_type": ca.asset_type,
+                "port": ca.port,
+                "ip_address": ca.ip_address,
+                "is_shadow_asset": ca.is_shadow_asset,
+                "needs_tls_scan": ca.needs_tls_scan,
+                "needs_api_scan": ca.needs_api_scan,
+                "needs_vpn_scan": ca.needs_vpn_scan,
+                "needs_ssh_scan": ca.needs_ssh_scan,
+                "needs_smtp_scan": ca.needs_smtp_scan,
+                "vpn_type": ca.vpn_type,
+            })
 
         return asset_dicts
 
@@ -175,34 +162,16 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
 
 
 def _update_scan_stage(scan_id: str, stage: str, asset_count: int) -> None:
-    import asyncio
-    from db.session import AsyncSessionLocal
-    from db.repository import ScanRepository
-
-    async def _update():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.update_scan_progress(
-                uuid.UUID(scan_id),
-                assets_discovered=asset_count,
-                current_stage=stage,
-            )
-            await db.commit()
-
-    asyncio.run(_update())
+    import db.sync_db as sync_db
+    sync_db.update_scan_progress_sync(
+        scan_id,
+        assets_discovered=asset_count,
+        current_stage=stage,
+    )
 
 
 def _mark_scan_failed(scan_id: str, error: str) -> None:
-    import asyncio
-    from db.session import AsyncSessionLocal
-    from db.repository import ScanRepository
-
-    async def _fail():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.update_scan_status(
-                uuid.UUID(scan_id), "FAILED", error_message=error
-            )
-            await db.commit()
-
-    asyncio.run(_fail())
+    import db.sync_db as sync_db
+    sync_db.update_scan_status_sync(
+        scan_id, "FAILED", error_message=error
+    )

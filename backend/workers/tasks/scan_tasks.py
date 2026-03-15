@@ -306,43 +306,23 @@ def _extract_primary_algorithm(tls_result, cert_info, ssh_result) -> str:
 
 def _persist_scan_result(asset_id: str, scan_id: str, result: dict) -> None:
     """Writes scan result to database."""
-    import asyncio
-    from db.session import AsyncSessionLocal
-    from db.repository import ScanRepository, CertificateRepository
+    import db.sync_db as sync_db
 
-    async def _persist():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            cert_repo = CertificateRepository(db)
+    # Persist PQC certificate
+    cert_data = result.pop("pqc_certificate_data", None)
+    pqc_cert_id = None
+    if cert_data:
+        cert_data["scan_job_id"] = scan_id
+        pqc_cert_id = sync_db.create_certificate_sync(cert_data)
 
-            # Persist PQC certificate
-            cert_data = result.pop("pqc_certificate_data", None)
-            pqc_cert_id = None
-            if cert_data:
-                cert_data["scan_job_id"] = uuid.UUID(scan_id)
-                cert = await cert_repo.create_certificate(cert_data)
-                pqc_cert_id = cert.id
+    # Write all scan fields
+    scan_data = {k: v for k, v in result.items() if v is not None}
+    if pqc_cert_id:
+        scan_data["pqc_certificate_id"] = pqc_cert_id
 
-            # Write all scan fields
-            scan_data = {k: v for k, v in result.items() if v is not None}
-            if pqc_cert_id:
-                scan_data["pqc_certificate_id"] = pqc_cert_id
-
-            await repo.update_asset_scan_result(uuid.UUID(asset_id), scan_data)
-            await db.commit()
-
-    asyncio.get_event_loop().run_until_complete(_persist())
+    sync_db.update_asset_scan_result_sync(asset_id, scan_data)
 
 
 def _persist_failure(asset_id: str, error: str) -> None:
-    import asyncio
-    from db.session import AsyncSessionLocal
-    from db.repository import ScanRepository
-
-    async def _fail():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.mark_asset_failed(uuid.UUID(asset_id), error)
-            await db.commit()
-
-    asyncio.get_event_loop().run_until_complete(_fail())
+    import db.sync_db as sync_db
+    sync_db.mark_asset_failed_sync(asset_id, error)

@@ -67,6 +67,11 @@ def _is_stale(scan) -> bool:
 async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db)):
     """Initiate a new cryptographic exposure scan. Returns 202 with scan_id for polling."""
     domain = request.domain.strip().lower()
+    if domain.startswith("http://"):
+        domain = domain[7:]
+    if domain.startswith("https://"):
+        domain = domain[8:]
+    domain = domain.rstrip("/")
     if not domain:
         raise HTTPException(status_code=400, detail="domain is required")
     crqc_year = _crqc_year(request.crqc_scenario or "moderate")

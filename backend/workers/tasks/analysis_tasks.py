@@ -62,18 +62,13 @@ def aggregate_scan_results(self, asset_results: list[dict], scan_id: str, domain
         if r.get("is_shadow_asset", False):
             shadow_count += 1
 
-    async def _finalize():
-        async with AsyncSessionLocal() as db:
-            repo = ScanRepository(db)
-            await repo.finalize_scan(
-                scan_id=uuid.UUID(scan_id),
-                organization_score=org_score,
-                risk_counts=risk_counts,
-                shadow_assets_found=shadow_count,
-            )
-            await db.commit()
-
-    asyncio.run(_finalize())
+    import db.sync_db as sync_db
+    sync_db.finalize_scan_sync(
+        scan_id=scan_id,
+        organization_score=org_score,
+        risk_counts=risk_counts,
+        shadow_assets_found=shadow_count,
+    )
 
     summary = {
         "scan_id": scan_id,
