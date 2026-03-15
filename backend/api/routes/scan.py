@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db.session import get_db
@@ -10,6 +11,9 @@ from core.logging import get_logger
 
 router = APIRouter()
 log = get_logger(__name__)
+
+# Scans stuck in RUNNING/PENDING longer than this are auto-failed
+STALE_TIMEOUT_MINUTES = 30
 
 
 class ScanRequest(BaseModel):
@@ -42,6 +46,21 @@ def _stage_logs(stage: Optional[str], assets_discovered: int, assets_scanned: in
     if assets_discovered > 0 and assets_scanned >= assets_discovered and stage != "complete":
         logs.append("Finalizing CBOM and certificates...")
     return logs
+
+
+def _is_stale(scan) -> bool:
+    """Return True if a RUNNING/PENDING scan has been stuck beyond STALE_TIMEOUT_MINUTES."""
+    if scan.status not in ("RUNNING", "PENDING"):
+        return False
+    # Use started_at for RUNNING, created_at for PENDING (never picked up)
+    reference = scan.started_at or scan.created_at
+    if reference is None:
+        return False
+    # Make both tz-aware for comparison
+    now = datetime.now(timezone.utc)
+    if reference.tzinfo is None:
+        reference = reference.replace(tzinfo=timezone.utc)
+    return (now - reference) > timedelta(minutes=STALE_TIMEOUT_MINUTES)
 
 
 @router.post("/")
@@ -87,6 +106,17 @@ async def list_scans(domain: Optional[str] = None, limit: int = 20, db: AsyncSes
     try:
         repo = ScanRepository(db)
         scans = await repo.get_recent_scans(limit=limit, domain=domain)
+
+        # Auto-fail stale scans in a single pass
+        stale_ids = [s.id for s in scans if _is_stale(s)]
+        for stale_id in stale_ids:
+            await repo.cancel_scan(stale_id, reason="Scan timed out (worker may have crashed)")
+            log.warning("stale_scan_auto_failed", scan_id=str(stale_id))
+        if stale_ids:
+            await db.commit()
+            # Re-fetch so the response reflects the updated statuses
+            scans = await repo.get_recent_scans(limit=limit, domain=domain)
+
         return [
             {
                 "scan_id": str(s.id),
@@ -98,6 +128,7 @@ async def list_scans(domain: Optional[str] = None, limit: int = 20, db: AsyncSes
                 "exposure_score": round(s.organization_score, 0) if s.organization_score is not None else None,
                 "started_at": s.started_at.isoformat() if s.started_at else None,
                 "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+                "error_message": s.error_message,
             }
             for s in scans
         ]
@@ -122,6 +153,16 @@ async def get_scan_status(scan_id: str, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=503, detail="Database unavailable.") from e
     if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
+
+    # Auto-fail stale scan on individual status fetch too
+    if _is_stale(scan):
+        try:
+            await repo.cancel_scan(uid, reason="Scan timed out (worker may have crashed)")
+            await db.commit()
+            scan = await repo.get_scan(uid)
+        except Exception:
+            pass
+
     total = max(1, scan.assets_discovered or 1)
     scanned = scan.assets_scanned or 0
     progress_pct = round(100 * scanned / total)
@@ -140,7 +181,33 @@ async def get_scan_status(scan_id: str, db: AsyncSession = Depends(get_db)):
         "logs": logs,
         "started_at": scan.started_at.isoformat() if scan.started_at else None,
         "completed_at": scan.completed_at.isoformat() if scan.completed_at else None,
+        "error_message": scan.error_message,
     }
     if scan.organization_score is not None:
         payload["exposure_score"] = round(scan.organization_score, 0)
     return payload
+
+
+@router.post("/{scan_id}/cancel")
+async def cancel_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
+    """Cancel a PENDING or RUNNING scan, marking it as FAILED."""
+    import uuid
+    try:
+        uid = uuid.UUID(scan_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid scan_id")
+    try:
+        repo = ScanRepository(db)
+        scan = await repo.get_scan(uid)
+        if not scan:
+            raise HTTPException(status_code=404, detail="Scan not found")
+        if scan.status not in ("PENDING", "RUNNING"):
+            raise HTTPException(status_code=409, detail=f"Scan is already {scan.status.lower()}")
+        await repo.cancel_scan(uid, reason="Cancelled by user")
+        await db.commit()
+        return {"scan_id": scan_id, "status": "failed", "message": "Scan cancelled"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.exception("cancel_scan_error", scan_id=scan_id, error=str(e))
+        raise HTTPException(status_code=503, detail="Database error") from e

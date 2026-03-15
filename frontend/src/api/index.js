@@ -35,7 +35,11 @@ export const scanApi = {
         q.set('limit', limit);
         return request(`/scans/?${q}`);
     },
+
+    cancel: (scanId) =>
+        request(`/scans/${scanId}/cancel`, { method: 'POST' }),
 };
+
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 

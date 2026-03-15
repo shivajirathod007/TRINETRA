@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from 'recharts';
-import { Calendar, TrendingUp, AlertTriangle, ShieldCheck, Download, ChevronRight, RefreshCw, Clock } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Calendar, TrendingUp, AlertTriangle, ShieldCheck, Download, ChevronRight, RefreshCw, Clock, XCircle } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { scanApi, setActiveScan } from '../api/index';
 
@@ -30,9 +30,20 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const POLL_INTERVAL_ACTIVE = 4_000;  // when there are pending/running scans
 const POLL_INTERVAL_IDLE = 60_000;   // when all scans are completed/failed
+const STALE_MINUTES = 30;            // scans stuck longer than this are highlighted
+
+/** Returns true if a running/pending scan has been stuck beyond STALE_MINUTES */
+function isStale(scan) {
+    if (scan.status !== 'running' && scan.status !== 'pending') return false;
+    const ref = scan.started_at || null;
+    if (!ref) return scan.status === 'pending'; // pending with no start → assume stale
+    return (Date.now() - new Date(ref).getTime()) > STALE_MINUTES * 60 * 1000;
+}
 
 const HistoryPage = () => {
     const navigate = useNavigate();
+    const queryClient = useQueryClient();
+    const [cancelling, setCancelling] = useState({});
 
     const { data: scans = [], isLoading } = useQuery({
         queryKey: ['scan-history'],
@@ -67,8 +78,23 @@ const HistoryPage = () => {
     const latestScore = completedScans[0]?.exposure_score ?? scans[0]?.exposure_score;
 
     const handleReviewScan = (scan) => {
-        setActiveScan(scan.domain, scan.scan_id);
-        navigate('/dashboard');
+        if (scan.status === 'completed') {
+            setActiveScan(scan.domain, scan.scan_id);
+            navigate('/dashboard');
+        }
+    };
+
+    const handleCancel = async (e, scan) => {
+        e.stopPropagation(); // don't trigger row click
+        setCancelling(prev => ({ ...prev, [scan.scan_id]: true }));
+        try {
+            await scanApi.cancel(scan.scan_id);
+            queryClient.invalidateQueries({ queryKey: ['scan-history'] });
+        } catch (err) {
+            console.error('Cancel failed:', err);
+        } finally {
+            setCancelling(prev => ({ ...prev, [scan.scan_id]: false }));
+        }
     };
 
     return (
@@ -211,50 +237,93 @@ const HistoryPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {scans.map((scan) => (
-                                    <tr key={scan.scan_id} className="group cursor-pointer" onClick={() => handleReviewScan(scan)}>
-                                        <td className="font-mono font-medium text-primary-indigo">
-                                            {scan.scan_id?.slice(0, 8) ?? '—'}...
-                                        </td>
-                                        <td className="font-mono text-primary">{scan.domain ?? '—'}</td>
-                                        <td className="font-mono text-secondary">
-                                            <div className="flex items-center gap-2">
-                                                <Calendar size={14} />
-                                                {scan.started_at
-                                                    ? new Date(scan.started_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
-                                                    : '—'}
-                                            </div>
-                                        </td>
-                                        <td className="font-mono">{scan.assets_found ?? 0}</td>
-                                        <td>
-                                            {scan.status === 'completed' && scan.exposure_score != null ? (
-                                                <span className={`font-mono font-bold ${scan.exposure_score >= 70 ? 'text-status-pqc'
-                                                        : scan.exposure_score >= 40 ? 'text-status-medium'
-                                                            : 'text-status-critical'
-                                                    }`}>
-                                                    {scan.exposure_score}
-                                                </span>
-                                            ) : (
-                                                <span className="text-secondary font-mono">—</span>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className={`text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1.5 ${scan.status === 'completed' ? 'text-status-safe'
-                                                    : scan.status === 'failed' ? 'text-status-critical'
-                                                        : scan.status === 'running' ? 'text-primary-indigo'
-                                                            : 'text-status-high'
-                                                }`}>
-                                                {scan.status === 'running' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary-indigo animate-pulse" />}
-                                                {scan.status === 'pending' ? 'Queued' : scan.status === 'running' ? 'Running' : scan.status === 'completed' ? 'Completed' : scan.status === 'failed' ? 'Failed' : (scan.status ?? 'Unknown')}
-                                            </span>
-                                        </td>
-                                        <td className="text-right">
-                                            <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo transition-colors">
-                                                <ChevronRight size={16} />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {scans.map((scan) => {
+                                    const stale = isStale(scan);
+                                    const isCancellable = scan.status === 'running' || scan.status === 'pending';
+                                    const isCancelling = cancelling[scan.scan_id];
+                                    return (
+                                        <tr
+                                            key={scan.scan_id}
+                                            className={`group ${scan.status === 'completed' ? 'cursor-pointer' : ''} ${stale ? 'stale-row' : ''}`}
+                                            onClick={() => handleReviewScan(scan)}
+                                        >
+                                            <td className="font-mono font-medium text-primary-indigo">
+                                                {scan.scan_id?.slice(0, 8) ?? '—'}...
+                                            </td>
+                                            <td className="font-mono text-primary">{scan.domain ?? '—'}</td>
+                                            <td className="font-mono text-secondary">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar size={14} />
+                                                    {scan.started_at
+                                                        ? new Date(scan.started_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+                                                        : '—'}
+                                                </div>
+                                            </td>
+                                            <td className="font-mono">{scan.assets_found ?? 0}</td>
+                                            <td>
+                                                {scan.status === 'completed' && scan.exposure_score != null ? (
+                                                    <span className={`font-mono font-bold ${scan.exposure_score >= 70 ? 'text-status-pqc'
+                                                            : scan.exposure_score >= 40 ? 'text-status-medium'
+                                                                : 'text-status-critical'
+                                                        }`}>
+                                                        {scan.exposure_score}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-secondary font-mono">—</span>
+                                                )}
+                                            </td>
+                                            <td>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className={`text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1.5 ${scan.status === 'completed' ? 'text-status-safe'
+                                                            : scan.status === 'failed' ? 'text-status-critical'
+                                                                : scan.status === 'running' ? 'text-primary-indigo'
+                                                                    : 'text-status-high'
+                                                        }`}>
+                                                        {scan.status === 'running' && !stale && (
+                                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary-indigo animate-pulse" />
+                                                        )}
+                                                        {stale && isCancellable && (
+                                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-status-high" title="Scan may be stuck" />
+                                                        )}
+                                                        {scan.status === 'pending' ? 'Queued'
+                                                            : scan.status === 'running' ? 'Running'
+                                                                : scan.status === 'completed' ? 'Completed'
+                                                                    : scan.status === 'failed' ? 'Failed'
+                                                                        : (scan.status ?? 'Unknown')}
+                                                    </span>
+                                                    {stale && isCancellable && (
+                                                        <span className="text-[10px] text-status-high font-semibold flex items-center gap-1">
+                                                            <AlertTriangle size={10} /> May be stuck
+                                                        </span>
+                                                    )}
+                                                    {scan.status === 'failed' && scan.error_message && (
+                                                        <span className="text-[10px] text-secondary truncate max-w-[160px]" title={scan.error_message}>
+                                                            {scan.error_message}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="text-right">
+                                                {isCancellable ? (
+                                                    <button
+                                                        onClick={(e) => handleCancel(e, scan)}
+                                                        disabled={isCancelling}
+                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border border-status-critical/30 text-status-critical hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
+                                                        title="Cancel scan"
+                                                    >
+                                                        {isCancelling
+                                                            ? <RefreshCw size={14} className="animate-spin" />
+                                                            : <XCircle size={16} />}
+                                                    </button>
+                                                ) : (
+                                                    <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary ${scan.status === 'completed' ? 'group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo' : ''} transition-colors`}>
+                                                        <ChevronRight size={16} />
+                                                    </div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
@@ -267,6 +336,8 @@ const HistoryPage = () => {
         .group:hover .group-hover\\:bg-primary-indigo { background-color: var(--primary-indigo); }
         .group:hover .group-hover\\:text-white { color: white; }
         .group:hover .group-hover\\:border-primary-indigo { border-color: var(--primary-indigo); }
+        .stale-row { background: rgba(249,115,22,0.04); }
+        .stale-row:hover { background: rgba(249,115,22,0.08) !important; }
         @media (min-width: 1024px) {
           .lg-grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
           .lg-col-span-2 { grid-column: span 2 / span 2 !important; }

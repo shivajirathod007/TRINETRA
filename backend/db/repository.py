@@ -102,6 +102,19 @@ class ScanRepository:
                 update(ScanJob).where(ScanJob.id == scan_id).values(**values)
             )
 
+    async def cancel_scan(self, scan_id: uuid.UUID, reason: str = "Cancelled by user") -> None:
+        """Force a PENDING/RUNNING scan into FAILED state."""
+        await self.db.execute(
+            update(ScanJob)
+            .where(ScanJob.id == scan_id)
+            .values(
+                status="FAILED",
+                completed_at=datetime.now(timezone.utc),
+                error_message=reason,
+            )
+        )
+        log.info("scan_cancelled", scan_id=str(scan_id), reason=reason)
+
     async def finalize_scan(
         self,
         scan_id: uuid.UUID,
