@@ -66,8 +66,9 @@ services:
       context: .
       dockerfile: infra/Dockerfile.backend
     restart: unless-stopped
-    command: celery -A backend.workers.celery_app worker --loglevel=info --concurrency=8 -Q scans,discovery,analysis
+    command: celery -A workers.celery_app worker --loglevel=info --concurrency=8 -Q scans,discovery,analysis
     environment:
+      - PYTHONPATH=/app/backend
       - DATABASE_URL=postgresql+asyncpg://trinetra:trinetra_pass@postgres:5432/trinetra
       - DATABASE_URL_SYNC=postgresql://trinetra:trinetra_pass@postgres:5432/trinetra
       - REDIS_URL=redis://redis:6379/0
@@ -92,6 +93,7 @@ services:
     restart: unless-stopped
     command: celery -A workers.celery_app flower --port=5555 --broker=redis://redis:6379/0
     environment:
+      - PYTHONPATH=/app/backend
       - DATABASE_URL=postgresql+asyncpg://trinetra:trinetra_pass@postgres:5432/trinetra
       - DATABASE_URL_SYNC=postgresql://trinetra:trinetra_pass@postgres:5432/trinetra
       - REDIS_URL=redis://redis:6379/0

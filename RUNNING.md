@@ -14,11 +14,17 @@ From the project root:
 docker compose up -d postgres redis api worker
 ```
 
+**If scans stay "Queued", restart the worker** (in case it started before Redis or with wrong config):
+
+```bash
+docker compose restart worker
+```
+
 - **API**: http://localhost:8000  
 - **Health**: http://localhost:8000/health  
 - **Queue health** (Redis + worker hint): http://localhost:8000/api/v1/health/queue  
 
-Frontend (Vite) should proxy `/api` to the API (see `frontend/vite.config.*`).
+Frontend (Vite) should proxy `/api` to the API (see `frontend/vite.config.*`). The worker container uses `PYTHONPATH=/app/backend` so Celery can load `workers.celery_app` and the scan pipeline.
 
 ## Running without Docker
 
