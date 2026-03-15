@@ -11,6 +11,7 @@ from typing import Optional
 
 import dns.asyncresolver
 import dns.exception
+import dns.resolver
 import dns.rdatatype
 
 from core.exceptions import DNSResolutionError
@@ -105,7 +106,7 @@ class DNSResolver:
                 cname_chain=cname_chain if cname_chain else None,
             )
 
-        except dns.exception.NXDOMAIN:
+        except dns.resolver.NXDOMAIN:
             # Domain definitively does not exist
             return ResolvedAsset(
                 fqdn=fqdn,
@@ -116,7 +117,7 @@ class DNSResolver:
                 resolution_error="NXDOMAIN",
             )
 
-        except dns.exception.NoAnswer:
+        except dns.resolver.NoAnswer:
             # Domain exists but has no A record — may have CNAME only
             # Try to follow CNAME
             try:
@@ -144,7 +145,7 @@ class DNSResolver:
                 resolution_error="NoAnswer",
             )
 
-        except (dns.exception.Timeout, dns.exception.DNSException) as e:
+        except (dns.resolver.Timeout, dns.exception.DNSException) as e:
             return ResolvedAsset(
                 fqdn=fqdn,
                 ip_address=None,
@@ -190,7 +191,7 @@ class DNSResolver:
         try:
             await self.resolver.resolve(domain, "DS")
             return True
-        except dns.exception.NoAnswer:
+        except dns.resolver.NoAnswer:
             return False
         except Exception:
             return False
