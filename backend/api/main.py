@@ -1,13 +1,37 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 
 from api.routes import scan, dashboard, cbom, certificate, assets
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Run migrations on startup in development so DB is ready."""
+    if not settings.is_production:
+        try:
+            import os
+            import subprocess
+            backend_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            subprocess.run(
+                ["alembic", "upgrade", "head"],
+                cwd=backend_dir,
+                env={**os.environ},
+                capture_output=True,
+                timeout=60,
+                check=False,
+            )
+        except Exception:
+            pass  # DB may be down; routes will return 503 or []
+    yield
+
+
 app = FastAPI(
     title="TRINETRA API",
     description="Quantum Exposure Intelligence Platform API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS Middleware

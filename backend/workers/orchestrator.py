@@ -32,10 +32,7 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
 
     This task itself is lightweight — it just wires up the pipeline.
     """
-    from workers.tasks.discovery_tasks import (
-        mine_ct_logs, resolve_dns, scan_ports, classify_assets
-    )
-    from workers.tasks.analysis_tasks import finalize_scan
+    from workers.tasks.analysis_tasks import aggregate_scan_results
 
     log.info("scan_pipeline_started", scan_id=scan_id, domain=domain)
 
@@ -58,7 +55,6 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
 
         # ── Phase 2: Per-asset scanning (parallel fan-out) ────────────────────
         from workers.tasks.scan_tasks import scan_single_asset
-        from workers.tasks.analysis_tasks import aggregate_scan_results
 
         # Create a Celery chord:
         # - group: scan all assets in parallel

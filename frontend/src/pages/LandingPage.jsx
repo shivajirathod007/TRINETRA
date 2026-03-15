@@ -45,8 +45,9 @@ const LandingPage = () => {
         setIsScanning(true);
         try {
             const result = await scanApi.initiate(domain.trim().toLowerCase());
-            setActiveScan(domain.trim().toLowerCase(), result.scan_id);
-            navigate(`/scan/${encodeURIComponent(domain.trim().toLowerCase())}`);
+            const d = domain.trim().toLowerCase();
+            setActiveScan(d, result.scan_id);
+            navigate(`/scan/${encodeURIComponent(d)}`, { state: { scanId: result.scan_id } });
         } catch (err) {
             console.error('Failed to initiate scan:', err);
             setIsScanning(false);

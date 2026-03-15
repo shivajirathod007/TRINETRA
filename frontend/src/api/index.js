@@ -3,8 +3,8 @@
  * All API calls go through the Vite proxy to /api/v1/...
  */
 
-const API_DOMAIN = import.meta.env?.VITE_API_BASE_URL || 'http://localhost:8000';
-const BASE = `${API_DOMAIN}/api/v1`;
+// Use relative paths so Vite's dev proxy forwards /api → http://api:8000
+const BASE = '/api/v1';
 
 async function request(path, options = {}) {
     const resp = await fetch(`${BASE}${path}`, {
@@ -104,4 +104,10 @@ export function getActiveScanId() {
 export function setActiveScan(domain, scanId) {
     localStorage.setItem('trinetra_active_domain', domain);
     localStorage.setItem('trinetra_scan_id', scanId);
+    if (domain) sessionStorage.setItem(`trinetra_scan_${domain}`, scanId);
+}
+
+/** Get scan ID for a domain (avoids starting a new scan on refresh) */
+export function getScanIdForDomain(domain) {
+    return domain ? sessionStorage.getItem(`trinetra_scan_${domain}`) : null;
 }

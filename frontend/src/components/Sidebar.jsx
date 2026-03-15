@@ -1,9 +1,10 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, FileJson, ShieldCheck, History, Activity, Moon, Sun } from 'lucide-react';
+import { LayoutDashboard, FileJson, ShieldCheck, History, Activity, Moon, Sun, Home } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
+    { name: 'Home', path: '/', icon: Home },
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
     { name: 'CBOM Explorer', path: '/cbom', icon: FileJson },
     { name: 'Certificates', path: '/certificates', icon: ShieldCheck },
@@ -19,8 +20,7 @@ const Sidebar = () => {
                 <div className="sidebar-logo">
                     <div className="flex items-center gap-2">
                         <Activity className="text-primary-indigo animate-pulse-subtle" size={24} />
-                        {/* Hide text on mobile */}
-                        <span className="font-bold text-lg tracking-widest uppercase md-block" style={{ display: 'none' }}>
+                        <span className="font-bold text-lg tracking-widest uppercase sidebar-logo-text">
                             TRINETRA
                         </span>
                     </div>
@@ -63,10 +63,10 @@ const Sidebar = () => {
                     </div>
                 </div>
             </div>
-            {/* Inline styles for responsive typography missing from base CSS */}
             <style>{`
+        .sidebar-logo-text { display: none; }
         @media (min-width: 768px) {
-          .md-block { display: block !important; }
+          .sidebar-logo-text { display: block !important; }
         }
       `}</style>
         </nav>

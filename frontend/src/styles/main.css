@@ -1,10 +1,10 @@
 /** TRINETRA Premium Aesthetics - Dark Mode Glassmorphism Theme */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@400;500;600&display=swap');
 
 /* ─── CSS Variables ─────────────────────────────────────────── */
 :root {
@@ -397,7 +397,20 @@ a {
 .main-content {
   margin-left: 240px;
   min-height: 100vh;
-  padding: 2rem;
+  padding: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .main-content {
+    padding: 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .main-content {
+    margin-left: 0;
+    padding: 1rem;
+  }
 }
 
 /* ─── Badges ────────────────────────────────────────────────────── */
@@ -685,4 +698,61 @@ a {
 .badge-dot-safe {
   background-color: var(--status-safe);
   box-shadow: 0 0 8px var(--status-safe);
+}
+
+/* ─── Action button (secondary) ───────────────────────────────────────────── */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface-card);
+  border: 1px solid var(--border-divider);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--surface-card-hover);
+  border-color: var(--border-highlight);
+}
+
+/* ─── Data table ───────────────────────────────────────────────────────────── */
+.table-container {
+  overflow-x: auto;
+  overflow-y: auto;
+  min-height: 200px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.75rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-divider);
+}
+
+.data-table th {
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+}
+
+.data-table tbody tr:hover {
+  background: var(--surface-card-hover);
+}
+
+.data-table td {
+  color: var(--text-primary);
 }

@@ -54,6 +54,13 @@ class ScanRepository:
         )
         return list(result.scalars().all())
 
+    async def get_recent_scans(self, limit: int = 20, domain: Optional[str] = None) -> list[ScanJob]:
+        q = select(ScanJob).order_by(ScanJob.created_at.desc()).limit(limit)
+        if domain:
+            q = q.where(ScanJob.domain == domain)
+        result = await self.db.execute(q)
+        return list(result.scalars().all())
+
     async def update_scan_status(
         self,
         scan_id: uuid.UUID,
@@ -150,7 +157,9 @@ class ScanRepository:
 
     async def get_asset(self, asset_id: uuid.UUID) -> Optional[ScannedAsset]:
         result = await self.db.execute(
-            select(ScannedAsset).where(ScannedAsset.id == asset_id)
+            select(ScannedAsset)
+            .where(ScannedAsset.id == asset_id)
+            .options(selectinload(ScannedAsset.scan_job))
         )
         return result.scalar_one_or_none()
 

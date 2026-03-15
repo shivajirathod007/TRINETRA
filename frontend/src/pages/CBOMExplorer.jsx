@@ -128,13 +128,8 @@ const CBOMExplorer = () => {
 
                         {view === 'json' && (
                             <div className="flex-1 overflow-auto p-4" style={{ background: 'var(--bg-navy-black, #090c10)' }}>
-                                <pre className="font-mono text-xs md-text-sm text-secondary leading-relaxed">
-                                    <code dangerouslySetInnerHTML={{
-                                        __html: rawJson
-                                            .replace(/(".*?")\s*:/g, '<span class="text-primary-indigo">$1</span>:')
-                                            .replace(/:\s*(".*?")/g, ': <span class="text-status-safe">$1</span>')
-                                            .replace(/:\s*(\d+)/g, ': <span class="text-status-high">$1</span>')
-                                    }} />
+                                <pre className="font-mono text-xs md:text-sm text-secondary leading-relaxed whitespace-pre-wrap break-all">
+                                    <code>{rawJson}</code>
                                 </pre>
                             </div>
                         )}

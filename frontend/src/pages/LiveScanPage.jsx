@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Terminal, Shield, Cpu, ArrowRight } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { scanApi, setActiveScan } from '../api/index';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { scanApi, setActiveScan, getScanIdForDomain } from '../api/index';
 
 const POLL_INTERVAL_MS = 2000;
 
 const LiveScanPage = () => {
     const { domain } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
 
     const [scanId, setScanId] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -19,10 +20,19 @@ const LiveScanPage = () => {
     const [error, setError] = useState(null);
     const bottomRef = useRef(null);
     const pollRef = useRef(null);
+    const initStartedRef = useRef(false);
 
-    /* ──── 1. Initiate scan on mount ──────────────────────────────── */
+    /* ──── 1. Use existing scan ID or initiate once per mount ──────────── */
     useEffect(() => {
         if (!domain) { navigate('/'); return; }
+        if (initStartedRef.current) return;
+        initStartedRef.current = true;
+        const existingId = location.state?.scanId || getScanIdForDomain(domain);
+        if (existingId) {
+            setScanId(existingId);
+            setLogs([`Resuming scan status for ${domain}...`]);
+            return;
+        }
         scanApi.initiate(domain)
             .then(result => {
                 setScanId(result.scan_id);
@@ -30,7 +40,7 @@ const LiveScanPage = () => {
                 setLogs([`Initializing TRINETRA scanner for ${domain}...`]);
             })
             .catch(err => setError(err.message));
-    }, [domain, navigate]);
+    }, [domain, navigate, location.state?.scanId]);
 
     /* ──── 2. Poll for status/logs ────────────────────────────────── */
     useEffect(() => {

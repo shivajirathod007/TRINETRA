@@ -116,15 +116,18 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {kpis.map((kpi, i) => (
-                    <div key={i} className="glass-card p-4 border flex flex-col justify-center relative overflow-hidden">
-                        <div className="absolute -right-4 -bottom-4 opacity-5 text-current"><kpi.icon size={80} /></div>
-                        <div className="text-xs text-secondary uppercase mb-1 z-10">{kpi.label}</div>
-                        <div className={`text-3xl font-bold font-mono z-10 ${kpi.color}`}>
-                            {isLoading ? '—' : <AnimatedCounters value={kpi.value} />}
+                {kpis.map((kpi, i) => {
+                    const Icon = kpi.icon;
+                    return (
+                        <div key={i} className="glass-card p-4 border flex flex-col justify-center relative overflow-hidden">
+                            <div className="absolute -right-4 -bottom-4 opacity-5 text-current"><Icon size={80} /></div>
+                            <div className="text-xs text-secondary uppercase mb-1 z-10">{kpi.label}</div>
+                            <div className={`text-3xl font-bold font-mono z-10 ${kpi.color}`}>
+                                {isLoading ? '—' : <AnimatedCounters value={kpi.value} />}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <div className="flex flex-col lg-flex-row gap-4 flex-1 min-h-[400px]">
