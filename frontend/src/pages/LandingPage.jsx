@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight, Sun, Moon } from 'lucide-react';
+import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import GlowButton from '../components/GlowButton';
 import AnimatedCounters from '../components/AnimatedCounters';
-import { useTheme } from '../context/ThemeContext';
 import { scanApi, setActiveScan } from '../api/index';
 
 /**
@@ -29,7 +28,6 @@ const LandingPage = () => {
     const [activeChip, setActiveChip] = useState('Web Portals');
     const [isScanning, setIsScanning] = useState(false);
     const navigate = useNavigate();
-    const { isDarkMode, toggleTheme } = useTheme();
 
     const { data: stats = {} } = useQuery({
         queryKey: ['platform-stats'],
@@ -55,34 +53,17 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col relative overflow-hidden">
+        <div className="landing-page-wrap min-h-screen flex flex-col relative overflow-hidden">
 
             {/* Background Grid */}
             <div
-                className="absolute inset-0 pointer-events-none opacity-20"
+                className="absolute inset-0 pointer-events-none landing-page-grid"
                 style={{
-                    backgroundImage: 'linear-gradient(to right, #1F2937 1px, transparent 1px), linear-gradient(to bottom, #1F2937 1px, transparent 1px)',
-                    backgroundSize: '4rem 4rem'
+                    backgroundImage: 'linear-gradient(to right, var(--grid-line, #1F2937) 1px, transparent 1px), linear-gradient(to bottom, var(--grid-line, #1F2937) 1px, transparent 1px)',
+                    backgroundSize: '4rem 4rem',
+                    opacity: 'var(--grid-opacity, 0.2)'
                 }}
             />
-
-            {/* Top Navigation */}
-            <nav className="landing-nav">
-                <div className="flex items-center gap-2">
-                    <Shield size={24} className="text-primary-indigo animate-pulse-subtle" />
-                    <span className="font-bold tracking-widest uppercase">TRINETRA</span>
-                </div>
-                <div className="landing-links">
-                    <a href="#" className="text-sm font-medium text-secondary hover:text-primary">Docs</a>
-                    <a href="#" className="text-sm font-medium text-secondary hover:text-primary">API</a>
-                    <button onClick={() => navigate('/dashboard')} className="text-sm font-bold text-primary-indigo hover:text-primary-indigo-hover">
-                        Dashboard
-                    </button>
-                    <button onClick={toggleTheme} className="p-2 rounded-full hover:bg-surface-card-hover text-secondary hover:text-primary transition-colors ml-2" title="Toggle Theme">
-                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                    </button>
-                </div>
-            </nav>
 
             {/* Hero Section */}
             <main className="flex-1 flex flex-col justify-center">
@@ -90,10 +71,9 @@ const LandingPage = () => {
                     {/* Ambient Glow */}
                     <div className="hero-bg-glow" />
 
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border-highlight bg-surface-card mb-6 mb-8 text-xs font-mono font-medium tracking-wide">
-                        <span className="w-2 h-2 rounded-full bg-status-pqc animate-pulse" />
-                        Seeing Tomorrow's Cryptographic Threats Today
-                    </div>
+                    <p className="hero-tagline">
+                        <span className="hero-tagline-dot" /> Seeing tomorrow's cryptographic threats today
+                    </p>
 
                     <h1 className="hero-title">
                         Quantum Exposure <br />
@@ -150,68 +130,64 @@ const LandingPage = () => {
                 <section className="stats-section">
                     <div className="container py-8">
                         <div className="stats-grid">
-
                             <div className="text-center px-4 stat-divider">
-                                <div className="text-4xl font-bold mb-1">
+                                <div className="text-3xl font-bold mb-1 stat-value">
                                     <AnimatedCounters value={stats.totalAssets ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">Assets Scanned</div>
                             </div>
-
                             <div className="text-center px-4 stat-divider hidden md-block">
-                                <div className="text-4xl font-bold text-status-critical mb-1" style={{ textShadow: '0 0 15px rgba(239,68,68,0.5)' }}>
+                                <div className="text-3xl font-bold mb-1 stat-value accent-critical">
                                     <AnimatedCounters value={stats.shadowAssets ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">Shadow Assets</div>
                             </div>
-
                             <div className="text-center px-4 stat-divider hidden md-block">
-                                <div className="text-4xl font-bold text-primary-indigo mb-1" style={{ textShadow: '0 0 15px rgba(99,102,241,0.5)' }}>
+                                <div className="text-3xl font-bold mb-1 stat-value accent-indigo">
                                     <AnimatedCounters value={stats.cboms ?? 0} />
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">CBOMs Generated</div>
                             </div>
-
                             <div className="text-center px-4">
-                                <div className="text-4xl font-bold text-status-safe mb-1" style={{ textShadow: '0 0 15px rgba(34,197,94,0.5)' }}>
-                                    {stats.compliance ?? 100}<span className="text-2xl">%</span>
+                                <div className="text-3xl font-bold mb-1 stat-value accent-safe">
+                                    {stats.compliance ?? 100}<span className="text-xl">%</span>
                                 </div>
                                 <div className="text-xs uppercase tracking-widest text-secondary">NIST FIPS Compliant</div>
                             </div>
-
                         </div>
                     </div>
                 </section>
 
                 {/* Features Overview */}
-                <section className="container py-16 pb-24 relative z-10 w-full">
+                <section className="container py-12 pb-20 relative z-10 w-full">
+                    <h2 className="text-sm font-semibold uppercase tracking-widest text-secondary mb-6 text-center">Platform capabilities</h2>
                     <div className="grid grid-cols-1 md-grid-cols-3 gap-6">
 
                         <div className="glass-card feature-card p-6 border-t-orange">
-                            <div className="w-12 h-12 rounded-lg bg-surface-card border border-border-divider flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-surface-card border border-border-divider flex items-center justify-center mb-4">
                                 <Server size={24} className="text-status-high" />
                             </div>
-                            <h3 className="text-lg font-bold mb-2">Shadow Asset Discovery</h3>
+                            <h3 className="text-base font-bold mb-2">Shadow Asset Discovery</h3>
                             <p className="text-sm text-secondary leading-relaxed">
                                 Continuous CT Log mining via crt.sh to map undocumented external perimeter exposure.
                             </p>
                         </div>
 
                         <div className="glass-card feature-card p-6 border-t-red">
-                            <div className="w-12 h-12 rounded-lg bg-surface-card border border-border-divider flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-surface-card border border-border-divider flex items-center justify-center mb-4">
                                 <FileSearch size={24} className="text-status-critical" />
                             </div>
-                            <h3 className="text-lg font-bold mb-2">HNDL Risk Engine</h3>
+                            <h3 className="text-base font-bold mb-2">HNDL Risk Engine</h3>
                             <p className="text-sm text-secondary leading-relaxed">
                                 Calculate Harvest Now, Decrypt Later (HNDL) exposure windows for concrete migration deadlines.
                             </p>
                         </div>
 
                         <div className="glass-card feature-card p-6 border-t-indigo">
-                            <div className="w-12 h-12 rounded-lg bg-surface-card border border-border-divider flex items-center justify-center mb-4">
+                            <div className="w-12 h-12 rounded-xl bg-surface-card border border-border-divider flex items-center justify-center mb-4">
                                 <Fingerprint size={24} className="text-primary-indigo" />
                             </div>
-                            <h3 className="text-lg font-bold mb-2">AI Crypto Classifier</h3>
+                            <h3 className="text-base font-bold mb-2">AI Crypto Classifier</h3>
                             <p className="text-sm text-secondary leading-relaxed">
                                 NLP-powered algorithm identification and custom JWT algorithm defect scanning.
                             </p>

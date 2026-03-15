@@ -17,10 +17,9 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-
-        {/* Pages with Sidebar layout */}
+        {/* All pages use the same sidebar layout for consistent navigation */}
         <Route element={<DashboardLayout />}>
+          <Route path="/" element={<LandingPage />} />
           <Route path="/scan/:domain" element={<LiveScanPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />

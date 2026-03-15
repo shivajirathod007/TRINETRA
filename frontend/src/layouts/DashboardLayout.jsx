@@ -7,7 +7,7 @@ const DashboardLayout = () => {
         <div className="min-h-screen">
             <Sidebar />
             <main className="main-content relative">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary-indigo filter blur-[150px] opacity-10 pointer-events-none"></div>
+                <div className="main-content-glow" aria-hidden />
                 <div className="max-w-7xl mx-auto w-full">
                     <Outlet />
                 </div>

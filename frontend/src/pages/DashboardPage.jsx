@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
-    ShieldAlert, Activity, Server, FileLock2,
-    ChevronDown, Filter, ChevronRight, AlertTriangle, RefreshCw
+    ShieldAlert, Activity, Server, FileLock2, LayoutDashboard,
+    ChevronDown, Filter, ChevronRight, AlertTriangle, RefreshCw, Search, ArrowRight
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import ThreatBadge from '../components/ThreatBadge';
 import AnimatedCounters from '../components/AnimatedCounters';
-import { dashboardApi, assetsApi, getActiveDomain } from '../api/index';
+import { dashboardApi, assetsApi, getActiveDomain, scanApi, setActiveScan } from '../api/index';
 
 const RISK_COLORS = {
     CRITICAL: '#EF4444',
@@ -22,7 +22,14 @@ const RISK_COLORS = {
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
     const navigate = useNavigate();
-    const domain = getActiveDomain() || 'unknown';
+    const activeDomain = getActiveDomain();
+    const domain = activeDomain || '';
+
+    const { data: recentScans = [] } = useQuery({
+        queryKey: ['scans-recent'],
+        queryFn: () => scanApi.list(null, 10),
+        staleTime: 60_000,
+    });
 
     const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useQuery({
         queryKey: ['dashboard', domain],
@@ -38,7 +45,13 @@ const DashboardPage = () => {
         staleTime: 30_000,
     });
 
-    const isLoading = statsLoading || assetsLoading;
+    const noDomain = !domain;
+    const handleSelectScan = (scanDomain, scanId) => {
+        setActiveScan(scanDomain, scanId);
+        window.location.reload();
+    };
+
+    const isLoading = !noDomain && (statsLoading || assetsLoading);
 
     const sortedAssets = [...assets].sort((a, b) => {
         if (sortField === 'score') return (b.score ?? 0) - (a.score ?? 0);
@@ -64,6 +77,47 @@ const DashboardPage = () => {
         { label: 'PQC Ready', value: stats.pqc_ready ?? 0, icon: FileLock2, color: 'text-status-pqc' },
         { label: 'Fully Safe', value: stats.safe ?? 0, icon: FileLock2, color: 'text-status-safe' },
     ];
+
+    if (noDomain) {
+        const scans = Array.isArray(recentScans) ? recentScans : [];
+        return (
+            <div className="flex flex-col min-h-[60vh] justify-center">
+                <div className="max-w-md mx-auto text-center px-4">
+                    <div className="w-14 h-14 rounded-2xl bg-surface-card border border-border-divider flex items-center justify-center mx-auto mb-5">
+                        <LayoutDashboard size={28} className="text-primary-indigo" />
+                    </div>
+                    <h1 className="text-xl font-semibold text-primary mb-2">Operations Center</h1>
+                    <p className="text-secondary text-sm leading-relaxed mb-6">
+                        Run a domain scan from the home page to see your cryptographic asset map and risk metrics here.
+                    </p>
+                    <Link
+                        to="/"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-indigo text-white font-medium text-sm hover:bg-primary-indigo-hover transition-colors"
+                    >
+                        <Search size={18} /> Run a scan <ArrowRight size={16} />
+                    </Link>
+                    {scans.length > 0 && (
+                        <div className="mt-8 text-left">
+                            <p className="text-xs font-medium text-secondary uppercase tracking-wider mb-3">Recent scans</p>
+                            <ul className="space-y-2">
+                                {scans.slice(0, 5).map((s) => (
+                                    <li key={s.scan_id}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectScan(s.domain, s.scan_id)}
+                                            className="w-full text-left px-3 py-2 rounded-lg bg-surface-card border border-border-divider text-sm font-mono text-primary hover:bg-surface-card-hover transition-colors"
+                                        >
+                                            {s.domain}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="flex flex-col h-full gap-4">
