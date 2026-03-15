@@ -55,6 +55,9 @@ const LiveScanPage = () => {
                 setAssetsFound(data.assets_found ?? 0);
                 setShadowAssets(data.shadow_assets ?? 0);
                 setStatus(data.status);
+                if (data.error_message) {
+                    setError(data.error_message);
+                }
 
                 if (data.status === 'completed' || data.status === 'failed') {
                     clearInterval(pollRef.current);

@@ -81,6 +81,8 @@ const HistoryPage = () => {
         if (scan.status === 'completed') {
             setActiveScan(scan.domain, scan.scan_id);
             navigate('/dashboard');
+        } else {
+            navigate(`/scan/${scan.domain}`, { state: { scanId: scan.scan_id } });
         }
     };
 
@@ -244,7 +246,7 @@ const HistoryPage = () => {
                                     return (
                                         <tr
                                             key={scan.scan_id}
-                                            className={`group ${scan.status === 'completed' ? 'cursor-pointer' : ''} ${stale ? 'stale-row' : ''}`}
+                                            className={`group cursor-pointer ${stale ? 'stale-row' : ''}`}
                                             onClick={() => handleReviewScan(scan)}
                                         >
                                             <td className="font-mono font-medium text-primary-indigo">
@@ -263,8 +265,8 @@ const HistoryPage = () => {
                                             <td>
                                                 {scan.status === 'completed' && scan.exposure_score != null ? (
                                                     <span className={`font-mono font-bold ${scan.exposure_score >= 70 ? 'text-status-pqc'
-                                                            : scan.exposure_score >= 40 ? 'text-status-medium'
-                                                                : 'text-status-critical'
+                                                        : scan.exposure_score >= 40 ? 'text-status-medium'
+                                                            : 'text-status-critical'
                                                         }`}>
                                                         {scan.exposure_score}
                                                     </span>
@@ -275,9 +277,9 @@ const HistoryPage = () => {
                                             <td>
                                                 <div className="flex flex-col gap-1">
                                                     <span className={`text-xs font-bold uppercase tracking-wide inline-flex items-center gap-1.5 ${scan.status === 'completed' ? 'text-status-safe'
-                                                            : scan.status === 'failed' ? 'text-status-critical'
-                                                                : scan.status === 'running' ? 'text-primary-indigo'
-                                                                    : 'text-status-high'
+                                                        : scan.status === 'failed' ? 'text-status-critical'
+                                                            : scan.status === 'running' ? 'text-primary-indigo'
+                                                                : 'text-status-high'
                                                         }`}>
                                                         {scan.status === 'running' && !stale && (
                                                             <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary-indigo animate-pulse" />
@@ -316,7 +318,7 @@ const HistoryPage = () => {
                                                             : <XCircle size={16} />}
                                                     </button>
                                                 ) : (
-                                                    <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary ${scan.status === 'completed' ? 'group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo' : ''} transition-colors`}>
+                                                    <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo transition-colors`}>
                                                         <ChevronRight size={16} />
                                                     </div>
                                                 )}
