@@ -86,6 +86,12 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
     """
     Runs discovery phase synchronously within the orchestrator task.
     Returns list of asset dicts ready for per-asset scan dispatch.
+
+    Resilience contract:
+    - CT log mining never raises — CTLogMiner falls back internally.
+    - DNS resolution failures for individual hosts are skipped (not fatal).
+    - Port scan errors for individual hosts are skipped (not fatal).
+    - If no assets resolve, we still try the root domain directly.
     """
     import asyncio
     from engine.discovery.ct_log_miner import CTLogMiner
@@ -99,9 +105,19 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
             scan_id, "RUNNING", current_stage="ct_mining"
         )
 
-        # Step 1: CT Log Mining
+        # ── Step 1: CT Log Mining (always succeeds — internal fallbacks) ───────
         miner = CTLogMiner()
         ct_entries = await miner.mine(domain)
+
+        # Track which sources were actually used for progress display
+        sources_used = list({e.source for e in ct_entries})
+        log.info(
+            "ct_mining_pipeline_result",
+            scan_id=scan_id,
+            domain=domain,
+            entries=len(ct_entries),
+            sources=sources_used,
+        )
 
         sync_db.update_scan_progress_sync(
             scan_id,
@@ -109,37 +125,81 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
             current_stage="dns_resolution",
         )
 
-        # Step 2: DNS Resolution
+        # ── Step 2: DNS Resolution ────────────────────────────────────────────
         resolver = DNSResolver()
-        live_assets, dead_assets = await resolver.resolve_all(ct_entries)
+        try:
+            live_assets, dead_assets = await resolver.resolve_all(ct_entries)
+        except Exception as exc:
+            log.warning("dns_resolution_error", scan_id=scan_id, error=str(exc))
+            live_assets, dead_assets = [], []
 
-        # Step 3: Port Scanning
+        # If no hosts resolved, fall back to scanning the root domain directly
+        if not live_assets:
+            log.warning(
+                "dns_no_live_assets",
+                scan_id=scan_id,
+                domain=domain,
+                msg="No live assets from CT entries. Adding root domain.",
+            )
+            from engine.discovery.ct_log_miner import CTLogEntry
+            root_entry = CTLogEntry(
+                fqdn=domain,
+                cert_id=None,
+                issuer=None,
+                not_before=None,
+                not_after=None,
+                is_wildcard=False,
+                source="root_fallback",
+            )
+            try:
+                live_assets, _ = await resolver.resolve_all([root_entry])
+            except Exception:
+                pass  # classifer will still attempt https:// on the domain
+
+        # ── Step 3: Port Scanning ─────────────────────────────────────────────
         sync_db.update_scan_progress_sync(
             scan_id, current_stage="port_scanning"
         )
 
         scanner = PortScanner()
-        port_results = await scanner.scan_all(
-            [(a.ip_address, a.fqdn) for a in live_assets if a.ip_address]
-        )
+        try:
+            port_results = await scanner.scan_all(
+                [(a.ip_address, a.fqdn) for a in live_assets if a.ip_address]
+            )
+        except Exception as exc:
+            log.warning("port_scan_error", scan_id=scan_id, error=str(exc))
+            port_results = []
 
-        # Step 4: Asset Classification
+        # ── Step 4: Asset Classification ──────────────────────────────────────
         classifier = AssetClassifier()
         shadow_fqdns = {a.fqdn for a in live_assets if a.is_shadow_asset}
-        classified = await classifier.classify_all(port_results, shadow_fqdns)
+        try:
+            classified = await classifier.classify_all(port_results, shadow_fqdns)
+        except Exception as exc:
+            log.warning("asset_classification_error", scan_id=scan_id, error=str(exc))
+            classified = []
 
-        # Persist assets to DB
+        # ── Persist assets to DB ──────────────────────────────────────────────
         asset_dicts = []
+        shadow_count = 0
         for ca in classified:
-            asset_id = sync_db.create_asset_sync(
-                scan_job_id=scan_id,
-                fqdn=ca.fqdn,
-                asset_url=ca.asset_url,
-                asset_type=ca.asset_type,
-                port=ca.port,
-                ip_address=ca.ip_address,
-                is_shadow_asset=ca.is_shadow_asset,
-            )
+            try:
+                asset_id = sync_db.create_asset_sync(
+                    scan_job_id=scan_id,
+                    fqdn=ca.fqdn,
+                    asset_url=ca.asset_url,
+                    asset_type=ca.asset_type,
+                    port=ca.port,
+                    ip_address=ca.ip_address,
+                    is_shadow_asset=ca.is_shadow_asset,
+                )
+            except Exception as exc:
+                log.warning("asset_persist_error", fqdn=ca.fqdn, error=str(exc))
+                continue
+
+            if ca.is_shadow_asset:
+                shadow_count += 1
+
             asset_dicts.append({
                 "asset_id": asset_id,
                 "fqdn": ca.fqdn,
@@ -155,6 +215,17 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
                 "needs_smtp_scan": ca.needs_smtp_scan,
                 "vpn_type": ca.vpn_type,
             })
+
+        # Update shadow asset count in DB
+        if shadow_count:
+            try:
+                sync_db.update_scan_progress_sync(
+                    scan_id,
+                    assets_discovered=len(asset_dicts),
+                    shadow_assets_found=shadow_count,
+                )
+            except Exception:
+                pass
 
         return asset_dicts
 

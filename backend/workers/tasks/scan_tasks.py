@@ -11,6 +11,7 @@ from typing import Optional
 from workers.celery_app import celery_app
 from core.config import settings
 from core.logging import get_logger
+from core.constants import get_algorithm_risk
 
 log = get_logger(__name__)
 
@@ -157,6 +158,65 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     jwt_algorithm = api_result.jwt_algorithm if api_result else None
     cert_expiry_days = cert_info.days_until_expiry if cert_info and cert_info.days_until_expiry else 365
 
+    # ── Determine data sensitivity tier ───────────────────────────────────────
+    # Financial regulations require longer term secrecy for transactional data
+    sensitivity_map = {
+        "web_portal": "transaction",
+        "api_authenticated": "transaction",
+        "mobile_backend": "transaction",
+        "api_public": "authentication",
+        "vpn_gateway": "authentication",
+        "ssh_endpoint": "authentication",
+        "smtp_mta": "static",
+        "staging": "static",
+        "shadow_asset": "static",
+    }
+    data_sensitivity_tier = sensitivity_map.get(asset_type, "static")
+
+    # ── Run AI Classifier (before scoring so detections can upgrade algorithm) ──
+    # Triggers on response body OR headers alone — never silently skipped.
+    ai_detections = []
+    try:
+        has_body = bool(api_result and api_result.response_body_preview)
+        has_headers = bool(api_result and api_result.response_headers_raw)
+        if has_body or has_headers:
+            payload = ClassifierInput(
+                asset_url=asset_url,
+                asset_type=asset_type,
+                status_code=api_result.http_status or 200,
+                response_headers=api_result.response_headers_raw or "",
+                response_body=api_result.response_body_preview or "",
+                request_method="GET",
+                request_url=asset_url,
+                tls_cipher_suite=tls_result.active_cipher_suite if tls_result else None,
+                cert_algorithm=cert_info.signature_algorithm if cert_info else None,
+            )
+            ai_output = await classify_http_response(payload)
+            if ai_output.detections:
+                ai_detections = [
+                    d.model_dump() if hasattr(d, "model_dump") else dict(d)
+                    for d in ai_output.detections
+                ]
+                # If the AI found a more specific algorithm, promote it as the
+                # primary algorithm for downstream scoring (takes highest risk).
+                ai_algorithms = [
+                    d.get("algorithm_detected") or d.get("algorithm_detected", "")
+                    for d in ai_detections
+                    if d.get("algorithm_detected") not in (None, "", "UNKNOWN", "CLEAN")
+                ]
+                if ai_algorithms:
+                    best_ai = max(ai_algorithms, key=lambda a: get_algorithm_risk(a))
+                    if get_algorithm_risk(best_ai) > get_algorithm_risk(primary_algorithm):
+                        log.info(
+                            "ai_algorithm_promoted",
+                            prev=primary_algorithm,
+                            promoted=best_ai,
+                            asset_url=asset_url,
+                        )
+                        primary_algorithm = best_ai
+    except Exception as exc:
+        log.warning("ai_classifier_error", asset_url=asset_url, error=str(exc))
+
     # ── Run analysis engines ──────────────────────────────────────────────────
     scorer = ExposureScorer()
     score_result = scorer.score(
@@ -168,6 +228,7 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         is_shadow_asset=asset_data.get("is_shadow_asset", False),
         key_exchange=key_exchange,
         jwt_algorithm=jwt_algorithm,
+        data_sensitivity_tier=data_sensitivity_tier,
     )
 
     hndl_engine = HNDLEngine()
@@ -175,6 +236,7 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         asset_url=asset_url,
         algorithm=primary_algorithm,
         cert_expiry_days=cert_expiry_days,
+        data_sensitivity_tier=data_sensitivity_tier,
     )
 
     planner = MigrationPlanner()
@@ -198,26 +260,6 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         key_exchange=key_exchange,
         signature_algorithm=cert_info.signature_algorithm if cert_info else None,
     )
-
-    # ── Run AI Classifier ─────────────────────────────────────────────────────
-    ai_detections = []
-    if api_result and api_result.response_body_preview:
-        payload = ClassifierInput(
-            asset_url=asset_url,
-            asset_type=asset_type,
-            status_code=api_result.http_status or 200,
-            response_headers=api_result.response_headers_raw,
-            response_body=api_result.response_body_preview,
-            request_method="GET",
-            request_url=asset_url,
-            tls_cipher_suite=tls_result.active_cipher_suite if tls_result else None,
-            cert_algorithm=cert_info.signature_algorithm if cert_info else None
-        )
-        ai_output = await classify_http_response(payload)
-        if hasattr(ai_output.detections[0], "model_dump") if ai_output.detections else False:
-            ai_detections = [d.model_dump() for d in ai_output.detections]
-        else:
-            ai_detections = [dict(d) for d in ai_output.detections]
 
     # ── Generate CBOM entry ───────────────────────────────────────────────────
     # Build a minimal ClassifiedAsset for the CBOM generator
@@ -245,6 +287,7 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         scan_id=asset_data.get("scan_id", ""),
         pqc_certificate_id=certificate["certificate_id"],
         ai_detections=ai_detections,
+        data_sensitivity_tier=data_sensitivity_tier,
     )
 
     # ── Build flat result dict for DB persistence ─────────────────────────────

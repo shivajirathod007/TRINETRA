@@ -45,6 +45,7 @@ class CBOMGenerator:
         scan_id: str,
         pqc_certificate_id: Optional[str] = None,
         ai_detections: Optional[list] = None,
+        data_sensitivity_tier: str = "static",
     ) -> dict[str, Any]:
         """
         Builds a complete CycloneDX 1.6 CBOM entry for one asset.
@@ -137,6 +138,7 @@ class CBOMGenerator:
                     "moderate": hndl_result.crqc_year_moderate,
                     "optimistic": hndl_result.crqc_year_optimistic,
                 },
+                "data_sensitivity_tier": data_sensitivity_tier,
             },
 
             # ── NIST compliance ───────────────────────────────────────────────

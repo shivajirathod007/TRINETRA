@@ -5,6 +5,12 @@ Discovers every subdomain a bank has ever registered — including forgotten one
 
 Research basis: Scheitle et al., ACM IMC 2018
 "The Rise of Certificate Transparency and Its Implications on the Internet Ecosystem"
+
+Resilience design:
+  - Primary:   crt.sh  (retry on 500/503/429 with exponential back-off)
+  - Fallback 1: certspotter.com (alternative CT index, real-time stream)
+  - Fallback 2: HackerTarget subdomain API (passive DNS, no auth required)
+  - Fallback 3: Root domain only (guarantees at least one asset to scan)
 """
 
 import asyncio
@@ -19,13 +25,16 @@ from tenacity import (
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
+    before_sleep_log,
 )
+import logging
 
 from core.config import settings
 from core.exceptions import CTLogError
 from core.logging import get_logger
 
 log = get_logger(__name__)
+_tenacity_log = logging.getLogger("tenacity")
 
 
 @dataclass
@@ -39,77 +48,230 @@ class CTLogEntry:
     source: str = "crt.sh"
 
 
+# ── Retry helpers ─────────────────────────────────────────────────────────────
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry on network errors AND server-side 5xx / 429 rate-limits."""
+    if isinstance(exc, (httpx.TimeoutException, httpx.ConnectError)):
+        return True
+    if isinstance(exc, httpx.HTTPStatusError):
+        return exc.response.status_code in {429, 500, 502, 503, 504}
+    return False
+
+
 class CTLogMiner:
     """
-    Queries crt.sh Certificate Transparency log database.
-    Returns all subdomains ever registered for a given domain.
+    Queries Certificate Transparency logs for all subdomains of a domain.
 
-    crt.sh API format:
-    https://crt.sh/?q=%.domain.com&output=json&deduplicate=Y
+    Priority chain:
+      1. crt.sh   — most complete, but sometimes returns 503 under load
+      2. Certspotter — real-time CT stream, independent infrastructure
+      3. HackerTarget — passive DNS, lightweight API
+      4. Root domain only — always succeeds (zero-CT fallback)
     """
 
     # Regex for valid FQDN — no IPs, no wildcards in output
     FQDN_PATTERN = re.compile(
         r"^(?:[a-zA-Z0-9]"
-        r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+"
-        r"[a-zA-Z]{2,}$"
+        r"(?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*"
+        r"[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?"
+        r"\.[a-zA-Z]{2,}$"
     )
 
     def __init__(self):
         self.base_url = settings.crtsh_base_url
         self.timeout = settings.ct_log_timeout_seconds
 
+    # ── Primary source: crt.sh ────────────────────────────────────────────────
+
     @retry(
-        retry=retry_if_exception_type((httpx.TimeoutException, httpx.ConnectError)),
-        stop=stop_after_attempt(3),
-        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((
+            httpx.TimeoutException,
+            httpx.ConnectError,
+            httpx.HTTPStatusError,
+        )),
+        stop=stop_after_attempt(4),
+        wait=wait_exponential(multiplier=2, min=3, max=30),
+        before_sleep=before_sleep_log(_tenacity_log, logging.WARNING),
+        reraise=True,
     )
     async def _fetch_crtsh(self, query: str) -> list[dict]:
-        """Raw crt.sh API call with retry on network failures."""
+        """Raw crt.sh API call with retry on network failures AND 5xx/429."""
         url = f"{self.base_url}/?q={query}&output=json&deduplicate=Y"
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.get(url, headers={"Accept": "application/json"})
-            resp.raise_for_status()
+            resp.raise_for_status()          # raises HTTPStatusError on 4xx/5xx
             return resp.json()
+
+    # ── Fallback 1: Certspotter ────────────────────────────────────────────────
+
+    async def _fetch_certspotter(self, domain: str) -> list[CTLogEntry]:
+        """
+        Certspotter issuances endpoint. Free tier returns ~100 most recent certs.
+        https://api.certspotter.com/v1/issuances?domain=...&include_subdomains=true
+        """
+        url = (
+            f"https://api.certspotter.com/v1/issuances"
+            f"?domain={domain}&include_subdomains=true&expand=dns_names"
+        )
+        try:
+            async with httpx.AsyncClient(timeout=20) as client:
+                resp = await client.get(url, headers={"Accept": "application/json"})
+                if resp.status_code != 200:
+                    log.warning("certspotter_non200", status=resp.status_code, domain=domain)
+                    return []
+                data = resp.json()
+        except Exception as exc:
+            log.warning("certspotter_unreachable", domain=domain, error=str(exc))
+            return []
+
+        entries: list[CTLogEntry] = []
+        seen: set[str] = set()
+        for record in data:
+            for name in record.get("dns_names", []):
+                name = name.lower().strip()
+                is_wildcard = name.startswith("*.")
+                if is_wildcard:
+                    name = name[2:]
+                if name == domain or not name.endswith(f".{domain}"):
+                    continue
+                if not self.FQDN_PATTERN.match(name):
+                    continue
+                if name in seen:
+                    continue
+                seen.add(name)
+                entries.append(CTLogEntry(
+                    fqdn=name,
+                    cert_id=None,
+                    issuer=record.get("issuer", {}).get("name"),
+                    not_before=record.get("not_before"),
+                    not_after=record.get("not_after"),
+                    is_wildcard=is_wildcard,
+                    source="certspotter",
+                ))
+        log.info("certspotter_results", domain=domain, count=len(entries))
+        return entries
+
+    # ── Fallback 2: HackerTarget ───────────────────────────────────────────────
+
+    async def _fetch_hackertarget(self, domain: str) -> list[CTLogEntry]:
+        """
+        HackerTarget subdomain API (passive DNS). No auth, free tier.
+        https://api.hackertarget.com/hostsearch/?q=domain.com
+        Returns plain-text CSV: subdomain,ip
+        """
+        url = f"https://api.hackertarget.com/hostsearch/?q={domain}"
+        try:
+            async with httpx.AsyncClient(timeout=15) as client:
+                resp = await client.get(url)
+                if resp.status_code != 200 or "error" in resp.text.lower():
+                    return []
+                lines = resp.text.strip().splitlines()
+        except Exception as exc:
+            log.warning("hackertarget_unreachable", domain=domain, error=str(exc))
+            return []
+
+        entries: list[CTLogEntry] = []
+        seen: set[str] = set()
+        for line in lines:
+            parts = line.split(",")
+            if not parts:
+                continue
+            name = parts[0].strip().lower()
+            if name == domain or not name.endswith(f".{domain}"):
+                continue
+            if not self.FQDN_PATTERN.match(name):
+                continue
+            if name in seen:
+                continue
+            seen.add(name)
+            entries.append(CTLogEntry(
+                fqdn=name,
+                cert_id=None,
+                issuer=None,
+                not_before=None,
+                not_after=None,
+                is_wildcard=False,
+                source="hackertarget",
+            ))
+        log.info("hackertarget_results", domain=domain, count=len(entries))
+        return entries
+
+    # ── Fallback 3: Root domain ────────────────────────────────────────────────
+
+    def _root_domain_entry(self, domain: str) -> list[CTLogEntry]:
+        """Guarantees at least one asset — the root domain itself."""
+        log.warning("ct_using_root_only_fallback", domain=domain)
+        return [CTLogEntry(
+            fqdn=domain,
+            cert_id=None,
+            issuer=None,
+            not_before=None,
+            not_after=None,
+            is_wildcard=False,
+            source="root_fallback",
+        )]
+
+    # ── Public entry point ────────────────────────────────────────────────────
 
     async def mine(self, domain: str) -> list[CTLogEntry]:
         """
         Main entry point. Returns all unique subdomains found in CT logs.
+        Tries crt.sh first; falls back through certspotter → hackertarget →
+        root-only rather than raising an exception.
 
         Args:
             domain: Root domain e.g. "pnb.in"
 
         Returns:
             List of CTLogEntry — deduplicated, validated FQDNs only.
+            Never empty (root-domain fallback guarantees ≥ 1 entry).
         """
         domain = domain.lower().strip().removeprefix("www.")
         log.info("ct_mining_started", domain=domain)
 
+        # ── 1. crt.sh (primary) ───────────────────────────────────────────────
         try:
-            # Query with wildcard prefix — catches all subdomains
             raw_certs = await self._fetch_crtsh(f"%.{domain}")
-        except httpx.HTTPStatusError as e:
-            raise CTLogError(
-                f"crt.sh returned HTTP {e.response.status_code} for {domain}",
-                detail=str(e),
+            if raw_certs:
+                entries = self._parse_and_deduplicate(raw_certs, domain)
+                log.info(
+                    "ct_mining_complete",
+                    source="crt.sh",
+                    domain=domain,
+                    raw_certs=len(raw_certs),
+                    unique_fqdns=len(entries),
+                    wildcards=sum(1 for e in entries if e.is_wildcard),
+                )
+                return entries or self._root_domain_entry(domain)
+        except httpx.HTTPStatusError as exc:
+            log.warning(
+                "crtsh_http_error",
+                status=exc.response.status_code,
+                domain=domain,
+                msg="Trying fallback sources",
             )
-        except (httpx.TimeoutException, httpx.ConnectError) as e:
-            raise CTLogError(f"crt.sh unreachable for {domain}", detail=str(e))
+        except (httpx.TimeoutException, httpx.ConnectError) as exc:
+            log.warning("crtsh_network_error", domain=domain, error=str(exc))
+        except Exception as exc:
+            log.warning("crtsh_unexpected_error", domain=domain, error=str(exc))
 
-        if not raw_certs:
-            log.warning("ct_no_results", domain=domain)
-            return []
+        # ── 2. Certspotter fallback ───────────────────────────────────────────
+        log.info("ct_fallback_certspotter", domain=domain)
+        entries = await self._fetch_certspotter(domain)
+        if entries:
+            return entries
 
-        entries = self._parse_and_deduplicate(raw_certs, domain)
+        # ── 3. HackerTarget fallback ──────────────────────────────────────────
+        log.info("ct_fallback_hackertarget", domain=domain)
+        entries = await self._fetch_hackertarget(domain)
+        if entries:
+            return entries
 
-        log.info(
-            "ct_mining_complete",
-            domain=domain,
-            raw_certs=len(raw_certs),
-            unique_fqdns=len(entries),
-            wildcards=sum(1 for e in entries if e.is_wildcard),
-        )
-        return entries
+        # ── 4. Root-domain zero fallback ──────────────────────────────────────
+        return self._root_domain_entry(domain)
+
+    # ── Parsers ───────────────────────────────────────────────────────────────
 
     def _parse_and_deduplicate(
         self, raw_certs: list[dict], root_domain: str
@@ -123,7 +285,6 @@ class CTLogMiner:
         entries: list[CTLogEntry] = []
 
         for cert in raw_certs:
-            # name_value contains all SANs, newline-separated
             name_value: str = cert.get("name_value", "")
             cert_id = cert.get("id")
             issuer = cert.get("issuer_name", "")
@@ -137,23 +298,17 @@ class CTLogMiner:
 
                 is_wildcard = name.startswith("*.")
                 if is_wildcard:
-                    # Store the base domain (without the *.)
-                    # Wildcard certs cover all direct subdomains
                     name = name[2:]
 
-                # Skip if this is just the root domain itself
                 if name == root_domain:
                     continue
 
-                # Skip if not a subdomain of the root domain
                 if not name.endswith(f".{root_domain}") and name != root_domain:
                     continue
 
-                # Validate FQDN format
                 if not self.FQDN_PATTERN.match(name):
                     continue
 
-                # Deduplicate
                 if name in seen:
                     continue
 
