@@ -1,8 +1,8 @@
 import React from 'react';
 import { AlertOctagon, CheckCircle2, ShieldHalf, Download, Files, ShieldCheck, ChevronRight, RefreshCw, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { certApi, getActiveDomain, getActiveScanId } from '../api/index';
+import { useScanStore } from '../store';
+import { useCertificates } from '../hooks';
 
 const PQC_STATUS = {
     QUANTUM_VULNERABLE: { color: 'var(--status-critical)', label: 'Quantum Vulnerable', column: 'vulnerable' },
@@ -31,7 +31,7 @@ const CertificateCard = ({ cert }) => (
                 </div>
                 <div className="space-y-2 text-xs text-secondary">
                     {[
-                        ['Asset', `https://${cert.asset_url}`],
+                        ['Asset', `https://${cert.asset_url || cert.asset_id || 'Unknown'}`],
                         ['Cert ID', cert.id],
                         ['Key Exchange', cert.key_exchange ?? '—'],
                         ['Cert Algorithm', cert.cert_algorithm ?? '—'],
@@ -82,7 +82,7 @@ const AssetCol = ({ title, icon: Icon, status, assets, borderColor, gradientColo
                         <li key={cert.id}>
                             <Link to={`/asset/${cert.asset_id ?? cert.id}`}
                                 className="flex justify-between items-center p-2 rounded hover:bg-surface-card-hover text-sm font-mono border-l-2 border-transparent transition-all">
-                                {cert.asset_url || cert.id}
+                                {cert.asset_url || cert.asset_id || cert.id}
                                 <ChevronRight size={14} className="text-secondary" />
                             </Link>
                             {status.column === 'safe' && <CertificateCard cert={cert} />}
@@ -95,18 +95,15 @@ const AssetCol = ({ title, icon: Icon, status, assets, borderColor, gradientColo
 );
 
 const CertificatesPage = () => {
-    const domain = getActiveDomain();
-    const scanId = getActiveScanId();
+    const { activeScanId: scanId, activeDomain: domain } = useScanStore();
+    const { data: certData, isLoading } = useCertificates(scanId || null);
+    
+    // certData could be an array of certs directly
+    const certs = Array.isArray(certData) ? certData : (certData?.certificates || []);
 
-    const { data: certs = [], isLoading } = useQuery({
-        queryKey: ['certs', scanId || domain],
-        queryFn: () => scanId ? certApi.getByScan(scanId) : certApi.list({ domain }),
-        staleTime: 30_000,
-    });
-
-    const vulnerable = certs.filter(c => ['QUANTUM_VULNERABLE', 'HIGH', 'CRITICAL'].includes(c.pqc_status ?? c.risk_level));
-    const ready = certs.filter(c => ['PQC_READY', 'HYBRID'].includes(c.pqc_status ?? c.risk_level));
-    const safe_ = certs.filter(c => ['QUANTUM_SAFE', 'SAFE'].includes(c.pqc_status ?? c.risk_level));
+    const vulnerable = certs.filter(c => ['QUANTUM_VULNERABLE', 'HIGH', 'CRITICAL', 'VULNERABLE'].includes(c.pqc_status ?? c.risk_level ?? c.status));
+    const ready = certs.filter(c => ['PQC_READY', 'HYBRID', 'MEDIUM', 'READY'].includes(c.pqc_status ?? c.risk_level ?? c.status));
+    const safe_ = certs.filter(c => ['QUANTUM_SAFE', 'SAFE', 'LOW'].includes(c.pqc_status ?? c.risk_level ?? c.status));
 
     return (
         <div className="flex flex-col gap-6 min-h-[calc(100vh-6rem)]">

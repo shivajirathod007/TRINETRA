@@ -160,15 +160,17 @@ export interface MigrationPlan {
 // ── Dashboard types ───────────────────────────────────────────────────────────
 
 export interface DashboardStats {
-  scan_id: string
   domain: string
-  organization_score: number
-  assets_scanned: number
+  exposure_score: number
+  total_assets: number
   critical_count: number
   high_count: number
   medium_count: number
-  low_count: number
-  safe_count: number
-  shadow_assets_found: number
-  completed_at: string
+  pqc_ready: number
+  safe: number
+  shadow_count: number
+  live_sync: boolean
+  risk_distribution: { name: string, value: number, color: string }[]
+  algorithm_breakdown: { name: string, count: number }[]
+  assets: AssetSummary[]
 }

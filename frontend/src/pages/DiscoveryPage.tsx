@@ -15,49 +15,12 @@ import { SectionHeader, LoadingSpinner } from '../components/shared';
 import { scanApi } from '../api/client';
 import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 
-// ─── Mock data matching screenshots ───────────────────────────────────────────
-
-const MOCK_DOMAINS = [
-  { date: '03 Mar 2026', domain: 'www.cos.pnb.bank.in',   regDate: '17 Feb 2005', registrar: 'National Internet Exchange of India', company: 'PNB' },
-  { date: '17 Oct 2024', domain: 'www2.pnbrbkiosk.in',    regDate: '22 Mar 2021', registrar: 'National Internet Exchange of India', company: 'PNB' },
-  { date: '17 Oct 2024', domain: 'upload.pnbunion.et.in', regDate: '22 Mar 2021', registrar: 'National Internet Exchange of India', company: 'PNB' },
-  { date: '17 Oct 2024', domain: 'postman.pnb.bank.in',   regDate: '22 Mar 2021', registrar: 'National Internet Exchange of India', company: 'PNB' },
-  { date: '17 Nov 2024', domain: 'proxy.pnb.bank.in',     regDate: '22 Mar 2021', registrar: 'National Internet Exchange of India', company: 'PNB' },
-];
-
-const MOCK_SSL = [
-  { date: '10 Mar 2026', fingerprint: 'b7563b683f d2170471fb0 7c9bcSOd03 4a6',    validFrom: '08 Feb 2026', commonName: 'Generic Cert for WF Ovrd', company: 'PNB', ca: 'Symantec' },
-  { date: '10 Mar 2026', fingerprint: 'd85277fc3a99 b37164a8f327 4a914506c94',   validFrom: '07 Feb 2026', commonName: 'Generic Cert for WF Ovrd', company: 'PNB', ca: 'Digi-Cert' },
-  { date: '10 Mar 2026', fingerprint: 'Abe31953b86 7d4f886b75c7b cd11c69b9e4 93', validFrom: '06 Feb 2026', commonName: 'Generic Cert for WF Ovrd', company: 'PNB', ca: 'Entrust' },
-];
-
-const MOCK_IP = [
-  { date: '03 Mar 2026', ip: '80.50.10.214',   ports: 80,   subnet: '103.187.210.0/31', asn: 'AS9583', isp: '—',                          location: '—',             company: 'MSMT' },
-  { date: '17 Oct 2024', ip: '20.40.72.112',   ports: '—',  subnet: '103.187.210.0/31', asn: 'AS9583', isp: '—',                          location: '—',             company: 'PNB' },
-  { date: '17 Oct 2024', ip: '125.23.131.22',  ports: '—',  subnet: '103.187.210.0/31', asn: 'AS9583', isp: 'E26 Networks',                location: 'Chennai, India', company: 'PNB' },
-  { date: '17 Oct 2024', ip: '103.40.122.92',  ports: '—',  subnet: '103.187.210.0/31', asn: 'AS9583', isp: 'E26 Networks PS',             location: '—',             company: 'PNB' },
-  { date: '17 Nov 2024', ip: '20.20.69.73',    ports: 443,  subnet: '103.187.210.0/31', asn: 'AS9583', isp: '—',                          location: 'Leh, India',    company: 'PNB' },
-  { date: '17 Nov 2024', ip: '21.50.42.188',   ports: '—',  subnet: '103.187.210.0/31', asn: 'AS9583', isp: '—',                          location: '—',             company: 'PNB' },
-  { date: '17 Nov 2024', ip: '801.11.22.153',  ports: 1997, subnet: '103.187.210.0/31', asn: 'AS9583', isp: 'E26 Networks',                location: '—',             company: 'PNB' },
-  { date: '17 Nov 2024', ip: '103.40.122.92',  ports: '—',  subnet: '103.187.210.0/31', asn: 'AS9583', isp: 'E26 Networks',                location: 'India',         company: 'PNB' },
-];
-
-const MOCK_SOFTWARE = [
-  { date: '05 Mar 2026', product: 'http_server',   version: '-',       type: 'WebServer', port: 443,  host: '49.51.98.173' },
-  { date: '17 Oct 2024', product: 'Apache',         version: '-',       type: 'WebServer', port: 587,  host: '49.52.123.215' },
-  { date: '17 Oct 2024', product: 'IIS',             version: '10.0',   type: 'WebServer', port: 443,  host: '40.59.99.173' },
-  { date: '17 Oct 2024', product: 'IIS',             version: '10.0',   type: 'WebServer', port: 80,   host: '40.101.27.212' },
-  { date: '17 Nov 2024', product: 'Microsoft–IIS',  version: '10.0',   type: 'WebServer', port: 80,   host: '401.10.274.14' },
-  { date: '06 Mar 2006', product: 'OpenResty',       version: '1.27.1.1', type: 'Web Server', port: 2087, host: '66.68.262.93' },
-];
-
 // ─── Tab configuration ─────────────────────────────────────────────────────────
 
 type Category = 'Domains' | 'SSL' | 'IP Address/Subnets' | 'Software';
 type StatusFilter = 'All' | 'New' | 'Confirmed' | 'False or ignore';
 
-const CATEGORY_COUNTS: Record<Category, number> = { 'Domains': 20, 'SSL': 5, 'IP Address/Subnets': 34, 'Software': 52 };
-const STATUS_COUNTS: Record<StatusFilter, number> = { 'New': 5, 'False or ignore': 10, 'Confirmed': 2, 'All': 3 };
+const STATUS_COUNTS: Record<StatusFilter, number> = { 'New': 0, 'False or ignore': 0, 'Confirmed': 0, 'All': 0 };
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   'Domains':           <Globe size={14} />,
@@ -68,7 +31,7 @@ const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
 
 // ─── Table renderers ───────────────────────────────────────────────────────────
 
-function DomainsTable({ company }: { company: string }) {
+function DomainsTable({ company, data }: { company: string, data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
@@ -77,7 +40,7 @@ function DomainsTable({ company }: { company: string }) {
         ))}
       </tr></thead>
       <tbody>
-        {MOCK_DOMAINS.map((row, i) => (
+        {data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.domain}</td>
@@ -93,16 +56,16 @@ function DomainsTable({ company }: { company: string }) {
   );
 }
 
-function SSLTable({ company }: { company: string }) {
+function SSLTable({ company, data }: { company: string, data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'SSL SHA Fingerprint', 'Valid From', 'Common Name', 'Company Name', 'Certificate Authority'].map(h => (
+        {['Detection Date', 'SSL SHA Fingerprint', 'Expires', 'Common Name', 'Company Name', 'Certificate Authority'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {MOCK_SSL.map((row, i) => (
+        {data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 font-mono text-primary text-xs">{row.fingerprint}</td>
@@ -117,7 +80,7 @@ function SSLTable({ company }: { company: string }) {
   );
 }
 
-function IPTable({ company }: { company: string }) {
+function IPTable({ company, data }: { company: string, data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
@@ -126,7 +89,7 @@ function IPTable({ company }: { company: string }) {
         ))}
       </tr></thead>
       <tbody>
-        {MOCK_IP.map((row, i) => (
+        {data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.ip}</td>
@@ -143,16 +106,16 @@ function IPTable({ company }: { company: string }) {
   );
 }
 
-function SoftwareTable({ company }: { company: string }) {
+function SoftwareTable({ company, data }: { company: string, data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'Product', 'Version', 'Type', 'Port', 'Host', 'Company Name'].map(h => (
+        {['Detection Date', 'Product/Service', 'Version', 'Type', 'Port', 'Host', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {MOCK_SOFTWARE.map((row, i) => (
+        {data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 text-primary font-semibold">{row.product}</td>
@@ -173,7 +136,7 @@ function SoftwareTable({ company }: { company: string }) {
 export default function DiscoveryPage() {
   useAutoLoadScan();
   const { activeScanId, setActiveScan } = useScanStore();
-  const { isLoading } = useAssets(activeScanId);
+  const { data: assets = [], isLoading } = useAssets(activeScanId);
   const [search, setSearch] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [category, setCategory] = useState<Category>('Domains');
@@ -182,7 +145,54 @@ export default function DiscoveryPage() {
 
   const company = activeScanId
     ? activeScanId.split('.')[0].toUpperCase().replace(/-/g, '')
-    : 'PNB';
+    : 'UNKNOWN';
+
+  // Dynamic Data Derived from Backend
+  const domainsData = assets.map((a: any) => ({
+    date: a.scan_timestamp,
+    domain: a.url,
+    regDate: '—',
+    registrar: '—',
+    company
+  }));
+
+  const sslData = assets.filter((a: any) => a.cert_issuer).map((a: any) => ({
+    date: a.scan_timestamp,
+    fingerprint: a.cert_sha256?.substring(0, 32) || '—',
+    validFrom: a.cert_expiry || '—',
+    commonName: a.cert_subject || '—',
+    ca: a.cert_issuer,
+    company
+  }));
+
+  const ipData = assets.filter((a: any) => a.ip_address).map((a: any) => ({
+    date: a.scan_timestamp,
+    ip: a.ip_address,
+    ports: a.port,
+    subnet: '—',
+    asn: '—',
+    isp: '—',
+    location: '—',
+    company
+  }));
+
+  const softwareData = assets.map((a: any) => ({
+    date: a.scan_timestamp,
+    product: a.tls_version || 'Service Target',
+    version: '—',
+    type: a.type,
+    port: a.port,
+    host: a.ip_address || '—',
+    company
+  }));
+
+  const CATEGORY_COUNTS: Record<Category, number> = { 
+    'Domains': domainsData.length, 
+    'SSL': sslData.length, 
+    'IP Address/Subnets': ipData.length, 
+    'Software': softwareData.length 
+  };
+
 
   const handleInitiate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -271,7 +281,7 @@ export default function DiscoveryPage() {
             position: 'absolute', bottom: 8, right: 12,
             fontSize: 10, fontFamily: 'monospace', color: 'rgba(148,163,184,0.5)',
           }}>
-            {MOCK_DOMAINS.length + MOCK_IP.length} nodes discovered
+            {domainsData.length + ipData.length} nodes discovered
           </div>
         </div>
       </div>
@@ -352,10 +362,10 @@ export default function DiscoveryPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            {category === 'Domains'            && <DomainsTable  company={company} />}
-            {category === 'SSL'                && <SSLTable      company={company} />}
-            {category === 'IP Address/Subnets' && <IPTable       company={company} />}
-            {category === 'Software'           && <SoftwareTable company={company} />}
+            {category === 'Domains'            && <DomainsTable  company={company} data={domainsData} />}
+            {category === 'SSL'                && <SSLTable      company={company} data={sslData} />}
+            {category === 'IP Address/Subnets' && <IPTable       company={company} data={ipData} />}
+            {category === 'Software'           && <SoftwareTable company={company} data={softwareData} />}
           </div>
         )}
       </div>

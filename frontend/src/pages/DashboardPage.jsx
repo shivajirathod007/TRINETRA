@@ -108,9 +108,8 @@ const DashboardPage = () => {
         { label: 'High Risk Assets', value: stats.critical_count ?? 0, icon: ShieldAlert, color: 'text-status-critical' },
     ];
 
-    const ipData = [
-       { name: 'IPv4', value: 86, color: '#3B82F6' },
-       { name: 'IPv6', value: 14, color: '#0EA5E9' }
+    const ipData = stats.ip_distribution ?? [
+       { name: 'IPv4', value: 100, color: '#3B82F6' }
     ];
 
     const expiryTimelineData = [
@@ -296,8 +295,12 @@ const DashboardPage = () => {
                                 </PieChart>
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-2xl font-bold text-primary">86%</span>
-                                <span className="text-xs text-secondary font-mono">IPv4 Dominant</span>
+                                <span className="text-2xl font-bold text-primary">
+                                    {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a,b)=>a+b.value,0))*100) : 0}%
+                                </span>
+                                <span className="text-xs text-secondary font-mono">
+                                    {ipData.length > 0 ? ipData[0].name : 'IPv4'} Dominant
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -385,16 +388,30 @@ const DashboardPage = () => {
                    <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-6 border-b border-glass-border pb-2 inline-flex items-center gap-2"><Globe size={18} className="text-primary-indigo" /> Geographic Asset Distribution</h3>
                    <div className="flex-1 flex relative">
                         {/* Map points overlay simulation */}
-                        <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-no-repeat bg-center bg-contain opacity-10" style={{ filter: 'invert(1)' }}></div>
-                        
-                        <div className="absolute top-[30%] left-[20%] w-3 h-3 bg-status-critical rounded-full animate-ping" />
-                        <div className="absolute top-[30%] left-[20%] w-3 h-3 bg-status-critical rounded-full shadow-[0_0_15px_rgba(239,68,68,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">USA</span></div>
-                        
-                        <div className="absolute top-[25%] right-[40%] w-2 h-2 bg-status-safe rounded-full shadow-[0_0_10px_rgba(34,197,94,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">Germany</span></div>
-                        
-                        <div className="absolute top-[45%] right-[25%] w-3 h-3 bg-primary-indigo rounded-full shadow-[0_0_15px_rgba(99,102,241,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">India</span></div>
-
-                        <div className="absolute top-[50%] right-[15%] w-2 h-2 bg-status-high rounded-full shadow-[0_0_10px_rgba(249,115,22,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">Singapore</span></div>
+                        {/* Dynamic Geography Nodes via Backend */}
+                        {(stats.geographic_distribution || []).map((node, i) => (
+                            <React.Fragment key={i}>
+                                {node.pulse && (
+                                    <div 
+                                        className={`absolute w-3 h-3 rounded-full animate-ping ${node.color}`} 
+                                        style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }} 
+                                    />
+                                )}
+                                <div 
+                                    className={`absolute w-3 h-3 rounded-full flex items-center justify-center ${node.color}`}
+                                    style={{ 
+                                        top: node.top, 
+                                        left: node.left || undefined, 
+                                        right: node.right || undefined, 
+                                        boxShadow: `0 0 10px var(--${node.color.replace('bg-', '')}, currentColor)` 
+                                    }}
+                                >
+                                    <span className="absolute -bottom-5 text-[10px] font-bold text-primary">
+                                        {node.country}
+                                    </span>
+                                </div>
+                            </React.Fragment>
+                        ))}
                    </div>
                 </div>
             </div>

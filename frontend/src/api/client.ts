@@ -21,7 +21,7 @@ export const scanApi = {
   getStatus: (scanId: string) =>
     api.get<ScanJob>(`/scans/${scanId}`).then(r => r.data),
 
-  list: (domain: string, limit = 10) =>
+  list: (domain: string | null = null, limit = 10) =>
     api.get<ScanJob[]>('/scans/', { params: { domain, limit } }).then(r => r.data),
 }
 

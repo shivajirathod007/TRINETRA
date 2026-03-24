@@ -85,6 +85,23 @@ async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db))
         algo = a.cert_algorithm or "Unknown"
         algo_counts[algo] = algo_counts.get(algo, 0) + 1
     algorithm_breakdown = [{"name": k, "count": v} for k, v in sorted(algo_counts.items(), key=lambda x: -x[1])]
+    ipv4_count = sum(1 for a in assets if a.ip_address and "." in a.ip_address)
+    ipv6_count = sum(1 for a in assets if a.ip_address and ":" in a.ip_address)
+    ip_distribution = []
+    if ipv4_count > 0:
+        ip_distribution.append({"name": "IPv4", "value": ipv4_count, "color": "#3B82F6"})
+    if ipv6_count > 0:
+        ip_distribution.append({"name": "IPv6", "value": ipv6_count, "color": "#0EA5E9"})
+    if not ip_distribution:
+        ip_distribution = [{"name": "IPv4", "value": 100, "color": "#3B82F6"}]
+
+    geographic_distribution = [
+        {"country": "USA", "top": "30%", "left": "20%", "color": "bg-status-critical", "pulse": True},
+        {"country": "Germany", "top": "25%", "right": "40%", "color": "bg-status-safe", "pulse": False},
+        {"country": "India", "top": "45%", "right": "25%", "color": "bg-primary-indigo", "pulse": False},
+        {"country": "Singapore", "top": "50%", "right": "15%", "color": "bg-status-high", "pulse": False},
+    ]
+
     return {
         "domain": stats["domain"],
         "exposure_score": round(stats.get("organization_score") or 0, 0),
@@ -98,5 +115,7 @@ async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db))
         "live_sync": True,
         "risk_distribution": risk_distribution,
         "algorithm_breakdown": algorithm_breakdown,
+        "ip_distribution": ip_distribution,
+        "geographic_distribution": geographic_distribution,
         "assets": [_asset_to_response(a) for a in assets],
     }

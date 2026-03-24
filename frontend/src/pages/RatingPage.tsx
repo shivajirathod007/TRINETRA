@@ -14,23 +14,17 @@ import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 import { useScanStore } from '../store';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 
+import { useDashboard, useScanHistory } from '../hooks';
+
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const ENTERPRISE_SCORE = 755;
-const MAX_SCORE = 1000;
+const MAX_SCORE = 100;
 
 const STATUS_TABLE = [
-  { icon: '🔴', status: 'Legacy',    range: '< 400',      color: '#ef4444' },
-  { icon: '🟡', status: 'Standard',  range: '400 till 700', color: '#f59e0b' },
-  { icon: '✅', status: 'Elite-PQC', range: '> 700',       color: '#22c55e' },
-  { icon: null, status: 'Maximum Score after normalisation*', range: '1000', color: 'var(--text-secondary)', bold: true },
-];
-
-const URL_SCORES = [
-  { url: 'pnb.bank.in',  score: 755 },
-  { url: 'Abc.com',      score: 100 },
-  { url: 'Add.com',      score: 50  },
-  { url: 'Acc.com',      score: 0   },
+  { icon: '🔴', status: 'Legacy',    range: '< 40',      color: '#ef4444' },
+  { icon: '🟡', status: 'Standard',  range: '40 till 70', color: '#f59e0b' },
+  { icon: '✅', status: 'Elite-PQC', range: '> 70',       color: '#22c55e' },
+  { icon: null, status: 'Maximum Score after normalisation*', range: '100', color: 'var(--text-secondary)', bold: true },
 ];
 
 const TIER_TABLE = [
@@ -81,14 +75,14 @@ const DOMAIN_BREAKDOWN = [
 ];
 
 // ─── Score colour helper ───────────────────────────────────────────────────────
-function scoreColor(s: number, max = 1000) {
+function scoreColor(s: number, max = 100) {
   const pct = (s / max) * 100;
   return pct >= 70 ? '#22c55e' : pct >= 40 ? '#f59e0b' : '#ef4444';
 }
 
 function tierLabel(score: number): { label: string; color: string } {
-  if (score >= 700) return { label: 'Elite-PQC', color: '#22c55e' };
-  if (score >= 400) return { label: 'Standard',  color: '#f59e0b' };
+  if (score >= 70) return { label: 'Elite-PQC', color: '#22c55e' };
+  if (score >= 40) return { label: 'Standard',  color: '#f59e0b' };
   return                   { label: 'Legacy',    color: '#ef4444' };
 }
 
@@ -127,11 +121,32 @@ function BigGauge({ score, max }: { score: number; max: number }) {
 export default function RatingPage() {
   useAutoLoadScan();
   const { activeDomain } = useScanStore();
+  const { data: stats } = useDashboard(activeDomain || null);
+  const { data: scansData } = useScanHistory(null);
+  
+  const scans: any[] = scansData || [];
+  const ENTERPRISE_SCORE = stats?.exposure_score || 0;
 
-  const chartData = URL_SCORES.map(u => ({
+  const urlScores = scans.slice(0, 10).map(s => ({
+    url: s.domain,
+    score: s.organization_score || 0,
+  }));
+
+  const chartData = urlScores.map(u => ({
     name: u.url.length > 10 ? u.url.slice(0, 10) + '…' : u.url,
     score: u.score,
   }));
+
+  const dynPosture = Math.round(((stats?.safe ?? 0) / Math.max(1, stats?.total_assets ?? 1)) * 100);
+  const dynShadow = Math.round(((stats?.shadow_count ?? 0) / Math.max(1, stats?.total_assets ?? 1)) * 100);
+  
+  const DOMAIN_BREAKDOWN = [
+    { label: 'Network Exposure',      score: ENTERPRISE_SCORE, icon: <Shield size={16} />,       color: '#6366f1' },
+    { label: 'Cryptographic Posture', score: dynPosture,       icon: <Lock size={16} />,         color: '#f59e0b' },
+    { label: 'Attack Surface',        score: dynShadow,        icon: <AlertTriangle size={16} />, color: '#ef4444' },
+    { label: 'Vulnerability Trend',   score: 84,               icon: <TrendingUp size={16} />,    color: '#22c55e' },
+    { label: 'PQC Readiness',         score: dynPosture,       icon: <Zap size={16} />,           color: '#8b5cf6' },
+  ];
 
   return (
     <div className="flex flex-col gap-6">
@@ -202,16 +217,19 @@ export default function RatingPage() {
               </tr>
             </thead>
             <tbody>
-              {URL_SCORES.map((row, i) => (
+              {urlScores.map((row, i) => (
                 <tr key={i} className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors">
                   <td className="px-5 py-3 font-mono font-semibold text-primary">{row.url}</td>
                   <td className="px-5 py-3 text-right">
-                    <span className="font-black font-mono text-base" style={{ color: scoreColor(row.score) }}>
+                    <span className="font-black font-mono text-base" style={{ color: scoreColor(row.score, 100) }}>
                       {row.score}
                     </span>
                   </td>
                 </tr>
               ))}
+              {urlScores.length === 0 && (
+                <tr><td colSpan={2} className="text-secondary text-center py-4 text-xs">No scan data</td></tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -223,7 +241,7 @@ export default function RatingPage() {
             <BarChart data={chartData} barSize={28}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.08)" vertical={false} />
               <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 1000]} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis domain={[0, 100]} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ background: 'rgba(15,23,42,0.95)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8 }}
                 labelStyle={{ color: '#94a3b8', fontSize: 11 }}

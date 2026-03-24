@@ -13,6 +13,8 @@ import { SectionHeader } from '../components/shared';
 import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 import { Link } from 'react-router-dom';
 import { Clock } from 'lucide-react';
+import { useScanStore } from '../store';
+import { useDashboard } from '../hooks';
 
 // ─── shared primitives ────────────────────────────────────────────────────────
 
@@ -53,7 +55,7 @@ function CheckItem({ label, icon, checked, onChange }: { label: string; icon: Re
 
 // ─── Tab: Overview ─────────────────────────────────────────────────────────────
 
-function OverviewTab() {
+function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; stats: any }) {
   const [activeCard, setActiveCard] = useState<null | 'schedule' | 'ondemand'>(null);
 
   const CARDS = [
@@ -111,9 +113,9 @@ function OverviewTab() {
             <span className="text-sm font-bold text-primary">Assets Discovery</span>
           </div>
           <div className="flex flex-col gap-1.5 text-xs text-secondary">
-            <div className="flex justify-between"><span>Domains</span><span className="font-mono text-primary font-bold">213,450</span></div>
-            <div className="flex justify-between"><span>Pick subdomain</span><span className="font-mono text-primary font-bold">—</span></div>
-            <div className="flex justify-between"><span>Cloud Assets</span><span className="font-mono text-primary font-bold">13,372</span></div>
+            <div className="flex justify-between"><span>Domains Scanned</span><span className="font-mono text-primary font-bold">{activeDomain ? '1' : '0'}</span></div>
+            <div className="flex justify-between"><span>Current Target</span><span className="font-mono text-primary font-bold truncate max-w-[120px] text-right" title={activeDomain || ''}>{activeDomain || '—'}</span></div>
+            <div className="flex justify-between"><span>Total Assets</span><span className="font-mono text-primary font-bold">{stats?.total_assets ?? 0}</span></div>
           </div>
         </div>
 
@@ -140,7 +142,7 @@ function OverviewTab() {
             <span className="text-sm font-bold text-primary">Assets Inventory</span>
           </div>
           <div className="flex flex-col gap-1.5 text-xs text-secondary">
-            {[['SSL Certificates', '8761'],['Software', '13,211'],['IoT Devices', '3854'],['Login Forms', '1168']].map(([k, v]) => (
+            {[['Total Discovered', stats?.total_assets ?? 0],['Shadow Assets', stats?.shadow_count ?? 0],['Known Managed', Math.max(0, (stats?.total_assets ?? 0) - (stats?.shadow_count ?? 0))]].map(([k, v]) => (
               <div key={k} className="flex justify-between"><span>{k}</span><span className="font-mono text-primary font-bold">{v}</span></div>
             ))}
           </div>
@@ -152,12 +154,12 @@ function OverviewTab() {
             <ShieldCheck size={16} className="text-status-safe" />
             <span className="text-sm font-bold text-primary">Posture of PQC</span>
           </div>
-          {[['Progress on goal aspects of cryptography adoption', 33],['', 22]].map(([label, pct], i) => (
+          {[['Quantum Safe Progress', Math.round(((stats?.safe ?? 0) / Math.max(1, stats?.total_assets ?? 1)) * 100)],['Organization Risk Score', stats?.exposure_score ?? 0]].map(([label, pct], i) => (
             <div key={i} className="mb-2">
               {label && <div className="text-[10px] text-secondary mb-1 leading-tight">{label}</div>}
               <div className="flex items-center gap-2">
                 <div className="flex-1 h-2 bg-surface-card-hover rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: '#22c55e' }} />
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i === 0 ? '#22c55e' : (pct > 70 ? '#ef4444' : '#f59e0b') }} />
                 </div>
                 <span className="text-xs font-mono text-secondary w-8 text-right">{pct}%</span>
               </div>
@@ -169,11 +171,11 @@ function OverviewTab() {
         <div className="glass-card border rounded-xl p-4 md:col-span-2" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
           <div className="flex items-center gap-2 mb-3">
             <Shield size={16} style={{ color: '#a78bfa' }} />
-            <span className="text-sm font-bold text-primary">CBOM</span>
+            <span className="text-sm font-bold text-primary">CBOM Target Findings</span>
           </div>
           <div className="flex flex-col gap-1.5 text-xs text-secondary">
-            <div className="flex justify-between"><span>Cryptographic Bill of Material</span><span className="font-mono text-primary font-bold">CycloneDX 1.6</span></div>
-            <div className="flex justify-between"><span>6248 vulnerable components found</span><span className="font-mono text-status-critical font-bold">6,248</span></div>
+            <div className="flex justify-between"><span>Cryptographic Bill of Material</span><span className="font-mono text-primary font-bold">TRINETRA</span></div>
+            <div className="flex justify-between"><span>Vulnerable components found</span><span className="font-mono text-status-critical font-bold">{(stats?.critical_count ?? 0) + (stats?.high_count ?? 0)}</span></div>
           </div>
         </div>
       </div>
@@ -417,6 +419,9 @@ type Tab = 'overview' | 'schedule' | 'ondemand';
 
 export default function ReportingPage() {
   useAutoLoadScan();
+  const { activeDomain } = useScanStore();
+  const { data: stats } = useDashboard(activeDomain || null);
+  
   const [tab, setTab] = useState<Tab>('overview');
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
@@ -452,7 +457,7 @@ export default function ReportingPage() {
         ))}
       </div>
 
-      {tab === 'overview'  && <OverviewTab />}
+      {tab === 'overview'  && <OverviewTab activeDomain={activeDomain} stats={stats} />}
       {tab === 'schedule'  && <ScheduleTab />}
       {tab === 'ondemand'  && <OnDemandTab />}
     </div>

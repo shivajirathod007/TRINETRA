@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { Clock, CheckCircle, AlertCircle, XCircle, TrendingUp, BarChart2, X, ExternalLink, RefreshCw } from 'lucide-react';
 import { SectionHeader } from '../components/shared';
 import { useScanStore } from '../store';
+import { useScanHistory } from '../hooks';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Cell
@@ -16,7 +17,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ScanRecord {
-  scan_id:    string;
+  id:    string;
   domain:     string;
   status:     'COMPLETED' | 'FAILED' | 'RUNNING' | string;
   created_at?: string;
@@ -68,7 +69,7 @@ function ScanDetailModal({ scan, onClose, onLoad }: { scan: ScanRecord; onClose:
           style={{ background: 'rgba(99,102,241,0.08)' }}>
           <div>
             <div className="font-black text-primary text-lg font-mono">{scan.domain}</div>
-            <div className="text-xs text-secondary font-mono mt-0.5">{scan.scan_id}</div>
+            <div className="text-xs text-secondary font-mono mt-0.5">{scan.id}</div>
           </div>
           <button onClick={onClose} className="text-secondary hover:text-primary transition-colors p-1">
             <X size={20} />
@@ -223,48 +224,9 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
-// Seed with API scans from store + enrich from localStorage telemetry
-function useLocalScanHistory(): ScanRecord[] {
-  const [scans, setScans] = useState<ScanRecord[]>([]);
-
-  useEffect(() => {
-    // Try to load from localStorage key trinetra_scan_history
-    const raw = localStorage.getItem('trinetra_scan_history');
-    if (raw) {
-      try {
-        const parsed: ScanRecord[] = JSON.parse(raw);
-        setScans(parsed);
-        return;
-      } catch { /* ignore */ }
-    }
-    // Seed from trinetra_scan_* keys
-    const discovered: ScanRecord[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key?.startsWith('trinetra_scan_')) {
-        try {
-          const val = JSON.parse(localStorage.getItem(key) ?? '');
-          discovered.push(val);
-        } catch { /* skip */ }
-      }
-    }
-    if (discovered.length > 0) setScans(discovered);
-    else {
-      // Fallback demo data so the page is never empty
-      setScans([
-        { scan_id: 'demo-001', domain: 'pnb.bank.in',      status: 'COMPLETED', created_at: '2026-03-15T10:00:00Z', completed_at: '2026-03-15T10:15:00Z', assets_scanned: 42, critical_count: 3, high_count: 7, medium_count: 12, organization_score: 74 },
-        { scan_id: 'demo-002', domain: 'www.wikipedia.org', status: 'FAILED',    created_at: '2026-03-15T09:30:00Z', completed_at: '2026-03-15T09:31:00Z', assets_scanned: 0,  critical_count: 0, high_count: 0,  medium_count: 0,  organization_score: 0  },
-        { scan_id: 'demo-003', domain: 'sbi.co.in',         status: 'COMPLETED', created_at: '2026-03-10T08:00:00Z', completed_at: '2026-03-10T08:20:00Z', assets_scanned: 89, critical_count: 8, high_count: 14, medium_count: 21, organization_score: 88 },
-        { scan_id: 'demo-004', domain: 'hdfcbank.com',      status: 'COMPLETED', created_at: '2026-03-05T07:00:00Z', completed_at: '2026-03-05T07:25:00Z', assets_scanned: 63, critical_count: 2, high_count: 6,  medium_count: 9,  organization_score: 55 },
-      ]);
-    }
-  }, []);
-
-  return scans;
-}
-
 export default function ScanHistoryPage() {
-  const scans = useLocalScanHistory();
+  const { data: scansData } = useScanHistory(null);
+  const scans: any[] = scansData || [];
   const { setActiveScan } = useScanStore();
   const [selected, setSelected] = useState<ScanRecord | null>(null);
   const [filter, setFilter] = useState<'ALL' | 'COMPLETED' | 'FAILED'>('ALL');
@@ -329,7 +291,7 @@ export default function ScanHistoryPage() {
             </thead>
             <tbody>
               {filtered.map(scan => (
-                <tr key={scan.scan_id}
+                <tr key={scan.id}
                   onClick={() => setSelected(scan)}
                   className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
                   <td className="px-5 py-3.5 font-mono text-secondary text-xs">{fmtDate(scan.created_at)}</td>
@@ -364,7 +326,7 @@ export default function ScanHistoryPage() {
         <ScanDetailModal
           scan={selected}
           onClose={() => setSelected(null)}
-          onLoad={() => setActiveScan(selected.scan_id, selected.domain)}
+          onLoad={() => setActiveScan(selected.id, selected.domain)}
         />
       )}
     </div>

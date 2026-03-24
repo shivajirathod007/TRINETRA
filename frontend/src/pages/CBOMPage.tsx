@@ -14,7 +14,7 @@ import {
   ExternalLink, ChevronDown, RefreshCw, X, Globe, Lock, Key, Clock, TrendingUp
 } from 'lucide-react';
 import { useScanStore } from '../store';
-import { useCBOM } from '../hooks';
+import { useCBOM, useScanHistory } from '../hooks';
 import { SectionHeader, ScoreBadge, AlgorithmTag } from '../components/shared';
 import { cbomApi } from '../api/client';
 import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
@@ -47,24 +47,6 @@ interface CBOMComponent {
   cert_issuer?: string;
   cert_expiry?: string;
 }
-
-const DEMO_SCANS: ScanRecord[] = [
-  { scan_id: 'demo-wiki', domain: 'www.wikipedia.org', status: 'COMPLETED', created_at: '2026-03-24T08:00:00Z' },
-  { scan_id: 'demo-pnb',  domain: 'pnb.bank.in',       status: 'COMPLETED', created_at: '2026-03-20T10:00:00Z' },
-];
-
-const DEMO_COMPONENTS: Record<string, CBOMComponent[]> = {
-  'demo-wiki': [
-    { url: 'https://zero.wikipedia.org',  type: 'web_portal',     status: 'CRITICAL', score: 90, discovery: 'SHADOW', is_shadow: true, tls: 'TLS 1.1', cipher: '3DES', cert: 'RSA-1024' },
-    { url: 'https://store.wikipedia.org', type: 'web_portal',     status: 'CRITICAL', score: 90, discovery: 'SHADOW', is_shadow: true, tls: 'TLS 1.2', cipher: 'AES-128', cert: 'RSA-1024' },
-    { url: 'https://m.wikipedia.org',     type: 'mobile_backend', status: 'CRITICAL', score: 90, discovery: 'SHADOW', is_shadow: true, tls: 'TLS 1.2', cipher: 'AES-128', cert: 'SHA-1' },
-  ],
-  'demo-pnb': [
-    { url: 'https://api.pnb.bank.in',   type: 'api_gateway', status: 'SAFE',     score: 15, discovery: 'KNOWN', is_shadow: false, tls: 'TLS 1.3', cipher: 'AES-256-GCM', cert: 'RSA-4096' },
-    { url: 'https://m.pnb.bank.in',     type: 'web_portal',  status: 'MEDIUM',   score: 45, discovery: 'KNOWN', is_shadow: false, tls: 'TLS 1.2', cipher: 'AES-128-GCM', cert: 'RSA-2048' },
-    { url: 'https://legacy.pnb.bank.in',type: 'legacy_app',  status: 'CRITICAL', score: 95, discovery: 'SHADOW', is_shadow: true, tls: 'TLS 1.0', cipher: 'RC4', cert: 'MD5' },
-  ]
-};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -159,22 +141,15 @@ export default function CBOMPage() {
   const [selectedComp, setSelectedComp] = useState<CBOMComponent | null>(null);
 
   // Load scans + active sync
-  const [scans, setScans] = useState<ScanRecord[]>(DEMO_SCANS);
-  useEffect(() => {
-    const raw = localStorage.getItem('trinetra_scan_history');
-    if (raw) {
-      try { setScans(JSON.parse(raw)); } catch {}
-    } else {
-      setScans(DEMO_SCANS);
-    }
-  }, []);
+  const { data: scansData } = useScanHistory(null);
+  const scans: any[] = scansData || [];
 
   useEffect(() => {
     if (activeScanId) setSelectedScanId(activeScanId);
-    else if (scans.length > 0) setSelectedScanId(scans[0].scan_id);
+    else if (scans.length > 0) setSelectedScanId(scans[0].id);
   }, [activeScanId, scans]);
 
-  const activeDomain = scans.find(s => s.scan_id === selectedScanId)?.domain || 'Unknown Target';
+  const activeDomain = scans.find(s => s.id === selectedScanId)?.domain || 'Unknown Target';
   
   // Get data (fallback to demo if API empty)
   const { data: cbomData } = useCBOM(selectedScanId || null);
@@ -193,7 +168,7 @@ export default function CBOMPage() {
         cert: c.cert ?? c.cert_algorithm,
       }));
     }
-    return DEMO_COMPONENTS[selectedScanId] || DEMO_COMPONENTS['demo-wiki'];
+    return [];
   }, [cbomData, selectedScanId]);
 
   const stats = useMemo(() => {
@@ -229,12 +204,12 @@ export default function CBOMPage() {
               onChange={e => {
                 const id = e.target.value;
                 setSelectedScanId(id);
-                const s = scans.find(x => x.scan_id === id);
+                const s = scans.find(x => x.id === id);
                 if (s) setActiveScan(id, s.domain);
               }}
               className="w-full appearance-none bg-surface-card border border-glass-border text-primary font-mono text-sm rounded-lg px-4 py-2 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer"
             >
-              {scans.map(s => <option key={s.scan_id} value={s.scan_id}>{s.domain}</option>)}
+              {scans.map(s => <option key={s.id} value={s.id}>{s.domain}</option>)}
             </select>
             <ChevronDown size={14} className="absolute right-3 top-2.5 text-secondary pointer-events-none" />
           </div>

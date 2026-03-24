@@ -17,11 +17,10 @@ export function useScanStatus(scanId: string | null) {
   })
 }
 
-export function useScanHistory(domain: string | null) {
+export function useScanHistory(domain: string | null = null) {
   return useQuery({
     queryKey: ['scan-history', domain],
-    queryFn: () => scanApi.list(domain!),
-    enabled: !!domain,
+    queryFn: () => scanApi.list(domain || null),
   })
 }
 

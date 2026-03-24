@@ -55,6 +55,14 @@ async def list_assets(
             "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
             "discovery": "Shadow" if a.is_shadow_asset else "Known",
             "scan_id": str(a.scan_job_id),
+            "ip_address": a.ip_address,
+            "port": a.port,
+            "tls_version": a.tls_version_active,
+            "cert_issuer": a.cert_issuer,
+            "cert_subject": a.cert_subject,
+            "cert_sha256": a.cert_sha256,
+            "cert_expiry": a.cert_expiry.strftime("%d %b %Y") if a.cert_expiry else None,
+            "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
         }
         for a in assets
     ]
