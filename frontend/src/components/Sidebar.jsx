@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileJson, ShieldCheck, Moon, Sun,
-  Home, Search, Star, BarChart2, LogOut, Database
+  Home, Search, Star, BarChart2, LogOut, Database, History
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -30,6 +30,7 @@ const NAV_GROUPS = [
       { name: 'Posture of PQC',  path: '/posture',    icon: ShieldCheck },
       { name: 'Cyber Rating',    path: '/rating',      icon: Star },
       { name: 'Reporting',       path: '/reporting',  icon: BarChart2 },
+      { name: 'Scan History',    path: '/history',    icon: History },
     ],
   },
 ];
