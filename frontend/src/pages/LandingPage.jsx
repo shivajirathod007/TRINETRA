@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Server, FileSearch, Fingerprint, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
@@ -26,6 +26,12 @@ async function fetchPlatformStats() {
 const LandingPage = () => {
     const [activeChip, setActiveChip] = useState('Web Portals');
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (localStorage.getItem('trinetra_auth') === 'true') {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
 
     const { data: stats = {} } = useQuery({
         queryKey: ['platform-stats'],

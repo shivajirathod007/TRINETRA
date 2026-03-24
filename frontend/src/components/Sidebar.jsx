@@ -1,14 +1,16 @@
 import React from 'react';
 import { NavLink, Link } from 'react-router-dom';
-import { LayoutDashboard, FileJson, ShieldCheck, History, Moon, Sun, Home } from 'lucide-react';
+import { LayoutDashboard, FileJson, ShieldCheck, History, Moon, Sun, Home, Search, Star, BarChart2 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
     { name: 'Home', path: '/', icon: Home },
-    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'CBOM Explorer', path: '/cbom', icon: FileJson },
-    { name: 'Certificates', path: '/certificates', icon: ShieldCheck },
-    { name: 'History', path: '/history', icon: History },
+    { name: 'Asset Inventory', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Asset Discovery', path: '/discovery', icon: Search },
+    { name: 'CBOM', path: '/cbom', icon: FileJson },
+    { name: 'Posture of PQC', path: '/certificates', icon: ShieldCheck },
+    { name: 'Cyber Rating', path: '/rating', icon: Star },
+    { name: 'Reporting', path: '/reporting', icon: BarChart2 },
 ];
 
 const Sidebar = () => {

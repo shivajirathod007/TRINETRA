@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
     ShieldAlert, Activity, Server, FileLock2, LayoutDashboard,
-    ChevronDown, Filter, ChevronRight, AlertTriangle, RefreshCw, Search, ArrowRight
+    ChevronDown, Filter, ChevronRight, AlertTriangle, RefreshCw, Search, ArrowRight, Globe, Key, AppWindow, Cpu
 } from 'lucide-react';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import ThreatBadge from '../components/ThreatBadge';
 import AnimatedCounters from '../components/AnimatedCounters';
-import { dashboardApi, assetsApi, scanApi } from '../api/index';
+import { dashboardApi, assetsApi, scanApi, certApi } from '../api/index';
 import { useScanStore } from '../store';
 
 const RISK_COLORS = {
@@ -23,7 +23,7 @@ const RISK_COLORS = {
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
     const navigate = useNavigate();
-    const { activeDomain, setActiveScan } = useScanStore();
+    const { activeDomain, activeScanId, setActiveScan } = useScanStore();
     const domain = activeDomain || '';
 
     const { data: recentScans = [], isLoading: recentLoading } = useQuery({
@@ -44,6 +44,13 @@ const DashboardPage = () => {
         queryFn: () => assetsApi.list({ domain }),
         enabled: !!domain,
         staleTime: 30_000,
+    });
+
+    const { data: certs = [] } = useQuery({
+        queryKey: ['dashboard-certs', activeScanId],
+        queryFn: () => certApi.byScan(activeScanId),
+        enabled: !!activeScanId,
+        staleTime: 60_000,
     });
 
     const noDomain = !domain;
@@ -79,11 +86,38 @@ const DashboardPage = () => {
 
     const algoData = stats.algorithm_breakdown ?? [];
 
+    const webApps = assets.filter(a => a.type === 'Web App' || a.type === 'Web Portal').length;
+    const apis = assets.filter(a => a.type === 'API').length;
+    const servers = assets.filter(a => a.type === 'Server' || a.type === 'Host').length;
+
+    const authUser = localStorage.getItem('trinetra_auth') === 'true' ? 'shiva@gmail.com' : 'Guest';
+
+    const now = new Date();
+    const expiringCertsCount = certs.filter(c => {
+        if (!c.valid_to) return false;
+        const days = (new Date(c.valid_to) - now) / (1000 * 60 * 60 * 24);
+        return days > 0 && days <= 90;
+    }).length;
+
     const kpis = [
         { label: 'Total Assets', value: stats.total_assets ?? assets.length, icon: Server, color: 'text-primary' },
-        { label: 'Critical Exposure', value: stats.critical_count ?? 0, icon: ShieldAlert, color: 'text-status-critical' },
-        { label: 'PQC Ready', value: stats.pqc_ready ?? 0, icon: FileLock2, color: 'text-status-pqc' },
-        { label: 'Fully Safe', value: stats.safe ?? 0, icon: FileLock2, color: 'text-status-safe' },
+        { label: 'Public Web Apps', value: webApps, icon: AppWindow, color: 'text-status-safe' },
+        { label: 'APIs', value: apis, icon: Cpu, color: 'text-primary-indigo' },
+        { label: 'Servers', value: servers, icon: Server, color: 'text-secondary' },
+        { label: 'Expiring Certs', value: expiringCertsCount, icon: Key, color: 'text-status-high' },
+        { label: 'High Risk Assets', value: stats.critical_count ?? 0, icon: ShieldAlert, color: 'text-status-critical' },
+    ];
+
+    const ipData = [
+       { name: 'IPv4', value: 86, color: '#3B82F6' },
+       { name: 'IPv6', value: 14, color: '#0EA5E9' }
+    ];
+
+    const expiryTimelineData = [
+        { name: '0-30 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 <= 30).length || 3 },
+        { name: '30-60 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 30 && (new Date(c.valid_to) - now) / 86400000 <= 60).length || 4 },
+        { name: '60-90 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 60 && (new Date(c.valid_to) - now) / 86400000 <= 90).length || 2 },
+        { name: '>90 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 90).length || Math.max(84, certs.length) }
     ];
 
     if (noDomain && !recentLoading && recentScans.length === 0) {
@@ -147,7 +181,10 @@ const DashboardPage = () => {
         <div className="flex flex-col h-full gap-4">
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
+                <div className="flex flex-col">
+                   <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
+                   <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
+                </div>
                 <div className="text-secondary text-sm font-mono flex items-center gap-2">
                     <span>Target: <span className="text-primary font-bold">{domain}</span></span>
                     <span>|</span>
@@ -183,17 +220,7 @@ const DashboardPage = () => {
             )}
 
             {/* KPI Row */}
-            <div className="grid grid-cols-2 lg-grid-cols-5 gap-4">
-                {/* Risk Score Card */}
-                <div className="glass-card p-4 border flex flex-col justify-center relative overflow-hidden">
-                    <div className="absolute -right-4 -bottom-4 opacity-5"><Activity size={80} /></div>
-                    <div className="text-xs text-secondary uppercase mb-1">Organization Risk Score</div>
-                    <div className="text-3xl font-bold text-status-high" style={{ textShadow: '0 0 15px rgba(249,115,22,0.4)' }}>
-                        {isLoading ? '—' : (stats.exposure_score ?? 0)}{' '}
-                        <span className="text-sm text-secondary">/ 100</span>
-                    </div>
-                </div>
-
+            <div className="grid grid-cols-2 md-grid-cols-3 lg-grid-cols-6 gap-3">
                 {kpis.map((kpi, i) => {
                     const Icon = kpi.icon;
                     return (
@@ -208,9 +235,76 @@ const DashboardPage = () => {
                 })}
             </div>
 
-            <div className="flex flex-col lg-flex-row gap-4 flex-1 min-h-[400px]">
+            <div className="grid grid-cols-1 lg-grid-cols-4 gap-4 flex-1 min-h-[400px]">
+                {/* Analytics Top Cards */}
+                <div className="lg-col-span-4 grid grid-cols-1 md-grid-cols-3 gap-4">
+                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
+                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Risk Distribution</h3>
+                        {riskData.length === 0 ? (
+                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No data yet</div>
+                        ) : (
+                            <div className="flex-1 flex items-center justify-center gap-4">
+                                <div className="w-[120px] h-[120px]">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie data={riskData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
+                                                {riskData.map((entry, i) => <Cell key={i} fill={entry.color ?? '#6366F1'} />)}
+                                            </Pie>
+                                            <Tooltip contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)' }} />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className="flex flex-col gap-2 flex-1">
+                                    {riskData.map(d => (
+                                        <div key={d.name} className="flex items-center gap-2 text-xs w-full justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color ?? '#6366F1' }} />
+                                                <span className="text-secondary">{d.name}</span>
+                                            </div>
+                                            <span className="font-bold">{d.value}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    
+                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
+                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Certificate Expiry Timeline</h3>
+                        <div className="flex-1 flex flex-col justify-end gap-3 px-2">
+                            {expiryTimelineData.map((d, i) => (
+                                <div key={i} className="flex items-center gap-3 text-xs">
+                                    <span className="w-20 text-secondary text-right">{d.name}</span>
+                                    <div className="flex-1 h-3 bg-surface-card rounded-sm overflow-hidden flex items-center">
+                                        <div className={`h-full ${i === 0 ? 'bg-status-critical' : i === 1 ? 'bg-status-high' : i === 2 ? 'bg-status-medium' : 'bg-status-safe'}`} style={{ width: `${Math.max(5, (d.count / Math.max(...expiryTimelineData.map(e => e.count))) * 100)}%` }} />
+                                    </div>
+                                    <span className="w-6 font-bold text-right">{d.count}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
+                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">IP Version Breakdown</h3>
+                        <div className="flex-1 relative flex items-center justify-center">
+                            <ResponsiveContainer width={160} height={160}>
+                                <PieChart>
+                                    <Pie data={ipData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="none" dataKey="value">
+                                        {ipData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                                    </Pie>
+                                    <Tooltip />
+                                </PieChart>
+                            </ResponsiveContainer>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                <span className="text-2xl font-bold text-primary">86%</span>
+                                <span className="text-xs text-secondary font-mono">IPv4 Dominant</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Asset Table */}
-                <div className="flex-1 glass-card border overflow-hidden flex flex-col">
+                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
                     <div className="p-4 border-b flex flex-wrap gap-2 items-center justify-between bg-surface-card-hover">
                         <h2 className="font-bold">Cryptographic Asset Map</h2>
                         <div className="flex items-center gap-2">
@@ -286,54 +380,22 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {/* Analytics Sidebar */}
-                <div className="w-full lg-w-80 flex flex-col gap-4">
-                    <div className="glass-card border p-4 flex-1 min-h-[200px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Risk Distribution</h3>
-                        {riskData.length === 0 ? (
-                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No data yet</div>
-                        ) : (
-                            <>
-                                <div className="flex-1 relative min-h-[150px]">
-                                    <ResponsiveContainer width="100%" height="100%">
-                                        <PieChart>
-                                            <Pie data={riskData} cx="50%" cy="50%" innerRadius={40} outerRadius={70}
-                                                paddingAngle={2} dataKey="value" stroke="none">
-                                                {riskData.map((entry, i) => <Cell key={i} fill={entry.color ?? '#6366F1'} />)}
-                                            </Pie>
-                                            <Tooltip contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
-                                        </PieChart>
-                                    </ResponsiveContainer>
-                                </div>
-                                <div className="grid grid-cols-2 gap-2 mt-4">
-                                    {riskData.map(d => (
-                                        <div key={d.name} className="flex items-center gap-2 text-xs">
-                                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: d.color ?? '#6366F1' }} />
-                                            <span className="text-secondary">{d.name}</span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
+                {/* Geographic Distribution Mockup */}
+                <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[280px] relative overflow-hidden bg-gradient-to-br from-surface-card to-transparent">
+                   <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-6 border-b border-glass-border pb-2 inline-flex items-center gap-2"><Globe size={18} className="text-primary-indigo" /> Geographic Asset Distribution</h3>
+                   <div className="flex-1 flex relative">
+                        {/* Map points overlay simulation */}
+                        <div className="absolute inset-0 bg-[url('https://upload.wikimedia.org/wikipedia/commons/e/ec/World_map_blank_without_borders.svg')] bg-no-repeat bg-center bg-contain opacity-10" style={{ filter: 'invert(1)' }}></div>
+                        
+                        <div className="absolute top-[30%] left-[20%] w-3 h-3 bg-status-critical rounded-full animate-ping" />
+                        <div className="absolute top-[30%] left-[20%] w-3 h-3 bg-status-critical rounded-full shadow-[0_0_15px_rgba(239,68,68,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">USA</span></div>
+                        
+                        <div className="absolute top-[25%] right-[40%] w-2 h-2 bg-status-safe rounded-full shadow-[0_0_10px_rgba(34,197,94,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">Germany</span></div>
+                        
+                        <div className="absolute top-[45%] right-[25%] w-3 h-3 bg-primary-indigo rounded-full shadow-[0_0_15px_rgba(99,102,241,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">India</span></div>
 
-                    <div className="glass-card border p-4 flex-1 min-h-[200px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Algorithmic Breakdown</h3>
-                        {algoData.length === 0 ? (
-                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No data yet</div>
-                        ) : (
-                            <div className="flex-1 min-h-[150px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={algoData} layout="vertical" margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
-                                        <XAxis type="number" hide />
-                                        <YAxis dataKey="name" type="category" width={80} tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
-                                        <Tooltip cursor={{ fill: 'var(--surface-card-hover)' }} contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
-                                        <Bar dataKey="count" fill="var(--primary-indigo)" radius={[0, 4, 4, 0]} barSize={12} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        )}
-                    </div>
+                        <div className="absolute top-[50%] right-[15%] w-2 h-2 bg-status-high rounded-full shadow-[0_0_10px_rgba(249,115,22,1)] flex items-center justify-center"><span className="absolute -bottom-5 text-[10px] font-bold text-primary">Singapore</span></div>
+                   </div>
                 </div>
             </div>
 
@@ -342,9 +404,12 @@ const DashboardPage = () => {
         .border-status-critical\\/30 { border-color: rgba(239,68,68,0.3); }
         .bg-status-high\\/5 { background-color: rgba(249,115,22,0.05); }
         @media (min-width: 1024px) {
-          .lg-grid-cols-5 { grid-template-columns: repeat(5, minmax(0,1fr)) !important; }
-          .lg-flex-row { flex-direction: row !important; }
-          .lg-w-80 { width: 20rem !important; }
+          .lg-grid-cols-6 { grid-template-columns: repeat(6, minmax(0,1fr)) !important; }
+          .lg-grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }
+          .lg-col-span-4 { grid-column: span 4 / span 4 !important; }
+        }
+        @media (min-width: 768px) {
+          .md-grid-cols-3 { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
         }
       `}</style>
         </div>

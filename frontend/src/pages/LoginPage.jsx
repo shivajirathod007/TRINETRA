@@ -1,15 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Fingerprint, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import GlowButton from '../components/GlowButton';
 import { useTheme } from '../context/ThemeContext';
 
 const LoginPage = () => {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState('shiva@gmail.com');
+    const [password, setPassword] = useState('shiva@124');
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const navigate = useNavigate();
     const { isDarkMode } = useTheme();
+
+    useEffect(() => {
+        if (localStorage.getItem('trinetra_auth') === 'true') {
+            navigate('/dashboard');
+        }
+    }, [navigate]);
 
     const handleLogin = (e) => {
         e.preventDefault();
@@ -17,9 +23,10 @@ const LoginPage = () => {
 
         // Mock authentication process
         setTimeout(() => {
+            localStorage.setItem('trinetra_auth', 'true');
             setIsAuthenticating(false);
             navigate('/dashboard');
-        }, 1200);
+        }, 800);
     };
 
     return (

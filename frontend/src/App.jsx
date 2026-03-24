@@ -13,6 +13,7 @@ import AssetDetailPage from './pages/AssetDetailPage';
 import CBOMExplorer from './pages/CBOMExplorer';
 import CertificatesPage from './pages/CertificatesPage';
 import HistoryPage from './pages/HistoryPage';
+import { DiscoveryPage, RatingPage, ReportingPage } from './pages/OtherPages';
 
 function App() {
   return (
@@ -30,6 +31,9 @@ function App() {
           <Route path="/cbom" element={<CBOMExplorer />} />
           <Route path="/certificates" element={<CertificatesPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/discovery" element={<DiscoveryPage />} />
+          <Route path="/rating" element={<RatingPage />} />
+          <Route path="/reporting" element={<ReportingPage />} />
         </Route>
       </Routes>
     </Router>
