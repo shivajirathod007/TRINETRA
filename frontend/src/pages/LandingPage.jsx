@@ -72,8 +72,12 @@ const LandingPage = () => {
                     <div className="hero-bg-glow" />
 
                     <p className="hero-tagline">
-                        <span className="hero-tagline-dot" /> Seeing tomorrow's cryptographic threats today
+                        <span className="hero-tagline-dot" /> Tracking cryptographic vulnerability across your perimeter
                     </p>
+
+                    <div className="text-primary-indigo font-bold tracking-widest uppercase mb-4 text-sm md-text-base flex items-center justify-center gap-2">
+                        <Fingerprint size={20} /> TRINETRA
+                    </div>
 
                     <h1 className="hero-title">
                         Quantum Exposure <br />
@@ -104,6 +108,16 @@ const LandingPage = () => {
                                     {isScanning ? 'Initiating...' : 'INITIATE SCAN'} <ArrowRight size={16} />
                                 </GlowButton>
                             </div>
+                        </div>
+
+                        <div className="flex flex-wrap justify-center gap-4 mt-8 mb-8">
+                            <GlowButton type="button" onClick={() => navigate('/login')} className="px-8 bg-primary-indigo hover:bg-primary-indigo-hover text-white" style={{ width: 'auto' }}>
+                                Dashboard Login <ArrowRight size={16} className="ml-2" />
+                            </GlowButton>
+                            
+                            <button type="button" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="px-8 py-3 rounded-xl border border-glass-border bg-surface-card hover:bg-surface-card-hover transition-colors font-semibold text-sm">
+                                Explore Platform
+                            </button>
                         </div>
 
                         <div className="flex flex-wrap justify-center gap-3 mb-8">

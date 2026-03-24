@@ -3,18 +3,13 @@ import React, { createContext, useState, useEffect, useContext } from 'react';
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-    const [isDarkMode, setIsDarkMode] = useState(true);
-
-    // On mount, read from local storage or system preference
-    useEffect(() => {
+    const [isDarkMode, setIsDarkMode] = useState(() => {
         const savedTheme = localStorage.getItem('trinetra-theme');
         if (savedTheme) {
-            setIsDarkMode(savedTheme === 'dark');
-        } else {
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            setIsDarkMode(prefersDark);
+            return savedTheme === 'dark';
         }
-    }, []);
+        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    });
 
     // Update body class and local storage when theme changes
     useEffect(() => {

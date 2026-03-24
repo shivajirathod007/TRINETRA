@@ -6,6 +6,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 
 // Pages
 import LandingPage from './pages/LandingPage';
+import LoginPage from './pages/LoginPage';
 import LiveScanPage from './pages/LiveScanPage';
 import DashboardPage from './pages/DashboardPage';
 import AssetDetailPage from './pages/AssetDetailPage';
@@ -17,9 +18,12 @@ function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        {/* All pages use the same sidebar layout for consistent navigation */}
+        {/* Public Routes without the Sidebar */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+
+        {/* Authenticated Pages wrapped in Sidebar Dashboard Layout */}
         <Route element={<DashboardLayout />}>
-          <Route path="/" element={<LandingPage />} />
           <Route path="/scan/:domain" element={<LiveScanPage />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/asset/:id" element={<AssetDetailPage />} />

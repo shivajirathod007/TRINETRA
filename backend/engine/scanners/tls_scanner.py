@@ -19,8 +19,6 @@ from sslyze.errors import (
     ConnectionToServerFailed,
     ServerHostnameCouldNotBeResolved,
 )
-from sslyze.plugins.scan_commands import ScanCommandExtraArgumentsDict
-
 from core.constants import DEPRECATED_TLS_VERSIONS
 from core.exceptions import TLSScanError, ScanBlockedError
 from core.logging import get_logger
@@ -150,8 +148,8 @@ class TLSScanner:
 
         # ── Protocol versions + cipher suites ─────────────────────────────────
         for version_name, cmd in VERSION_COMMAND_MAP.items():
-            attempt = raw.scan_result.get_scan_command_attempt(cmd)
-            if attempt.status.name != "COMPLETED":
+            attempt = getattr(raw.scan_result, cmd.name.lower(), None)
+            if not attempt or attempt.status.name != "COMPLETED":
                 continue
 
             accepted = attempt.result.accepted_cipher_suites
@@ -187,8 +185,8 @@ class TLSScanner:
             "OPENSSL_CCS": ScanCommand.OPENSSL_CCS_INJECTION,
         }
         for vuln_name, cmd in vuln_checks.items():
-            attempt = raw.scan_result.get_scan_command_attempt(cmd)
-            if attempt.status.name != "COMPLETED":
+            attempt = getattr(raw.scan_result, cmd.name.lower(), None)
+            if not attempt or attempt.status.name != "COMPLETED":
                 continue
             try:
                 is_vulnerable = getattr(attempt.result, "is_vulnerable_to_robot", False) or \
@@ -200,16 +198,16 @@ class TLSScanner:
                 pass
 
         # ── TLS config issues ──────────────────────────────────────────────────
-        comp_attempt = raw.scan_result.get_scan_command_attempt(ScanCommand.TLS_COMPRESSION)
-        if comp_attempt.status.name == "COMPLETED":
-            result.tls_compression_enabled = (
-                comp_attempt.result.supports_compression
+        comp_attempt = getattr(raw.scan_result, ScanCommand.TLS_COMPRESSION.name.lower(), None)
+        if comp_attempt and comp_attempt.status.name == "COMPLETED":
+            result.tls_compression_enabled = getattr(
+                comp_attempt.result, "supports_compression", False
             )
 
-        reneg_attempt = raw.scan_result.get_scan_command_attempt(ScanCommand.SESSION_RENEGOTIATION)
-        if reneg_attempt.status.name == "COMPLETED":
-            result.insecure_renegotiation = (
-                reneg_attempt.result.supports_insecure_renegotiation
+        reneg_attempt = getattr(raw.scan_result, ScanCommand.SESSION_RENEGOTIATION.name.lower(), None)
+        if reneg_attempt and reneg_attempt.status.name == "COMPLETED":
+            result.insecure_renegotiation = getattr(
+                reneg_attempt.result, "supports_insecure_renegotiation", False
             )
 
         log.info(

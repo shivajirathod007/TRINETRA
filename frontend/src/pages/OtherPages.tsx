@@ -13,8 +13,8 @@ export function CBOMPage() {
   const { data: cbom, isLoading } = useCBOM(activeScanId)
 
   if (!activeScanId) return <EmptyState message="No active scan." />
-  if (isLoading)     return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
-  if (!cbom)         return <EmptyState message="CBOM not available yet. Scan may still be running." icon="⏳" />
+  if (isLoading) return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
+  if (!cbom) return <EmptyState message="CBOM not available yet. Scan may still be running." icon="⏳" />
 
   const summary = cbom.organization_summary
 
@@ -33,10 +33,10 @@ export function CBOMPage() {
       {/* Summary cards */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         {[
-          { label: 'Total Assets',       value: summary.total_assets_scanned },
-          { label: 'HNDL Active',        value: summary.hndl_active_assets,    color: 'text-red-400' },
-          { label: 'Shadow Assets',      value: summary.shadow_assets_found,   color: 'text-yellow-400' },
-          { label: 'PQC Ready',          value: summary.pqc_ready_assets,      color: 'text-emerald-400' },
+          { label: 'Total Assets', value: summary.total_assets_scanned },
+          { label: 'HNDL Active', value: summary.hndl_active_assets, color: 'text-red-400' },
+          { label: 'Shadow Assets', value: summary.shadow_assets_found, color: 'text-yellow-400' },
+          { label: 'PQC Ready', value: summary.pqc_ready_assets, color: 'text-emerald-400' },
         ].map(item => (
           <div key={item.label} className="card-sm text-center">
             <div className={`text-2xl font-bold ${item.color ?? 'text-white'}`}>{item.value}</div>
@@ -88,11 +88,11 @@ export function CertificatesPage() {
   const { data: certs = [], isLoading } = useCertificates(activeScanId)
 
   if (!activeScanId) return <EmptyState message="No active scan." />
-  if (isLoading)     return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
+  if (isLoading) return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
 
   const byTier = {
     FULLY_QUANTUM_SAFE: certs.filter(c => c.status === 'FULLY_QUANTUM_SAFE'),
-    PQC_READY:          certs.filter(c => c.status === 'PQC_READY'),
+    PQC_READY: certs.filter(c => c.status === 'PQC_READY'),
     QUANTUM_VULNERABLE: certs.filter(c => c.status === 'QUANTUM_VULNERABLE'),
   }
 
@@ -122,10 +122,10 @@ export function DiscoveryPage() {
   const { data: assets = [], isLoading } = useAssets(activeScanId)
 
   if (!activeScanId) return <EmptyState message="No active scan." />
-  if (isLoading)     return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
+  if (isLoading) return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
 
   const shadows = assets.filter(a => a.is_shadow_asset)
-  const known   = assets.filter(a => !a.is_shadow_asset)
+  const known = assets.filter(a => !a.is_shadow_asset)
 
   return (
     <div>
@@ -134,9 +134,9 @@ export function DiscoveryPage() {
       {/* Filter tabs */}
       <div className="flex gap-4 mb-4 border-b border-surface-600">
         {[
-          { label: `Domains (${assets.length})`,           active: true },
-          { label: `Shadow Assets (${shadows.length})`,    active: false },
-          { label: `Known Assets (${known.length})`,       active: false },
+          { label: `Domains (${assets.length})`, active: true },
+          { label: `Shadow Assets (${shadows.length})`, active: false },
+          { label: `Known Assets (${known.length})`, active: false },
         ].map(tab => (
           <button key={tab.label} className={`pb-3 text-sm font-medium transition-colors ${tab.active ? 'border-b-2 border-brand-gold text-white' : 'text-gray-400 hover:text-white'}`}>
             {tab.label}
@@ -185,7 +185,7 @@ export function HistoryPage() {
   const { data: scans = [], isLoading } = useScanHistory(activeDomain)
 
   if (!activeDomain) return <EmptyState message="No active domain. Initiate a scan first." />
-  if (isLoading)     return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
+  if (isLoading) return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
 
   return (
     <div>
@@ -193,9 +193,9 @@ export function HistoryPage() {
 
       <div className="grid grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Executive Reporting',  icon: '👥', desc: 'High-level CISO summary' },
-          { label: 'Scheduled Reporting',  icon: '📅', desc: 'Automated weekly scans' },
-          { label: 'On-Demand Reporting',  icon: '📊', desc: 'Generate reports now' },
+          { label: 'Executive Reporting', icon: '👥', desc: 'High-level CISO summary' },
+          { label: 'Scheduled Reporting', icon: '📅', desc: 'Automated weekly scans' },
+          { label: 'On-Demand Reporting', icon: '📊', desc: 'Generate reports now' },
         ].map(item => (
           <div key={item.label} className="card text-center cursor-pointer hover:border-brand-gold/40 transition-colors">
             <div className="text-3xl mb-3">{item.icon}</div>
@@ -248,18 +248,18 @@ export function PosturePage() {
   if (!activeScanId) return <EmptyState message="No active scan." />
 
   const pqcReady = assets.filter(a => a.quantum_safe_status === 'FULLY_QUANTUM_SAFE').length
-  const hybrid   = assets.filter(a => a.quantum_safe_status === 'PQC_READY').length
-  const vuln     = assets.filter(a => a.quantum_safe_status === 'QUANTUM_VULNERABLE').length
-  const total    = assets.length
+  const hybrid = assets.filter(a => a.quantum_safe_status === 'PQC_READY').length
+  const vuln = assets.filter(a => a.quantum_safe_status === 'VULNERABLE').length
+  const total = assets.length
 
   return (
     <div>
       <SectionHeader title="Posture of PQC" subtitle="Organization-wide quantum readiness" />
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Fully Quantum Safe', count: pqcReady, pct: total ? (pqcReady/total*100).toFixed(0) : 0, color: 'text-emerald-400' },
-          { label: 'PQC Ready (Hybrid)', count: hybrid,   pct: total ? (hybrid/total*100).toFixed(0) : 0,   color: 'text-orange-400' },
-          { label: 'Quantum Vulnerable', count: vuln,     pct: total ? (vuln/total*100).toFixed(0) : 0,     color: 'text-red-400' },
+          { label: 'Fully Quantum Safe', count: pqcReady, pct: total ? (pqcReady / total * 100).toFixed(0) : 0, color: 'text-emerald-400' },
+          { label: 'PQC Ready (Hybrid)', count: hybrid, pct: total ? (hybrid / total * 100).toFixed(0) : 0, color: 'text-orange-400' },
+          { label: 'Quantum Vulnerable', count: vuln, pct: total ? (vuln / total * 100).toFixed(0) : 0, color: 'text-red-400' },
         ].map(item => (
           <div key={item.label} className="card text-center">
             <div className={`text-4xl font-bold ${item.color}`}>{item.pct}%</div>

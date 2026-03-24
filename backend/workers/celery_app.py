@@ -29,9 +29,9 @@ celery_app.conf.update(
     worker_prefetch_multiplier=1,
     task_routes={
         "orchestrator.run_full_scan": {"queue": "scans"},
-        "workers.tasks.discovery_tasks.*": {"queue": "discovery"},
-        "workers.tasks.scan_tasks.*": {"queue": "scans"},
-        "workers.tasks.analysis_tasks.*": {"queue": "analysis"},
+        "discovery_tasks.*": {"queue": "discovery"},
+        "scan_tasks.*": {"queue": "scans"},
+        "analysis_tasks.*": {"queue": "analysis"},
     },
     task_soft_time_limit=120,   # 2 minutes per task
     task_time_limit=180,        # Hard kill after 3 minutes

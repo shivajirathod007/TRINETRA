@@ -384,9 +384,17 @@ a {
   color: var(--text-primary);
 }
 
-.stat-value.accent-critical { color: var(--status-critical); }
-.stat-value.accent-indigo { color: var(--primary-indigo); }
-.stat-value.accent-safe { color: var(--status-safe); }
+.stat-value.accent-critical {
+  color: var(--status-critical);
+}
+
+.stat-value.accent-indigo {
+  color: var(--primary-indigo);
+}
+
+.stat-value.accent-safe {
+  color: var(--status-safe);
+}
 
 /* ─── Glass Card ────────────────────────────────────────────────── */
 .glass-card {
@@ -876,4 +884,10 @@ a {
 
 .data-table td {
   color: var(--text-primary);
+}
+
+hackathon-theme .data-table td {
+  color: #1a0a0a;
+  border-bottom: 2px solid #fff;
+  font-weight: 500;
 }
