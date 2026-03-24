@@ -4,36 +4,42 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 // Layout
 import DashboardLayout from './layouts/DashboardLayout';
 
-// Pages
+// Public Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
-import LiveScanPage from './pages/LiveScanPage';
-import DashboardPage from './pages/DashboardPage';
+
+// Authenticated Pages — one file per responsibility (SOLID / SRP)
+import LiveScanPage    from './pages/LiveScanPage';
+import DashboardPage   from './pages/DashboardPage';
 import AssetDetailPage from './pages/AssetDetailPage';
-import CBOMExplorer from './pages/CBOMExplorer';
+import DiscoveryPage   from './pages/DiscoveryPage';
+import CBOMPage        from './pages/CBOMPage';
 import CertificatesPage from './pages/CertificatesPage';
-import HistoryPage from './pages/HistoryPage';
-import { DiscoveryPage, RatingPage, ReportingPage } from './pages/OtherPages';
+import PosturePage     from './pages/PosturePage';
+import RatingPage      from './pages/RatingPage';
+import ReportingPage   from './pages/ReportingPage';
+import HistoryPage     from './pages/HistoryPage';
 
 function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <Routes>
-        {/* Public Routes without the Sidebar */}
-        <Route path="/" element={<LandingPage />} />
+        {/* ── Public routes (no sidebar) ─────────────────────────── */}
+        <Route path="/"      element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
 
-        {/* Authenticated Pages wrapped in Sidebar Dashboard Layout */}
+        {/* ── Authenticated routes (wrapped in sidebar layout) ───── */}
         <Route element={<DashboardLayout />}>
-          <Route path="/scan/:domain" element={<LiveScanPage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/asset/:id" element={<AssetDetailPage />} />
-          <Route path="/cbom" element={<CBOMExplorer />} />
-          <Route path="/certificates" element={<CertificatesPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/discovery" element={<DiscoveryPage />} />
-          <Route path="/rating" element={<RatingPage />} />
-          <Route path="/reporting" element={<ReportingPage />} />
+          <Route path="/dashboard"      element={<DashboardPage />} />
+          <Route path="/discovery"      element={<DiscoveryPage />} />
+          <Route path="/cbom"           element={<CBOMPage />} />
+          <Route path="/certificates"   element={<CertificatesPage />} />
+          <Route path="/posture"        element={<PosturePage />} />
+          <Route path="/rating"         element={<RatingPage />} />
+          <Route path="/reporting"      element={<ReportingPage />} />
+          <Route path="/history"        element={<HistoryPage />} />
+          <Route path="/scan/:domain"   element={<LiveScanPage />} />
+          <Route path="/asset/:id"      element={<AssetDetailPage />} />
         </Route>
       </Routes>
     </Router>

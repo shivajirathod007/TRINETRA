@@ -4,13 +4,13 @@ import { LayoutDashboard, FileJson, ShieldCheck, History, Moon, Sun, Home, Searc
 import { useTheme } from '../context/ThemeContext';
 
 const navItems = [
-    { name: 'Home', path: '/', icon: Home },
-    { name: 'Asset Inventory', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Asset Discovery', path: '/discovery', icon: Search },
-    { name: 'CBOM', path: '/cbom', icon: FileJson },
-    { name: 'Posture of PQC', path: '/certificates', icon: ShieldCheck },
-    { name: 'Cyber Rating', path: '/rating', icon: Star },
-    { name: 'Reporting', path: '/reporting', icon: BarChart2 },
+    { name: 'Home',            path: '/',           icon: Home },
+    { name: 'Asset Inventory', path: '/dashboard',  icon: LayoutDashboard },
+    { name: 'Asset Discovery', path: '/discovery',  icon: Search },
+    { name: 'CBOM',            path: '/cbom',        icon: FileJson },
+    { name: 'Posture of PQC',  path: '/posture',    icon: ShieldCheck },
+    { name: 'Cyber Rating',    path: '/rating',      icon: Star },
+    { name: 'Reporting',       path: '/reporting',  icon: BarChart2 },
 ];
 
 const Sidebar = () => {
