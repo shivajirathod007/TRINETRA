@@ -12,10 +12,9 @@ import paramiko
 from paramiko.transport import Transport
 
 from core.logging import get_logger
+from core.config import settings
 
 log = get_logger(__name__)
-
-SSH_TIMEOUT = 10.0
 
 # Quantum-vulnerable SSH host key types
 VULNERABLE_HOST_KEYS = {"ssh-rsa", "ecdsa-sha2-nistp256", "ecdsa-sha2-nistp384", "ecdsa-sha2-nistp521"}
@@ -66,14 +65,14 @@ class SSHProbe:
         result = SSHScanResult(hostname=hostname, port=port)
 
         try:
-            sock = socket.create_connection((hostname, port), timeout=SSH_TIMEOUT)
+            sock = socket.create_connection((hostname, port), timeout=settings.ssh_probe_timeout)
         except (socket.timeout, ConnectionRefusedError, OSError) as e:
             result.error = f"Connection failed: {str(e)[:100]}"
             return result
 
         try:
             transport = Transport(sock)
-            transport.start_client(timeout=SSH_TIMEOUT)
+            transport.start_client(timeout=settings.ssh_probe_timeout)
 
             # ── Server version ────────────────────────────────────────────────
             remote_version = transport.remote_version or ""

@@ -16,6 +16,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.x509.oid import ExtensionOID
 
 from core.logging import get_logger
+from core.config import settings
 
 log = get_logger(__name__)
 
@@ -92,7 +93,7 @@ class CertAnalyzer:
         ctx.verify_mode = ssl.CERT_NONE  # We check validity ourselves
 
         chain_pem = []
-        with socket.create_connection((hostname, port), timeout=10) as sock:
+        with socket.create_connection((hostname, port), timeout=settings.cert_fetch_timeout) as sock:
             with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
                 # Get leaf certificate
                 der = ssock.getpeercert(binary_form=True)

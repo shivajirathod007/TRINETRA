@@ -3,11 +3,10 @@ import json
 import httpx
 from typing import List
 from .schemas import ClassifierInput, SingleDetection
+from core.config import settings
 from core.logging import get_logger
 
 log = get_logger(__name__)
-
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 FALLBACK_SYSTEM_PROMPT = """You are a cryptographic security analyst specializing in post-quantum readiness.
 Analyze the HTTP response provided and identify any cryptographic algorithm references.
@@ -47,24 +46,24 @@ BODY (first 2000 chars):
 Return JSON array only."""
 
 async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
-    if not ANTHROPIC_API_KEY:
+    if not settings.anthropic_api_key:
         log.warning("anthropic_api_key_missing_skipping_llm_fallback")
         return []
 
     try:
         user_prompt = build_fallback_user_prompt(payload)
         
-        async with httpx.AsyncClient(timeout=15.0) as client:
+        async with httpx.AsyncClient(timeout=settings.http_inspect_timeout) as client:
             resp = await client.post(
                 "https://api.anthropic.com/v1/messages",
                 headers={
-                    "x-api-key": ANTHROPIC_API_KEY,
+                    "x-api-key": settings.anthropic_api_key,
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json"
                 },
                 json={
-                    "model": "claude-3-5-sonnet-20240620",
-                    "max_tokens": 1024,
+                    "model": settings.llm_model,
+                    "max_tokens": settings.llm_max_tokens,
                     "system": FALLBACK_SYSTEM_PROMPT,
                     "messages": [
                         {"role": "user", "content": user_prompt}

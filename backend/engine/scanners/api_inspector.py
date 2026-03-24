@@ -14,10 +14,9 @@ from typing import Optional
 import httpx
 
 from core.logging import get_logger
+from core.config import settings
 
 log = get_logger(__name__)
-
-HTTP_TIMEOUT = 15.0
 
 # Regex to find JWT-shaped tokens (3 base64url segments separated by dots)
 JWT_PATTERN = re.compile(r"eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+")
@@ -86,7 +85,7 @@ class APIInspector:
 
         try:
             async with httpx.AsyncClient(
-                timeout=HTTP_TIMEOUT,
+                timeout=settings.http_inspect_timeout,
                 verify=False,
                 follow_redirects=True,
             ) as client:
@@ -103,8 +102,8 @@ class APIInspector:
                 result.response_headers_raw = dict(resp.headers)
                 body = resp.text
 
-                # Capture first 4000 chars for AI classifier input
-                result.response_body_preview = body[:4000]
+                # Capture first N chars for AI classifier input
+                result.response_body_preview = body[:settings.api_body_preview_chars]
 
                 # Run all inspection checks
                 self._check_security_headers(resp, result)

@@ -11,6 +11,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from core.constants import VPN_PORTS
+from core.config import settings
 from core.logging import get_logger
 
 log = get_logger(__name__)
@@ -30,8 +31,6 @@ SCAN_PORTS = {
     943:   "openvpn-admin",
 }
 
-PORT_CONCURRENCY = 100
-PORT_TIMEOUT = 3.0  # seconds
 
 
 @dataclass
@@ -74,8 +73,8 @@ class PortScanner:
     """
 
     def __init__(self):
-        self.timeout = PORT_TIMEOUT
-        self.semaphore = asyncio.Semaphore(PORT_CONCURRENCY)
+        self.timeout = settings.port_scan_timeout
+        self.semaphore = asyncio.Semaphore(settings.port_scan_concurrency)
 
     async def scan(self, ip_address: str, fqdn: str) -> PortScanResult:
         """

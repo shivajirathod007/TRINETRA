@@ -13,11 +13,10 @@ from typing import Optional
 import httpx
 
 from core.constants import VPN_FINGERPRINTS, VPN_PORTS
+from core.config import settings
 from core.logging import get_logger
 
 log = get_logger(__name__)
-
-HTTP_TIMEOUT = 10.0
 
 
 @dataclass
@@ -79,7 +78,7 @@ class VPNDetector:
         """Probe a single port for VPN presence."""
         try:
             async with httpx.AsyncClient(
-                timeout=HTTP_TIMEOUT,
+                timeout=settings.http_inspect_timeout,
                 verify=False,
                 follow_redirects=True,
             ) as client:

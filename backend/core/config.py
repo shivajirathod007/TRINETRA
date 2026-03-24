@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     ct_log_cache_ttl_hours: int = 24
     rate_limit_scans_per_hour: int = 20
 
+    # ── Scanner Timeouts (seconds) ────────────────────────────────────────────
+    port_scan_timeout: float = 3.0          # TCP connect timeout per port probe
+    port_scan_concurrency: int = 100        # Max simultaneous port probes
+    dns_concurrency: int = 50               # Max simultaneous DNS resolutions
+    dns_resolver_timeout: int = 5           # Per-query DNS timeout
+    dns_resolver_lifetime: int = 10         # Total resolution lifetime
+    http_inspect_timeout: float = 15.0      # API Inspector HTTP request timeout
+    api_body_preview_chars: int = 4000      # Response body chars sent to AI classifier
+    ssh_probe_timeout: float = 10.0         # SSH TCP connect + key exchange timeout
+    smtp_scan_timeout: float = 10.0         # SMTP STARTTLS scan timeout
+    cert_fetch_timeout: float = 10.0        # TLS cert chain fetch socket timeout
+
     # ── CRQC Timeline ─────────────────────────────────────────────────────────
     crqc_pessimistic_year: int = 2028
     crqc_moderate_year: int = 2032
@@ -43,6 +55,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     ai_confidence_threshold: float = 0.60
     distilbert_model_path: str = "./models/crypto_classifier"
+    llm_model: str = "claude-3-5-sonnet-20240620"   # Anthropic model for LLM fallback
+    llm_max_tokens: int = 1024                        # Max tokens in LLM response
 
     # ── CT Log ────────────────────────────────────────────────────────────────
     crtsh_base_url: str = "https://crt.sh"

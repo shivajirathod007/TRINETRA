@@ -13,10 +13,9 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from core.logging import get_logger
+from core.config import settings
 
 log = get_logger(__name__)
-
-SMTP_TIMEOUT = 10.0
 
 
 @dataclass
@@ -46,7 +45,7 @@ class SMTPTLSScanner:
         result = SMTPTLSScanResult(hostname=hostname, port=port)
 
         try:
-            with smtplib.SMTP(hostname, port, timeout=SMTP_TIMEOUT) as smtp:
+            with smtplib.SMTP(hostname, port, timeout=settings.smtp_scan_timeout) as smtp:
                 smtp.ehlo()
 
                 # Check if STARTTLS is advertised

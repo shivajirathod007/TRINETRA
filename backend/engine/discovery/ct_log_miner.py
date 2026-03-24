@@ -162,7 +162,7 @@ class CTLogMiner:
         """
         url = f"https://api.hackertarget.com/hostsearch/?q={domain}"
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
+            async with httpx.AsyncClient(timeout=settings.http_inspect_timeout) as client:
                 resp = await client.get(url)
                 if resp.status_code != 200 or "error" in resp.text.lower():
                     return []

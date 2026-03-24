@@ -15,13 +15,11 @@ import dns.resolver
 import dns.rdatatype
 
 from core.exceptions import DNSResolutionError
+from core.config import settings
 from core.logging import get_logger
 from engine.discovery.ct_log_miner import CTLogEntry
 
 log = get_logger(__name__)
-
-# How many DNS resolutions to run concurrently
-DNS_CONCURRENCY = 50
 
 
 @dataclass
@@ -43,8 +41,8 @@ class DNSResolver:
 
     def __init__(self):
         self.resolver = dns.asyncresolver.Resolver()
-        self.resolver.timeout = 5
-        self.resolver.lifetime = 10
+        self.resolver.timeout = settings.dns_resolver_timeout
+        self.resolver.lifetime = settings.dns_resolver_lifetime
 
     async def resolve_all(
         self,
@@ -63,7 +61,7 @@ class DNSResolver:
             (live_assets, dead_assets) — both lists of ResolvedAsset
         """
         known_assets = known_assets or set()
-        semaphore = asyncio.Semaphore(DNS_CONCURRENCY)
+        semaphore = asyncio.Semaphore(settings.dns_concurrency)
 
         async def resolve_one(entry: CTLogEntry) -> ResolvedAsset:
             async with semaphore:

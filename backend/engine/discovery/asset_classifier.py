@@ -21,12 +21,12 @@ from typing import Optional
 import httpx
 
 from core.constants import VPN_FINGERPRINTS, VPN_PORTS
+from core.config import settings
 from core.logging import get_logger
 from engine.discovery.port_scanner import PortScanResult
 
 log = get_logger(__name__)
 
-HTTP_TIMEOUT = 10.0
 HTTP_HEADERS = {
     "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
     "Accept": "text/html,application/xhtml+xml,application/json",
@@ -178,7 +178,7 @@ class AssetClassifier:
         """
         try:
             async with httpx.AsyncClient(
-                timeout=HTTP_TIMEOUT,
+                timeout=settings.http_inspect_timeout,
                 follow_redirects=True,
                 verify=False,  # We handle cert validation in cert_analyzer
             ) as client:
