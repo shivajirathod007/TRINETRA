@@ -24,8 +24,9 @@ const LoginPage = () => {
         // Mock authentication process
         setTimeout(() => {
             localStorage.setItem('trinetra_auth', 'true');
+            localStorage.setItem('trinetra_user', email);
             setIsAuthenticating(false);
-            navigate('/dashboard');
+            navigate('/home');
         }, 800);
     };
 

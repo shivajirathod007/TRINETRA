@@ -9,7 +9,9 @@ import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 
 // Authenticated Pages — one file per responsibility (SOLID / SRP)
-import LiveScanPage    from './pages/LiveScanPage';
+import HomePage           from './pages/HomePage';
+import AssetInventoryPage from './pages/AssetInventoryPage';
+import LiveScanPage       from './pages/LiveScanPage';
 import DashboardPage   from './pages/DashboardPage';
 import AssetDetailPage from './pages/AssetDetailPage';
 import DiscoveryPage   from './pages/DiscoveryPage';
@@ -30,6 +32,8 @@ function App() {
 
         {/* ── Authenticated routes (wrapped in sidebar layout) ───── */}
         <Route element={<DashboardLayout />}>
+          <Route path="/home"           element={<HomePage />} />
+          <Route path="/inventory"      element={<AssetInventoryPage />} />
           <Route path="/dashboard"      element={<DashboardPage />} />
           <Route path="/discovery"      element={<DiscoveryPage />} />
           <Route path="/cbom"           element={<CBOMPage />} />
