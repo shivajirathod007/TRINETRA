@@ -8,7 +8,8 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import ThreatBadge from '../components/ThreatBadge';
 import AnimatedCounters from '../components/AnimatedCounters';
-import { dashboardApi, assetsApi, getActiveDomain, scanApi, setActiveScan } from '../api/index';
+import { dashboardApi, assetsApi, scanApi } from '../api/index';
+import { useScanStore } from '../store';
 
 const RISK_COLORS = {
     CRITICAL: '#EF4444',
@@ -22,10 +23,10 @@ const RISK_COLORS = {
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
     const navigate = useNavigate();
-    const activeDomain = getActiveDomain();
+    const { activeDomain, setActiveScan } = useScanStore();
     const domain = activeDomain || '';
 
-    const { data: recentScans = [] } = useQuery({
+    const { data: recentScans = [], isLoading: recentLoading } = useQuery({
         queryKey: ['scans-recent'],
         queryFn: () => scanApi.list(null, 10),
         staleTime: 60_000,
@@ -46,12 +47,19 @@ const DashboardPage = () => {
     });
 
     const noDomain = !domain;
+    
+    // Auto-load latest past data if no domain is active
+    React.useEffect(() => {
+        if (noDomain && recentScans.length > 0) {
+            setActiveScan(recentScans[0].scan_id, recentScans[0].domain);
+        }
+    }, [noDomain, recentScans, setActiveScan]);
+
     const handleSelectScan = (scanDomain, scanId) => {
-        setActiveScan(scanDomain, scanId);
-        window.location.reload();
+        setActiveScan(scanId, scanDomain);
     };
 
-    const isLoading = !noDomain && (statsLoading || assetsLoading);
+    const isLoading = recentLoading || (!noDomain && (statsLoading || assetsLoading));
 
     const sortedAssets = [...assets].sort((a, b) => {
         if (sortField === 'score') return (b.score ?? 0) - (a.score ?? 0);
@@ -78,43 +86,59 @@ const DashboardPage = () => {
         { label: 'Fully Safe', value: stats.safe ?? 0, icon: FileLock2, color: 'text-status-safe' },
     ];
 
-    if (noDomain) {
-        const scans = Array.isArray(recentScans) ? recentScans : [];
+    if (noDomain && !recentLoading && recentScans.length === 0) {
+        // True Zero-data empty state: Enterprise level layout
         return (
-            <div className="flex flex-col min-h-[60vh] justify-center">
-                <div className="max-w-md mx-auto text-center px-4">
-                    <div className="w-14 h-14 rounded-2xl bg-surface-card border border-border-divider flex items-center justify-center mx-auto mb-5">
-                        <LayoutDashboard size={28} className="text-primary-indigo" />
+            <div className="flex flex-col h-full relative overflow-hidden animate-fadeIn">
+                <div className="absolute inset-0 pointer-events-none grid-bg opacity-10" />
+                <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-indigo/10 blur-[120px] rounded-full pointer-events-none translate-x-1/3 -translate-y-1/3" />
+                
+                <div className="flex justify-between items-center mb-6 relative z-10">
+                    <h1 className="text-3xl font-bold font-outfit tracking-tight">Operations Center</h1>
+                    <div className="flex items-center gap-2 text-status-critical font-mono font-bold uppercase tracking-wider text-xs bg-status-critical/10 border border-status-critical/20 px-3 py-1.5 rounded-md">
+                        <AlertTriangle size={14} /> Offline Mode — No Telemetry Detected
                     </div>
-                    <h1 className="text-xl font-semibold text-primary mb-2">Operations Center</h1>
-                    <p className="text-secondary text-sm leading-relaxed mb-6">
-                        Run a domain scan from the home page to see your cryptographic asset map and risk metrics here.
-                    </p>
-                    <Link
-                        to="/"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-primary-indigo text-white font-medium text-sm hover:bg-primary-indigo-hover transition-colors"
-                    >
-                        <Search size={18} /> Run a scan <ArrowRight size={16} />
-                    </Link>
-                    {scans.length > 0 && (
-                        <div className="mt-8 text-left">
-                            <p className="text-xs font-medium text-secondary uppercase tracking-wider mb-3">Recent scans</p>
-                            <ul className="space-y-2">
-                                {scans.slice(0, 5).map((s) => (
-                                    <li key={s.scan_id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectScan(s.domain, s.scan_id)}
-                                            className="w-full text-left px-3 py-2 rounded-lg bg-surface-card border border-border-divider text-sm font-mono text-primary hover:bg-surface-card-hover transition-colors"
-                                        >
-                                            {s.domain}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
                 </div>
+
+                <div className="glass-panel p-1 border-t-4 border-t-primary-indigo mt-8 flex-1 relative flex flex-col items-center justify-center min-h-[500px] z-10 shadow-2xl">
+                    <div className="absolute inset-0 flex flex-col justify-between p-8 opacity-20 pointer-events-none filter blur-[2px]">
+                        <div className="grid grid-cols-4 gap-4 mb-4">
+                            {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-surface-card rounded-lg" />)}
+                        </div>
+                        <div className="flex flex-1 gap-4">
+                            <div className="flex-1 bg-surface-card rounded-lg" />
+                            <div className="w-80 bg-surface-card rounded-lg" />
+                        </div>
+                    </div>
+
+                    <div className="text-center relative z-20 max-w-xl p-8 bg-surface-card-hover/90 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl">
+                        <div className="w-20 h-20 rounded-full bg-primary-indigo/20 text-primary-indigo flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+                            <LayoutDashboard size={40} />
+                        </div>
+                        <h2 className="text-2xl font-bold font-outfit text-primary mb-3">Welcome to TRINETRA</h2>
+                        <p className="text-secondary leading-relaxed mb-8">
+                            Your workspace is fundamentally ready. <br/>
+                            To activate the enterprise cryptographic exposure engine, you must run the first intelligence scan against your external perimeter.
+                        </p>
+                        
+                        <Link
+                            to="/"
+                            className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-primary-indigo text-white font-bold font-outfit text-lg hover:bg-primary-indigo-hover hover:scale-105 transition-all shadow-[0_0_20px_rgba(99,102,241,0.5)] w-full"
+                        >
+                            <Search size={22} /> INITIATE FIRST SCAN <ArrowRight size={20} />
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (noDomain) {
+        // Fallback or loading state briefly while auto-selection effect runs
+        return (
+            <div className="flex items-center justify-center min-h-[60vh] text-secondary">
+                <RefreshCw size={24} className="animate-spin mr-3 text-primary-indigo" /> 
+                <span className="font-mono text-sm tracking-widest uppercase">Initializing Interface...</span>
             </div>
         );
     }

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Server, FileSearch, Fingerprint, Search, ArrowRight } from 'lucide-react';
+import { Shield, Server, FileSearch, Fingerprint, ArrowRight } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import GlowButton from '../components/GlowButton';
 import AnimatedCounters from '../components/AnimatedCounters';
-import { scanApi, setActiveScan } from '../api/index';
+import { scanApi } from '../api/index';
 
 /**
  * Fetch global platform stats (reuse a generic scan list count).
@@ -24,9 +24,7 @@ async function fetchPlatformStats() {
 }
 
 const LandingPage = () => {
-    const [domain, setDomain] = useState('');
     const [activeChip, setActiveChip] = useState('Web Portals');
-    const [isScanning, setIsScanning] = useState(false);
     const navigate = useNavigate();
 
     const { data: stats = {} } = useQuery({
@@ -36,21 +34,6 @@ const LandingPage = () => {
     });
 
     const chips = ['Web Portals', 'APIs', 'VPN Endpoints', 'Shadow Assets'];
-
-    const handleScan = async (e) => {
-        e.preventDefault();
-        if (!domain || isScanning) return;
-        setIsScanning(true);
-        try {
-            const result = await scanApi.initiate(domain.trim().toLowerCase());
-            const d = domain.trim().toLowerCase();
-            setActiveScan(d, result.scan_id);
-            navigate(`/scan/${encodeURIComponent(d)}`, { state: { scanId: result.scan_id } });
-        } catch (err) {
-            console.error('Failed to initiate scan:', err);
-            setIsScanning(false);
-        }
-    };
 
     return (
         <div className="landing-page-wrap min-h-screen flex flex-col relative overflow-hidden">
@@ -88,34 +71,13 @@ const LandingPage = () => {
                         Discover every cryptographic vulnerability across your organisation's public-facing infrastructure — before quantum computers do.
                     </p>
 
-                    <form onSubmit={handleScan} className="search-container">
-                        <div className="search-box">
-                            <div className="search-input-wrapper">
-                                <Search size={24} className="search-icon" />
-                                <input
-                                    type="text"
-                                    value={domain}
-                                    onChange={(e) => setDomain(e.target.value)}
-                                    placeholder="Enter domain — e.g. pnb.in"
-                                    className="search-input"
-                                    required
-                                    disabled={isScanning}
-                                />
-                            </div>
-                            <div style={{ width: '100%' }} className="sm-w-auto">
-                                <style>{`@media(min-width: 640px) { .sm-w-auto { width: auto !important; } }`}</style>
-                                <GlowButton type="submit" className="w-full" disabled={isScanning}>
-                                    {isScanning ? 'Initiating...' : 'INITIATE SCAN'} <ArrowRight size={16} />
-                                </GlowButton>
-                            </div>
-                        </div>
-
+                    <div className="flex flex-col items-center">
                         <div className="flex flex-wrap justify-center gap-4 mt-8 mb-8">
-                            <GlowButton type="button" onClick={() => navigate('/login')} className="px-8 bg-primary-indigo hover:bg-primary-indigo-hover text-white" style={{ width: 'auto' }}>
-                                Dashboard Login <ArrowRight size={16} className="ml-2" />
+                            <GlowButton type="button" onClick={() => navigate('/login')} className="px-8 py-3.5 bg-primary-indigo hover:bg-primary-indigo-hover text-white shadow-[0_0_20px_rgba(99,102,241,0.3)]" style={{ width: 'auto' }}>
+                                Dashboard Login <ArrowRight size={18} className="ml-2" />
                             </GlowButton>
                             
-                            <button type="button" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="px-8 py-3 rounded-xl border border-glass-border bg-surface-card hover:bg-surface-card-hover transition-colors font-semibold text-sm">
+                            <button type="button" onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })} className="px-8 py-3.5 rounded-xl border border-glass-border bg-surface-card hover:bg-surface-card-hover transition-all font-semibold text-sm text-primary shadow-sm hover:shadow-md">
                                 Explore Platform
                             </button>
                         </div>
@@ -137,7 +99,7 @@ const LandingPage = () => {
                         <p className="text-xs text-secondary font-mono flex items-center justify-center gap-2">
                             <Shield size={14} className="text-status-safe" /> Non-invasive. Read-only TLS probing. No credentials required.
                         </p>
-                    </form>
+                    </div>
                 </div>
 
                 {/* Global Stats Strip — live from API */}

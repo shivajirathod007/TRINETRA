@@ -1,14 +1,29 @@
+import { useEffect, useState } from 'react'
 import { useScanStore } from '@/store'
 import { useCBOM, useCertificates, useAssets, useScanHistory } from '@/hooks'
 import { LoadingSpinner, EmptyState, SectionHeader, ScoreBadge, AlgorithmTag, HNDLDeadline } from '@/components/shared'
 import { CertCard } from '@/components/certificate'
-import { cbomApi } from '@/api/client'
+import { cbomApi, scanApi } from '@/api/client'
 import { ASSET_TYPE_ICON, ASSET_TYPE_LABEL } from '@/utils'
+
+function useAutoLoadScan() {
+  const { activeScanId, setActiveScan } = useScanStore()
+  const [attempted, setAttempted] = useState(false)
+  useEffect(() => {
+    if (!activeScanId && !attempted) {
+      setAttempted(true)
+      scanApi.list('', 1).then(res => {
+        if (res && res.length > 0) setActiveScan(res[0].scan_id, res[0].domain)
+      }).catch(console.error)
+    }
+  }, [activeScanId, setActiveScan, attempted])
+}
 import type { AssetSummary } from '@/types'
 
 // ── CBOM Page ─────────────────────────────────────────────────────────────────
 
 export function CBOMPage() {
+  useAutoLoadScan()
   const { activeScanId, activeDomain } = useScanStore()
   const { data: cbom, isLoading } = useCBOM(activeScanId)
 
@@ -84,6 +99,7 @@ export function CBOMPage() {
 // ── Certificates Page ─────────────────────────────────────────────────────────
 
 export function CertificatesPage() {
+  useAutoLoadScan()
   const { activeScanId } = useScanStore()
   const { data: certs = [], isLoading } = useCertificates(activeScanId)
 
@@ -118,6 +134,7 @@ export function CertificatesPage() {
 // ── Discovery Page ────────────────────────────────────────────────────────────
 
 export function DiscoveryPage() {
+  useAutoLoadScan()
   const { activeScanId } = useScanStore()
   const { data: assets = [], isLoading } = useAssets(activeScanId)
 
@@ -181,6 +198,7 @@ export function DiscoveryPage() {
 // ── History Page ──────────────────────────────────────────────────────────────
 
 export function HistoryPage() {
+  useAutoLoadScan()
   const { activeDomain } = useScanStore()
   const { data: scans = [], isLoading } = useScanHistory(activeDomain)
 
@@ -242,6 +260,7 @@ export function HistoryPage() {
 // ── Posture Page ──────────────────────────────────────────────────────────────
 
 export function PosturePage() {
+  useAutoLoadScan()
   const { activeScanId } = useScanStore()
   const { data: assets = [] } = useAssets(activeScanId)
 
