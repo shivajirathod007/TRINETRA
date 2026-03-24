@@ -83,6 +83,7 @@ class ExposureScorer:
         is_shadow_asset: bool = False,
         key_exchange: Optional[str] = None,
         jwt_algorithm: Optional[str] = None,
+        data_sensitivity_tier: str = "static",
     ) -> ExposureScoreResult:
         """
         Main scoring function.
@@ -96,6 +97,7 @@ class ExposureScorer:
             is_shadow_asset:  True = CT-log-discovered, not in bank's known list
             key_exchange:     Key exchange method (overrides algorithm for KEX risk)
             jwt_algorithm:    JWT signing algo if detected (RS256, HS256, etc.)
+            data_sensitivity_tier: "transaction" | "authentication" | "static"
 
         Returns:
             ExposureScoreResult with score, breakdown, deadline, NIST recommendation
@@ -111,7 +113,7 @@ class ExposureScorer:
         alg_risk = float(get_algorithm_risk(effective_algorithm))
 
         # ── Factor 2: HNDL Timeline Urgency (0-100) ───────────────────────────
-        hndl_score = float(get_hndl_urgency_score(cert_expiry_days, crqc_year))
+        hndl_score = float(get_hndl_urgency_score(cert_expiry_days, crqc_year, data_sensitivity_tier))
 
         # ── Factor 3: Public Exposure (0-100) ─────────────────────────────────
         exposure = float(get_exposure_score(asset_type, is_shadow_asset))
@@ -138,7 +140,7 @@ class ExposureScorer:
 
         # ── Derived fields ────────────────────────────────────────────────────
         risk_level       = get_risk_tier(int(final_score))
-        hndl_deadline    = get_hndl_deadline_label(cert_expiry_days, crqc_year)
+        hndl_deadline    = get_hndl_deadline_label(cert_expiry_days, crqc_year, data_sensitivity_tier)
         hndl_urgency     = get_hndl_urgency_label(int(hndl_score))
         quantum_status   = self._quantum_status(effective_algorithm, key_exchange)
         nist_rec         = self._nist_recommendation(effective_algorithm, key_exchange)

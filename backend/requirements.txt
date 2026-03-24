@@ -40,6 +40,9 @@ weasyprint
 
 # ─── AI / ML ──────────────────────────────────────────────────────────────────
 # NOTE: AI module handled separately by AI team
+--extra-index-url https://download.pytorch.org/whl/cpu
+transformers
+torch
 # anthropic
 
 # ─── Utilities ────────────────────────────────────────────────────────────────

@@ -88,6 +88,7 @@ class HNDLEngine:
         crqc_pessimistic: Optional[int] = None,
         crqc_moderate: Optional[int] = None,
         crqc_optimistic: Optional[int] = None,
+        data_sensitivity_tier: str = "static",
     ) -> HNDLRiskResult:
         """
         Calculates HNDL risk and deadlines for a single asset.
@@ -115,8 +116,11 @@ class HNDLEngine:
         is_pqc_safe = alg_risk <= 5
 
         # ── Mosca inputs ──────────────────────────────────────────────────────
-        # X: data shelf life = cert expiry window
-        mosca_x = cert_expiry_days / 365.0
+        from core.constants import DATA_SENSITIVITY_SHELF_LIFE_YEARS
+        regulated_shelf_life = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
+        
+        # X: data shelf life = max(cert expiry window, regulated shelf life)
+        mosca_x = max(cert_expiry_days / 365.0, regulated_shelf_life)
 
         # Y: migration time in years
         migration_months = MIGRATION_TIME_MONTHS.get(asset_complexity, 4)
@@ -129,9 +133,9 @@ class HNDLEngine:
         mosca_act_now = (mosca_x + mosca_y) > mosca_z and not is_pqc_safe
 
         # ── Per-scenario deadlines ─────────────────────────────────────────────
-        deadline_p = self._compute_deadline(today, cert_expiry_days, crqc_p, migration_months)
-        deadline_m = self._compute_deadline(today, cert_expiry_days, crqc_m, migration_months)
-        deadline_o = self._compute_deadline(today, cert_expiry_days, crqc_o, migration_months)
+        deadline_p = self._compute_deadline(today, mosca_x, crqc_p, migration_months)
+        deadline_m = self._compute_deadline(today, mosca_x, crqc_m, migration_months)
+        deadline_o = self._compute_deadline(today, mosca_x, crqc_o, migration_months)
 
         primary_deadline = deadline_m
         deadline_date = self._deadline_to_date(primary_deadline)
@@ -186,7 +190,7 @@ class HNDLEngine:
     def _compute_deadline(
         self,
         today: date,
-        cert_expiry_days: int,
+        effective_x_years: float,
         crqc_year: int,
         migration_months: int,
     ) -> str:
@@ -194,7 +198,7 @@ class HNDLEngine:
         Compute migration deadline for a specific CRQC scenario.
 
         Logic:
-        - The migration must complete BEFORE the cert expires (cert renewal is the hard deadline)
+        - The migration must complete BEFORE the data shelf life ends
         - AND BEFORE CRQC arrives (quantum deadline)
         - We use whichever comes first, then subtract migration time
 
@@ -203,9 +207,8 @@ class HNDLEngine:
         today_year = today.year
         years_to_crqc = crqc_year - today_year
 
-        # Hard deadline = min(cert expiry, CRQC arrival)
-        cert_expiry_years = cert_expiry_days / 365.0
-        hard_deadline_years = min(cert_expiry_years, years_to_crqc)
+        # Hard deadline = min(data shelf life, CRQC arrival)
+        hard_deadline_years = min(effective_x_years, years_to_crqc)
 
         # Migration must start at: hard_deadline - migration_time
         start_migration_years = max(0, hard_deadline_years - (migration_months / 12.0))

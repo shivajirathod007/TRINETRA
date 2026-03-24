@@ -149,18 +149,28 @@ VULNERABLE_KEX: set[str] = {
 # urgency is cert-expiry-driven; else CRQC-driven.
 # ─────────────────────────────────────────────────────────────────────────────
 
-def get_hndl_urgency_score(cert_expiry_days: int, crqc_year: int) -> int:
+DATA_SENSITIVITY_SHELF_LIFE_YEARS = {
+    "transaction": 7.0,  # Financial regulations retention
+    "authentication": 1.0,
+    "static": 0.0,
+}
+
+def get_hndl_urgency_score(cert_expiry_days: int, crqc_year: int, data_sensitivity_tier: str = "static") -> int:
     """
     Calculates HNDL urgency score based on time available to migrate.
     cert_expiry_days: days until certificate expiry
     crqc_year: estimated year of CRQC arrival (from settings)
+    data_sensitivity_tier: "transaction", "authentication", or "static"
     """
     from datetime import date
     years_to_crqc = crqc_year - date.today().year
     years_to_expiry = cert_expiry_days / 365.0
+    
+    regulated_shelf_life = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
+    effective_x = max(years_to_expiry, regulated_shelf_life)
 
     # Migration window = whichever deadline comes first
-    urgency_window = min(years_to_expiry, years_to_crqc)
+    urgency_window = min(effective_x, years_to_crqc)
 
     if urgency_window < 0:      return 100  # Already past deadline
     if urgency_window < 0.5:    return 95   # Under 6 months
@@ -170,7 +180,7 @@ def get_hndl_urgency_score(cert_expiry_days: int, crqc_year: int) -> int:
     return 20                               # 6+ years
 
 
-def get_hndl_deadline_label(cert_expiry_days: int, crqc_year: int) -> str:
+def get_hndl_deadline_label(cert_expiry_days: int, crqc_year: int, data_sensitivity_tier: str = "static") -> str:
     """
     Returns human-readable migration deadline string.
     Example: "Q2 2027"
@@ -179,7 +189,11 @@ def get_hndl_deadline_label(cert_expiry_days: int, crqc_year: int) -> str:
     today = date.today()
     years_to_crqc = crqc_year - today.year
     years_to_expiry = cert_expiry_days / 365.0
-    urgency_window = min(years_to_expiry, years_to_crqc)
+    
+    regulated_shelf_life = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
+    effective_x = max(years_to_expiry, regulated_shelf_life)
+    
+    urgency_window = min(effective_x, years_to_crqc)
 
     if urgency_window < 0:
         return "OVERDUE"

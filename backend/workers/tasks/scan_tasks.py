@@ -68,6 +68,8 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     from engine.analysis.migration_planner import MigrationPlanner
     from engine.output.certificate_issuer import CertificateIssuer
     from engine.discovery.asset_classifier import ClassifiedAsset
+    from engine.ai.classifier import classify_http_response
+    from engine.ai.schemas import ClassifierInput
 
     hostname = asset_data["fqdn"]
     port = asset_data.get("port", 443)
@@ -197,6 +199,26 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         signature_algorithm=cert_info.signature_algorithm if cert_info else None,
     )
 
+    # ── Run AI Classifier ─────────────────────────────────────────────────────
+    ai_detections = []
+    if api_result and api_result.response_body_preview:
+        payload = ClassifierInput(
+            asset_url=asset_url,
+            asset_type=asset_type,
+            status_code=api_result.http_status or 200,
+            response_headers=api_result.response_headers_raw,
+            response_body=api_result.response_body_preview,
+            request_method="GET",
+            request_url=asset_url,
+            tls_cipher_suite=tls_result.active_cipher_suite if tls_result else None,
+            cert_algorithm=cert_info.signature_algorithm if cert_info else None
+        )
+        ai_output = await classify_http_response(payload)
+        if hasattr(ai_output.detections[0], "model_dump") if ai_output.detections else False:
+            ai_detections = [d.model_dump() for d in ai_output.detections]
+        else:
+            ai_detections = [dict(d) for d in ai_output.detections]
+
     # ── Generate CBOM entry ───────────────────────────────────────────────────
     # Build a minimal ClassifiedAsset for the CBOM generator
     from dataclasses import dataclass
@@ -222,7 +244,7 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         hndl_result=hndl_result,
         scan_id=asset_data.get("scan_id", ""),
         pqc_certificate_id=certificate["certificate_id"],
-        ai_detections=None,  # AI module integrated separately
+        ai_detections=ai_detections,
     )
 
     # ── Build flat result dict for DB persistence ─────────────────────────────
