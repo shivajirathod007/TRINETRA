@@ -50,7 +50,7 @@ def update_scan_status_sync(scan_id: str, status: str, current_stage: str = None
         raise
 
 
-def update_scan_progress_sync(scan_id: str, assets_discovered: int = None, assets_scanned: int = None, current_stage: str = None) -> None:
+def update_scan_progress_sync(scan_id: str, assets_discovered: int = None, assets_scanned: int = None, current_stage: str = None, shadow_assets_found: int = None) -> None:
     try:
         with get_sync_conn() as conn:
             with conn.cursor() as cur:
@@ -64,6 +64,10 @@ def update_scan_progress_sync(scan_id: str, assets_discovered: int = None, asset
                 if assets_scanned is not None:
                     updates.append("assets_scanned = %s")
                     params.append(assets_scanned)
+
+                if shadow_assets_found is not None:
+                    updates.append("shadow_assets_found = %s")
+                    params.append(shadow_assets_found)
                 
                 if current_stage:
                     updates.append("current_stage = %s")
@@ -83,6 +87,22 @@ def finalize_scan_sync(scan_id: str, organization_score: float, risk_counts: dic
     try:
         with get_sync_conn() as conn:
             with conn.cursor() as cur:
+                # Count actual scanned assets from DB for accuracy
+                cur.execute(
+                    "SELECT COUNT(*) FROM scanned_assets WHERE scan_job_id = %s AND scan_status = 'COMPLETED'",
+                    (scan_id,)
+                )
+                row = cur.fetchone()
+                actual_scanned = row[0] if row else 0
+                
+                # Also count total discovered (including failed)
+                cur.execute(
+                    "SELECT COUNT(*) FROM scanned_assets WHERE scan_job_id = %s",
+                    (scan_id,)
+                )
+                row2 = cur.fetchone()
+                total_discovered = row2[0] if row2 else 0
+
                 cur.execute(
                     """
                     UPDATE scan_jobs 
@@ -94,6 +114,8 @@ def finalize_scan_sync(scan_id: str, organization_score: float, risk_counts: dic
                         low_count = %s,
                         safe_count = %s,
                         shadow_assets_found = %s,
+                        assets_scanned = %s,
+                        assets_discovered = %s,
                         completed_at = %s,
                         current_stage = 'complete'
                     WHERE id = %s
@@ -106,11 +128,14 @@ def finalize_scan_sync(scan_id: str, organization_score: float, risk_counts: dic
                         risk_counts.get("LOW", 0),
                         risk_counts.get("SAFE", 0),
                         shadow_assets_found,
+                        actual_scanned,
+                        total_discovered,
                         datetime.now(timezone.utc),
                         scan_id
                     )
                 )
             conn.commit()
+            log.info("finalize_scan_sync_ok", scan_id=scan_id, assets_scanned=actual_scanned, org_score=organization_score)
     except Exception as e:
         log.error("sync_db_finalize_scan_failed", scan_id=scan_id, error=str(e))
         raise

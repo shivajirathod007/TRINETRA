@@ -23,6 +23,9 @@ export const scanApi = {
 
   list: (domain: string | null = null, limit = 10) =>
     api.get<ScanJob[]>('/scans/', { params: { domain, limit } }).then(r => r.data),
+
+  getResults: (scanId: string) =>
+    api.get<any>(`/scans/${scanId}/results`).then(r => r.data),
 }
 
 // ── Assets API ────────────────────────────────────────────────────────────────

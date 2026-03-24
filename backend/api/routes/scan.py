@@ -171,8 +171,17 @@ async def get_scan_status(scan_id: str, db: AsyncSession = Depends(get_db)):
     total = max(1, scan.assets_discovered or 1)
     scanned = scan.assets_scanned or 0
     progress_pct = round(100 * scanned / total)
-    tls_progress = progress_pct if scan.current_stage and "scanning" in (scan.current_stage or "") else (100 if scan.status == "COMPLETED" else min(progress_pct, 90))
-    ai_progress = 100 if scan.status == "COMPLETED" else (progress_pct if scan.current_stage == "complete" else 0)
+
+    if scan.status == "COMPLETED":
+        tls_progress = 100
+        ai_progress = 100
+    elif scan.current_stage == "scanning":
+        tls_progress = max(20, progress_pct)
+        ai_progress = max(0, progress_pct - 20)
+    else:
+        tls_progress = 0
+        ai_progress = 0
+
     logs = _stage_logs(scan.current_stage, scan.assets_discovered or 0, scanned)
     payload = {
         "scan_id": scan_id,
@@ -216,3 +225,75 @@ async def cancel_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         log.exception("cancel_scan_error", scan_id=scan_id, error=str(e))
         raise HTTPException(status_code=503, detail="Database error") from e
+
+
+@router.get("/{scan_id}/results")
+async def get_scan_results(scan_id: str, db: AsyncSession = Depends(get_db)):
+    """Return full JSON scan output — all discovered assets with risk & PQC details."""
+    import uuid
+    try:
+        uid = uuid.UUID(scan_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid scan_id")
+
+    repo = ScanRepository(db)
+    scan = await repo.get_scan(uid)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+
+    assets = await repo.get_assets_for_scan(uid)
+
+    def _asset_json(a) -> dict:
+        return {
+            "id": str(a.id),
+            "fqdn": a.fqdn,
+            "asset_url": a.asset_url,
+            "asset_type": a.asset_type,
+            "port": a.port,
+            "ip_address": a.ip_address,
+            "is_shadow_asset": a.is_shadow_asset,
+            "scan_status": a.scan_status,
+            # TLS
+            "tls_version_active": a.tls_version_active,
+            "tls_versions_supported": a.tls_versions_supported,
+            "cipher_suite_active": a.cipher_suite_active,
+            "key_exchange": a.key_exchange,
+            "vulnerabilities": a.vulnerabilities,
+            # Certificate
+            "cert_algorithm": a.cert_algorithm,
+            "cert_key_length": a.cert_key_length,
+            "cert_issuer": a.cert_issuer,
+            "cert_expiry_days": a.cert_expiry_days,
+            "ocsp_stapling": a.ocsp_stapling,
+            "hsts_enabled": a.hsts_enabled,
+            # Risk
+            "risk_level": a.risk_level,
+            "quantum_exposure_score": round(a.quantum_exposure_score, 2) if a.quantum_exposure_score is not None else None,
+            "quantum_safe_status": a.quantum_safe_status,
+            "hndl_deadline": a.hndl_deadline,
+            "hndl_urgency": a.hndl_urgency,
+            "score_breakdown": a.score_breakdown,
+            # CBOM
+            "cbom_entry": a.cbom_entry,
+            "migration_plan": a.migration_plan,
+            "pqc_certificate_id": str(a.pqc_certificate_id) if a.pqc_certificate_id else None,
+        }
+
+    risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "SAFE": 0}
+    for a in assets:
+        rl = a.risk_level or "UNKNOWN"
+        if rl in risk_counts:
+            risk_counts[rl] += 1
+
+    return {
+        "scan_id": scan_id,
+        "domain": scan.domain,
+        "status": scan.status,
+        "organization_score": round(scan.organization_score, 2) if scan.organization_score is not None else None,
+        "assets_scanned": scan.assets_scanned or len(assets),
+        "shadow_assets_found": scan.shadow_assets_found or 0,
+        "risk_distribution": risk_counts,
+        "started_at": scan.started_at.isoformat() if scan.started_at else None,
+        "completed_at": scan.completed_at.isoformat() if scan.completed_at else None,
+        "assets": [_asset_json(a) for a in assets],
+    }
