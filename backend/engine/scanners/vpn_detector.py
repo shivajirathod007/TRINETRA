@@ -15,6 +15,7 @@ import httpx
 from core.constants import VPN_FINGERPRINTS, VPN_PORTS
 from core.config import settings
 from core.logging import get_logger
+from engine.scanners.cert_analyzer import CertAnalyzer, CertInfo
 
 log = get_logger(__name__)
 
@@ -100,7 +101,14 @@ class VPNDetector:
                                 timeout=5.0,
                             )
 
-                            if self._matches_vpn(resp, vpn_type, port):
+                            # Fetch certificate info for deeper matching
+                            loop = asyncio.get_event_loop()
+                            cert_analyzer = CertAnalyzer()
+                            cert_info: CertInfo = await loop.run_in_executor(
+                                None, cert_analyzer.analyze, hostname, port
+                            )
+
+                            if self._matches_vpn(resp, vpn_type, port, cert_info):
                                 log.info(
                                     "vpn_detected",
                                     hostname=hostname,
@@ -113,6 +121,10 @@ class VPNDetector:
                                     vpn_type=vpn_type,
                                     vpn_confirmed=True,
                                     banner=resp.headers.get("server", "")[:100],
+                                    # Populate TLS/Cert fields if available
+                                    tls_version=None, # Will be filled by tls_scanner
+                                    cert_algorithm=cert_info.signature_algorithm,
+                                    cert_expiry_days=cert_info.days_until_expiry,
                                 )
                         except httpx.TimeoutException:
                             continue
@@ -125,32 +137,51 @@ class VPNDetector:
             log.debug("vpn_probe_error", hostname=hostname, port=port, error=str(e)[:100])
             return None
 
-    def _matches_vpn(self, resp: httpx.Response, vpn_type: str, port: int) -> bool:
-        """Check if HTTP response matches VPN vendor fingerprint."""
+    def _matches_vpn(
+        self,
+        resp: httpx.Response,
+        vpn_type: str,
+        port: int,
+        cert_info: Optional[CertInfo] = None
+    ) -> bool:
+        """Check if HTTP response or Certificate matches VPN vendor fingerprint."""
         signatures = VPN_FINGERPRINTS.get(vpn_type, {})
         body = resp.text.lower()
         headers = {k.lower(): v for k, v in resp.headers.items()}
         url_str = str(resp.url).lower()
 
-        # Check URL path match
+        # ── 1. Certificate Match (Strong Indicator) ──────────────────────────
+        if cert_info and cert_info.subject_cn:
+            cn_lower = cert_info.subject_cn.lower()
+            for pattern in signatures.get("cert", []):
+                if pattern.lower() in cn_lower:
+                    return True
+            
+            # Check SANs
+            for san in cert_info.subject_san:
+                san_lower = san.lower()
+                for pattern in signatures.get("cert", []):
+                    if pattern.lower() in san_lower:
+                        return True
+
+        # ── 2. URL Path Match ────────────────────────────────────────────────
         for path in signatures.get("paths", []):
             if path.lower() in url_str:
                 return True
 
-        # Check response headers
+        # ── 3. Response Headers ──────────────────────────────────────────────
         for expected_header in signatures.get("headers", []):
             if expected_header.lower() in headers:
                 return True
 
-        # Check body patterns
+        # ── 4. Body Patterns ──────────────────────────────────────────────────
         for pattern in signatures.get("body", []):
             if pattern.lower() in body:
                 return True
 
-        # Port-specific match
+        # ── 5. Port-specific Match (Fallback) ────────────────────────────────
         if port in signatures.get("ports", []):
-            # Presence on this port is strong signal
-            if resp.status_code < 500:  # Not a server error
+            if resp.status_code < 500:
                 return True
 
         return False

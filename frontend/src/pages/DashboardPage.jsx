@@ -18,7 +18,28 @@ const RISK_COLORS = {
     'PQC READY': '#3B82F6',
     'QUANTUM SAFE': '#22C55E',
     SAFE: '#22C55E',
+    LOW: '#3B82F6',
 };
+
+// Backend asset_type enum → human label mappings
+const ASSET_TYPE_LABELS = {
+    web_portal: 'Web Portal',
+    web_application: 'Web App',
+    api_public: 'API',
+    api_authenticated: 'API (Auth)',
+    mobile_backend: 'Mobile',
+    vpn_gateway: 'VPN',
+    ssh_endpoint: 'SSH',
+    smtp_mta: 'SMTP',
+    staging: 'Staging',
+    shadow_asset: 'Shadow',
+    server: 'Server',
+};
+
+// Asset type categories for KPI counting
+const WEB_APP_TYPES = new Set(['web_portal', 'web_application', 'staging']);
+const API_TYPES = new Set(['api_public', 'api_authenticated', 'mobile_backend']);
+const SERVER_TYPES = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway']);
 
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
@@ -26,12 +47,14 @@ const DashboardPage = () => {
     const { activeDomain, activeScanId, setActiveScan } = useScanStore();
     const domain = activeDomain || '';
 
+    // ── Recent scans for domain selector & auto-load ────────────────────────
     const { data: recentScans = [], isLoading: recentLoading } = useQuery({
         queryKey: ['scans-recent'],
         queryFn: () => scanApi.list(null, 10),
         staleTime: 60_000,
     });
 
+    // ── Dashboard aggregate stats for active domain ─────────────────────────
     const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useQuery({
         queryKey: ['dashboard', domain],
         queryFn: () => dashboardApi.getStats(domain),
@@ -39,46 +62,90 @@ const DashboardPage = () => {
         staleTime: 30_000,
     });
 
+    // ── All scanned assets for the active scan ──────────────────────────────
     const { data: assets = [], isLoading: assetsLoading } = useQuery({
-        queryKey: ['assets', domain],
-        queryFn: () => assetsApi.list({ domain }),
-        enabled: !!domain,
+        queryKey: ['assets', activeScanId],
+        queryFn: () => assetsApi.list({ scan_id: activeScanId }),
+        enabled: !!activeScanId,
         staleTime: 30_000,
     });
 
+    // ── PQC Certificates for the active scan ────────────────────────────────
     const { data: certs = [] } = useQuery({
         queryKey: ['dashboard-certs', activeScanId],
-        queryFn: () => certApi.byScan(activeScanId),
+        queryFn: () => certApi.getByScan(activeScanId),
         enabled: !!activeScanId,
         staleTime: 60_000,
     });
 
     const noDomain = !domain;
-    
-    // Auto-load latest past data if no domain is active
+
+    // Auto-load the most recent completed scan if no domain is selected
     React.useEffect(() => {
         if (noDomain && recentScans.length > 0) {
-            setActiveScan(recentScans[0].scan_id, recentScans[0].domain);
+            const latest = recentScans.find(s => s.status === 'completed') || recentScans[0];
+            if (latest) setActiveScan(latest.scan_id, latest.domain);
         }
     }, [noDomain, recentScans, setActiveScan]);
 
-    const handleSelectScan = (scanDomain, scanId) => {
-        setActiveScan(scanId, scanDomain);
-    };
-
     const isLoading = recentLoading || (!noDomain && (statsLoading || assetsLoading));
 
-    const sortedAssets = [...assets].sort((a, b) => {
-        if (sortField === 'score') return (b.score ?? 0) - (a.score ?? 0);
-        return 0;
-    });
-
+    // ── Derived KPI counts from actual backend asset_type values ────────────
+    const webApps   = assets.filter(a => WEB_APP_TYPES.has(a.type)).length;
+    const apis      = assets.filter(a => API_TYPES.has(a.type)).length;
+    const servers   = assets.filter(a => SERVER_TYPES.has(a.type)).length;
     const shadowAssets = assets.filter(a => a.discovery === 'Shadow');
 
+    // ── Cert expiry timeline from real cert data (no fallbacks) ─────────────
+    const now = new Date();
+    const expiringCertsCount = certs.filter(c => {
+        if (!c.valid_to) return false;
+        const days = (new Date(c.valid_to) - now) / 86400000;
+        return days > 0 && days <= 90;
+    }).length;
+
+    const expiryBuckets = [
+        { name: '0–30 Days', max: 30,  color: 'bg-status-critical' },
+        { name: '30–60 Days', min: 30, max: 60, color: 'bg-status-high' },
+        { name: '60–90 Days', min: 60, max: 90, color: 'bg-status-medium' },
+        { name: '>90 Days',  min: 90, color: 'bg-status-safe' },
+    ];
+
+    const expiryTimelineData = expiryBuckets.map(bucket => ({
+        name: bucket.name,
+        color: bucket.color,
+        count: certs.filter(c => {
+            if (!c.valid_to) return false;
+            const days = (new Date(c.valid_to) - now) / 86400000;
+            const absDays = Math.abs(days);
+            if (bucket.min !== undefined && bucket.max !== undefined) return absDays > bucket.min && absDays <= bucket.max;
+            if (bucket.max !== undefined) return absDays <= bucket.max;
+            return absDays > bucket.min;
+        }).length,
+    }));
+
+    // Total assets = from stats (accurate after backfill) or fallback to asset list length
+    const totalAssets = (stats.total_assets !== undefined && stats.total_assets !== null)
+        ? stats.total_assets
+        : assets.length;
+
+    const highRiskAssets = (stats.critical_count ?? 0) + (stats.high_count ?? 0);
+
+    const kpis = [
+        { label: 'Total Assets',    value: totalAssets,        icon: Server,     color: 'text-primary' },
+        { label: 'Public Web Apps', value: webApps,            icon: AppWindow,  color: 'text-status-safe' },
+        { label: 'APIs',            value: apis,               icon: Cpu,        color: 'text-primary-indigo' },
+        { label: 'Servers',         value: servers,            icon: Server,     color: 'text-secondary' },
+        { label: 'Expiring Certs',  value: expiringCertsCount, icon: Key,        color: 'text-status-high' },
+        { label: 'High Risk Assets',value: highRiskAssets,     icon: ShieldAlert,color: 'text-status-critical' },
+    ];
+
+    // ── Risk distribution from backend stats (preferred) or from asset list ─
     const riskData = stats.risk_distribution?.length
         ? stats.risk_distribution
         : Object.entries(
             assets.reduce((acc, a) => {
+                if (!a.risk_level) return acc;
                 acc[a.risk_level] = (acc[a.risk_level] ?? 0) + 1;
                 return acc;
             }, {})
@@ -86,46 +153,22 @@ const DashboardPage = () => {
 
     const algoData = stats.algorithm_breakdown ?? [];
 
-    const webApps = assets.filter(a => a.type === 'Web App' || a.type === 'Web Portal').length;
-    const apis = assets.filter(a => a.type === 'API').length;
-    const servers = assets.filter(a => a.type === 'Server' || a.type === 'Host').length;
+    const ipData = stats.ip_distribution ?? [{ name: 'IPv4', value: 100, color: '#3B82F6' }];
+
+    // ── Asset table sort ────────────────────────────────────────────────────
+    const sortedAssets = [...assets].sort((a, b) =>
+        sortField === 'score' ? (b.score ?? 0) - (a.score ?? 0) : 0
+    );
 
     const authUser = localStorage.getItem('trinetra_auth') === 'true' ? 'shiva@gmail.com' : 'Guest';
 
-    const now = new Date();
-    const expiringCertsCount = certs.filter(c => {
-        if (!c.valid_to) return false;
-        const days = (new Date(c.valid_to) - now) / (1000 * 60 * 60 * 24);
-        return days > 0 && days <= 90;
-    }).length;
-
-    const kpis = [
-        { label: 'Total Assets', value: stats.total_assets ?? assets.length, icon: Server, color: 'text-primary' },
-        { label: 'Public Web Apps', value: webApps, icon: AppWindow, color: 'text-status-safe' },
-        { label: 'APIs', value: apis, icon: Cpu, color: 'text-primary-indigo' },
-        { label: 'Servers', value: servers, icon: Server, color: 'text-secondary' },
-        { label: 'Expiring Certs', value: expiringCertsCount, icon: Key, color: 'text-status-high' },
-        { label: 'High Risk Assets', value: stats.critical_count ?? 0, icon: ShieldAlert, color: 'text-status-critical' },
-    ];
-
-    const ipData = stats.ip_distribution ?? [
-       { name: 'IPv4', value: 100, color: '#3B82F6' }
-    ];
-
-    const expiryTimelineData = [
-        { name: '0-30 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 <= 30).length || 3 },
-        { name: '30-60 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 30 && (new Date(c.valid_to) - now) / 86400000 <= 60).length || 4 },
-        { name: '60-90 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 60 && (new Date(c.valid_to) - now) / 86400000 <= 90).length || 2 },
-        { name: '>90 Days', count: certs.filter(c => c.valid_to && (new Date(c.valid_to) - now) / 86400000 > 90).length || Math.max(84, certs.length) }
-    ];
-
+    // ── Empty state (no scans at all) ───────────────────────────────────────
     if (noDomain && !recentLoading && recentScans.length === 0) {
-        // True Zero-data empty state: Enterprise level layout
         return (
             <div className="flex flex-col h-full relative overflow-hidden animate-fadeIn">
                 <div className="absolute inset-0 pointer-events-none grid-bg opacity-10" />
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-indigo/10 blur-[120px] rounded-full pointer-events-none translate-x-1/3 -translate-y-1/3" />
-                
+
                 <div className="flex justify-between items-center mb-6 relative z-10">
                     <h1 className="text-3xl font-bold font-outfit tracking-tight">Operations Center</h1>
                     <div className="flex items-center gap-2 text-status-critical font-mono font-bold uppercase tracking-wider text-xs bg-status-critical/10 border border-status-critical/20 px-3 py-1.5 rounded-md">
@@ -134,26 +177,15 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="glass-panel p-1 border-t-4 border-t-primary-indigo mt-8 flex-1 relative flex flex-col items-center justify-center min-h-[500px] z-10 shadow-2xl">
-                    <div className="absolute inset-0 flex flex-col justify-between p-8 opacity-20 pointer-events-none filter blur-[2px]">
-                        <div className="grid grid-cols-4 gap-4 mb-4">
-                            {[1, 2, 3, 4].map(i => <div key={i} className="h-24 bg-surface-card rounded-lg" />)}
-                        </div>
-                        <div className="flex flex-1 gap-4">
-                            <div className="flex-1 bg-surface-card rounded-lg" />
-                            <div className="w-80 bg-surface-card rounded-lg" />
-                        </div>
-                    </div>
-
                     <div className="text-center relative z-20 max-w-xl p-8 bg-surface-card-hover/90 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl">
                         <div className="w-20 h-20 rounded-full bg-primary-indigo/20 text-primary-indigo flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
                             <LayoutDashboard size={40} />
                         </div>
                         <h2 className="text-2xl font-bold font-outfit text-primary mb-3">Welcome to TRINETRA</h2>
                         <p className="text-secondary leading-relaxed mb-8">
-                            Your workspace is fundamentally ready. <br/>
-                            To activate the enterprise cryptographic exposure engine, you must run the first intelligence scan against your external perimeter.
+                            Your workspace is ready. <br/>
+                            Initiate the first intelligence scan against your external perimeter to activate the enterprise cryptographic exposure engine.
                         </p>
-                        
                         <Link
                             to="/"
                             className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-primary-indigo text-white font-bold font-outfit text-lg hover:bg-primary-indigo-hover hover:scale-105 transition-all shadow-[0_0_20px_rgba(99,102,241,0.5)] w-full"
@@ -167,10 +199,9 @@ const DashboardPage = () => {
     }
 
     if (noDomain) {
-        // Fallback or loading state briefly while auto-selection effect runs
         return (
             <div className="flex items-center justify-center min-h-[60vh] text-secondary">
-                <RefreshCw size={24} className="animate-spin mr-3 text-primary-indigo" /> 
+                <RefreshCw size={24} className="animate-spin mr-3 text-primary-indigo" />
                 <span className="font-mono text-sm tracking-widest uppercase">Initializing Interface...</span>
             </div>
         );
@@ -181,8 +212,8 @@ const DashboardPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
                 <div className="flex flex-col">
-                   <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
-                   <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
+                    <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
+                    <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
                 </div>
                 <div className="text-secondary text-sm font-mono flex items-center gap-2">
                     <span>Target: <span className="text-primary font-bold">{domain}</span></span>
@@ -196,7 +227,7 @@ const DashboardPage = () => {
                 </div>
             </div>
 
-            {/* Shadow Asset Alert */}
+            {/* Shadow Asset Alert Banner */}
             {shadowAssets.length > 0 && (
                 <div className="bg-status-critical/10 border border-status-critical/30 rounded-lg p-4 flex items-start gap-4 animate-pulse-subtle">
                     <AlertTriangle size={24} className="text-status-critical flex-shrink-0 mt-1" />
@@ -218,7 +249,7 @@ const DashboardPage = () => {
                 </div>
             )}
 
-            {/* KPI Row */}
+            {/* KPI Cards Row */}
             <div className="grid grid-cols-2 md-grid-cols-3 lg-grid-cols-6 gap-3">
                 {kpis.map((kpi, i) => {
                     const Icon = kpi.icon;
@@ -235,8 +266,9 @@ const DashboardPage = () => {
             </div>
 
             <div className="grid grid-cols-1 lg-grid-cols-4 gap-4 flex-1 min-h-[400px]">
-                {/* Analytics Top Cards */}
+                {/* Analytics Top Row */}
                 <div className="lg-col-span-4 grid grid-cols-1 md-grid-cols-3 gap-4">
+                    {/* Risk Distribution */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
                         <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Risk Distribution</h3>
                         {riskData.length === 0 ? (
@@ -267,22 +299,34 @@ const DashboardPage = () => {
                             </div>
                         )}
                     </div>
-                    
+
+                    {/* Certificate Expiry Timeline */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
                         <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Certificate Expiry Timeline</h3>
-                        <div className="flex-1 flex flex-col justify-end gap-3 px-2">
-                            {expiryTimelineData.map((d, i) => (
-                                <div key={i} className="flex items-center gap-3 text-xs">
-                                    <span className="w-20 text-secondary text-right">{d.name}</span>
-                                    <div className="flex-1 h-3 bg-surface-card rounded-sm overflow-hidden flex items-center">
-                                        <div className={`h-full ${i === 0 ? 'bg-status-critical' : i === 1 ? 'bg-status-high' : i === 2 ? 'bg-status-medium' : 'bg-status-safe'}`} style={{ width: `${Math.max(5, (d.count / Math.max(...expiryTimelineData.map(e => e.count))) * 100)}%` }} />
-                                    </div>
-                                    <span className="w-6 font-bold text-right">{d.count}</span>
-                                </div>
-                            ))}
-                        </div>
+                        {certs.length === 0 && !isLoading ? (
+                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No certificates scanned</div>
+                        ) : (
+                            <div className="flex-1 flex flex-col justify-end gap-3 px-2">
+                                {expiryTimelineData.map((d, i) => {
+                                    const maxCount = Math.max(...expiryTimelineData.map(e => e.count), 1);
+                                    return (
+                                        <div key={i} className="flex items-center gap-3 text-xs">
+                                            <span className="w-20 text-secondary text-right">{d.name}</span>
+                                            <div className="flex-1 h-3 bg-surface-card rounded-sm overflow-hidden">
+                                                <div
+                                                    className={`h-full ${d.color} transition-all duration-700`}
+                                                    style={{ width: d.count > 0 ? `${Math.max(5, (d.count / maxCount) * 100)}%` : '0%' }}
+                                                />
+                                            </div>
+                                            <span className="w-6 font-bold text-right">{d.count}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
+                    {/* IP Version Breakdown */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
                         <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">IP Version Breakdown</h3>
                         <div className="flex-1 relative flex items-center justify-center">
@@ -296,7 +340,7 @@ const DashboardPage = () => {
                             </ResponsiveContainer>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <span className="text-2xl font-bold text-primary">
-                                    {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a,b)=>a+b.value,0))*100) : 0}%
+                                    {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a, b) => a + b.value, 0)) * 100) : 0}%
                                 </span>
                                 <span className="text-xs text-secondary font-mono">
                                     {ipData.length > 0 ? ipData[0].name : 'IPv4'} Dominant
@@ -306,14 +350,14 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {/* Asset Table */}
+                {/* Cryptographic Asset Map Table */}
                 <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
                     <div className="p-4 border-b flex flex-wrap gap-2 items-center justify-between bg-surface-card-hover">
                         <h2 className="font-bold">Cryptographic Asset Map</h2>
                         <div className="flex items-center gap-2">
                             <button className="action-btn"><Filter size={14} /> Filter</button>
                             <button className="action-btn" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
-                                Sort by Risk <ChevronDown size={14} />
+                                Sort by {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={14} />
                             </button>
                         </div>
                     </div>
@@ -338,23 +382,27 @@ const DashboardPage = () => {
                                 <tbody>
                                     {sortedAssets.map(asset => (
                                         <tr key={asset.id} className={asset.discovery === 'Shadow' ? 'bg-status-high/5' : ''}>
-                                            <td className="font-mono font-medium text-primary-indigo hover:text-primary cursor-pointer transition-colors"
-                                                onClick={() => navigate(`/asset/${asset.id}`)}>
+                                            <td
+                                                className="font-mono font-medium text-primary-indigo hover:text-primary cursor-pointer transition-colors"
+                                                onClick={() => navigate(`/asset/${asset.id}`)}
+                                            >
                                                 {asset.url}
                                             </td>
-                                            <td className="text-secondary">{asset.type}</td>
+                                            <td className="text-secondary">
+                                                {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
+                                            </td>
                                             <td><ThreatBadge level={asset.risk_level} /></td>
                                             <td>
                                                 <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold w-6">{asset.score ?? 0}</span>
+                                                    <span className="font-mono font-bold w-8">{asset.score ?? 0}</span>
                                                     <div className="w-24 bg-surface-card rounded-full h-1.5 overflow-hidden">
                                                         <div
-                                                            className="h-full rounded-full"
+                                                            className="h-full rounded-full transition-all duration-700"
                                                             style={{
                                                                 width: `${asset.score ?? 0}%`,
                                                                 backgroundColor: (asset.score ?? 0) >= 75 ? 'var(--status-critical)'
                                                                     : (asset.score ?? 0) >= 50 ? 'var(--status-high)'
-                                                                        : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
+                                                                    : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
                                                             }}
                                                         />
                                                     </div>
@@ -366,12 +414,14 @@ const DashboardPage = () => {
                                                         <AlertTriangle size={12} /> Shadow
                                                     </span>
                                                 ) : (
-                                                    <span className="text-secondary">Known</span>
+                                                    <span className="text-secondary text-xs">Known</span>
                                                 )}
                                             </td>
                                             <td className="text-right">
-                                                <button className="text-secondary hover:text-primary transition-colors"
-                                                    onClick={() => navigate(`/asset/${asset.id}`)}>
+                                                <button
+                                                    className="text-secondary hover:text-primary transition-colors"
+                                                    onClick={() => navigate(`/asset/${asset.id}`)}
+                                                >
                                                     <ChevronRight size={18} />
                                                 </button>
                                             </td>
@@ -383,36 +433,55 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {/* Geographic Distribution Mockup */}
-                <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[280px] relative overflow-hidden bg-gradient-to-br from-surface-card to-transparent">
-                   <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-6 border-b border-glass-border pb-2 inline-flex items-center gap-2"><Globe size={18} className="text-primary-indigo" /> Geographic Asset Distribution</h3>
-                   <div className="flex-1 flex relative">
-                        {/* Map points overlay simulation */}
-                        {/* Dynamic Geography Nodes via Backend */}
+                {/* Algorithm Breakdown (live from backend) */}
+                {algoData.length > 0 && (
+                    <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[200px]">
+                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Algorithm Inventory</h3>
+                        <div className="flex-1">
+                            <ResponsiveContainer width="100%" height={140}>
+                                <BarChart data={algoData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
+                                    <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                                    <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)', fontSize: 12 }}
+                                    />
+                                    <Bar dataKey="count" fill="#6366F1" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* Geographic Distribution */}
+                <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[220px] relative overflow-hidden bg-gradient-to-br from-surface-card to-transparent">
+                    <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-6 border-b border-glass-border pb-2 inline-flex items-center gap-2">
+                        <Globe size={18} className="text-primary-indigo" /> Geographic Asset Distribution
+                    </h3>
+                    <div className="flex-1 flex relative">
                         {(stats.geographic_distribution || []).map((node, i) => (
                             <React.Fragment key={i}>
                                 {node.pulse && (
-                                    <div 
-                                        className={`absolute w-3 h-3 rounded-full animate-ping ${node.color}`} 
-                                        style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }} 
+                                    <div
+                                        className={`absolute w-3 h-3 rounded-full animate-ping ${node.color}`}
+                                        style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }}
                                     />
                                 )}
-                                <div 
-                                    className={`absolute w-3 h-3 rounded-full flex items-center justify-center ${node.color}`}
-                                    style={{ 
-                                        top: node.top, 
-                                        left: node.left || undefined, 
-                                        right: node.right || undefined, 
-                                        boxShadow: `0 0 10px var(--${node.color.replace('bg-', '')}, currentColor)` 
-                                    }}
+                                <div
+                                    className={`absolute w-3 h-3 rounded-full ${node.color}`}
+                                    style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }}
                                 >
-                                    <span className="absolute -bottom-5 text-[10px] font-bold text-primary">
+                                    <span className="absolute -bottom-5 text-[10px] font-bold text-primary whitespace-nowrap">
                                         {node.country}
                                     </span>
                                 </div>
                             </React.Fragment>
                         ))}
-                   </div>
+                        {(!stats.geographic_distribution || stats.geographic_distribution.length === 0) && (
+                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">
+                                Geographic data available after scan completes
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 

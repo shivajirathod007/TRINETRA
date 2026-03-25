@@ -283,21 +283,25 @@ VPN_FINGERPRINTS = {
         "paths":   ["/+CSCOE+/logon.html", "/+CSCOE+/portal.html"],
         "headers": ["X-AnyConnect-Identifier-Platform"],
         "body":    ["webvpn", "AnyConnect"],
+        "cert":    ["anyconnect", "cisco-vpn", "webvpn"],
     },
     "fortinet_ssl": {
         "paths":   ["/remote/login", "/remote/logincheck"],
         "headers": ["Forti-Remote-Version"],
         "body":    ["Fortinet", "FortiGate"],
+        "cert":    ["fortigate", "fortinet", "fgt-"],
     },
     "palo_alto_gp": {
         "paths":   ["/global-protect/login.esp", "/global-protect/prelogin.esp"],
         "headers": [],
         "body":    ["GlobalProtect", "PAN-"],
+        "cert":    ["globalprotect", "palo-alto", "pan-vp"],
     },
     "openvpn": {
         "paths":   [],
         "headers": [],
         "body":    ["OpenVPN"],
+        "cert":    ["openvpn", "ovpn", "vpn-server"],
         "ports":   [1194, 943],
     },
 }

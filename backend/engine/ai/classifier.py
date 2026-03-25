@@ -16,6 +16,7 @@ from core.logging import get_logger
 from engine.ai.schemas import ClassifierInput, ClassifierOutput, SingleDetection
 from engine.ai.preprocessor import preprocess_response
 from engine.ai.llm_fallback import llm_classify
+from engine.ai.patterns import CRYPTO_PATTERNS, VULNERABILITY_PATTERNS, IMPLEMENTATION_PATTERNS
 
 log = get_logger(__name__)
 
@@ -71,11 +72,39 @@ class AIClassifier:
 
     def predict(self, text: str) -> Tuple[List[SingleDetection], float]:
         """
-        Runs model on text and returns a list of SingleDetection and max confidence.
+        Runs rule-based pre-pass followed by DistilBERT model on text.
+        Returns a list of SingleDetection and max confidence.
         """
-        if not self.is_loaded or not text:
+        detections = []
+        max_conf = 0.0
+
+        if not text:
             return [], 0.0
 
+        # ── 1. Rule-based Pre-pass (Regex) ────────────────────────────────────
+        for label, pattern in CRYPTO_PATTERNS.items():
+            if pattern.search(text):
+                detections.append(self._create_detection(label, "regex_pattern_match", 1.0))
+                max_conf = 1.0
+
+        for label, pattern in VULNERABILITY_PATTERNS.items():
+            if pattern.search(text):
+                detections.append(self._create_detection(label, "vulnerability_pattern_match", 1.0))
+                max_conf = 1.0
+
+        # ── 2. DistilBERT Model Prediction ──────────────────────────────────
+        if not self.is_loaded:
+            return detections, max_conf
+
+            model_detection, model_conf = self._predict_model(text)
+            if model_detection:
+                detections.append(model_detection)
+                max_conf = max(max_conf, model_conf)
+
+            return detections, max_conf
+
+    def _predict_model(self, text: str) -> Tuple[Optional[SingleDetection], float]:
+        """Internal model-only prediction logic."""
         try:
             inputs = self.tokenizer(
                 text,
@@ -95,32 +124,34 @@ class AIClassifier:
             label = self.id2label.get(pred_id, "UNKNOWN")
 
             if label == "UNKNOWN" or label == "CLEAN":
-                return [], confidence
+                return None, confidence
 
-            risk_class = "UNKNOWN"
-            quantum_safe = False
-            if label in PQC_READY_LABELS or label == "PQC_READY":
-                risk_class = "PQC_READY"
-                quantum_safe = True
-            elif label == "CLASSICAL_SAFE":
-                risk_class = "CLASSICAL_SAFE"
-            else:
-                risk_class = "QUANTUM_VULNERABLE"
-
-            detection = SingleDetection(
-                algorithm_detected=label,
-                quantum_safe=quantum_safe,
-                risk_class=risk_class, # type: ignore
-                confidence=round(confidence, 3),
-                location="response_body_or_header",
-                evidence_text=text[:100],
-                reason=f"{label} detected directly by DistilBERT model"
-            )
-
-            return [detection], confidence
+            return self._create_detection(label, "distilbert_model", confidence), confidence
         except Exception as e:
-            log.error("ai_prediction_failed", error=str(e))
-            return [], 0.0
+            log.error("ai_model_prediction_failed", error=str(e))
+            return None, 0.0
+
+    def _create_detection(self, label: str, source: str, confidence: float) -> SingleDetection:
+        """Helper to create SingleDetection object with consistent risk logic."""
+        risk_class = "UNKNOWN"
+        quantum_safe = False
+        if label in PQC_READY_LABELS or label == "PQC_READY":
+            risk_class = "PQC_READY"
+            quantum_safe = True
+        elif label == "CLASSICAL_SAFE":
+            risk_class = "CLASSICAL_SAFE"
+        else:
+            risk_class = "QUANTUM_VULNERABLE"
+
+        return SingleDetection(
+            algorithm_detected=label,
+            quantum_safe=quantum_safe,
+            risk_class=risk_class, # type: ignore
+            confidence=round(confidence, 3),
+            location="response_body_or_header",
+            evidence_text=f"Detected via {source}",
+            reason=f"{label} detected by {source}"
+        )
 
 
 async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:

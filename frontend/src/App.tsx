@@ -3,7 +3,8 @@ import { Layout } from '@/components/layout/Layout'
 import Home from '@/pages/Home'
 import Dashboard from '@/pages/Dashboard'
 import { AssetDetailPage } from '@/pages/AssetDetail'
-import { CBOMPage, CertificatesPage, DiscoveryPage, HistoryPage, PosturePage } from '@/pages/OtherPages'
+import { CBOMPage, DiscoveryPage, HistoryPage, PosturePage } from '@/pages/OtherPages'
+import { CertificatesPage } from '@/pages/Certificates'
 
 export default function App() {
     return (

@@ -89,34 +89,22 @@ export interface PQCCertificate {
   id: string
   certificate_id: string
   asset_url: string
+  scan_job_id: string
   status: CertTier
   label: string
-  quantum_exposure_score?: number
+  key_exchange: string | null
+  signature_algorithm: string | null
+  nist_standard: string | null
+  quantum_exposure_score: number
   issued_date: string
   valid_until: string
+  issuing_platform: string
+  certificate_json: any
 }
 
-export interface CertificateDetail {
-  certificate_id: string
-  issuing_platform: string
-  issuing_team: string
-  asset_url: string
-  scan_id: string
-  status: CertTier
-  label: string
-  color: string
-  algorithm_detected: string
-  key_exchange: string
-  signature_algorithm: string
-  nist_standard: string
-  quantum_exposure_score: number
-  risk_level: RiskLevel
-  hndl_deadline: string
-  scan_date: string
-  issued_date: string
-  valid_until: string
-  validity_days: number
+export interface CertificateDetail extends PQCCertificate {
   signature: string
+  issuing_team?: string
 }
 
 // ── CBOM types ────────────────────────────────────────────────────────────────

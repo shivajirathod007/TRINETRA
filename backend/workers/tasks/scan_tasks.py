@@ -33,7 +33,7 @@ def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
     log.info("asset_scan_started", asset_id=asset_id, url=asset_url)
 
     try:
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             _run_all_scanners(asset_data)
         )
         _persist_scan_result(asset_id, scan_id, result)

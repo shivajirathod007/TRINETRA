@@ -98,40 +98,6 @@ export function CBOMPage() {
   )
 }
 
-// ── Certificates Page ─────────────────────────────────────────────────────────
-
-export function CertificatesPage() {
-  useAutoLoadScan()
-  const { activeScanId } = useScanStore()
-  const { data: certs = [], isLoading } = useCertificates(activeScanId)
-
-  if (!activeScanId) return <EmptyState message="No active scan." />
-  if (isLoading) return <div className="flex justify-center pt-20"><LoadingSpinner size={32} /></div>
-
-  const byTier = {
-    FULLY_QUANTUM_SAFE: certs.filter(c => c.status === 'FULLY_QUANTUM_SAFE'),
-    PQC_READY: certs.filter(c => c.status === 'PQC_READY'),
-    QUANTUM_VULNERABLE: certs.filter(c => c.status === 'QUANTUM_VULNERABLE'),
-  }
-
-  return (
-    <div>
-      <SectionHeader title="PQC Readiness Certificates" subtitle={`${certs.length} certificates issued`} />
-
-      {Object.entries(byTier).map(([tier, tierCerts]) => {
-        if (!tierCerts.length) return null
-        return (
-          <div key={tier} className="mb-8">
-            <div className="section-title mb-3">{tier.replace(/_/g, ' ')} ({tierCerts.length})</div>
-            <div className="grid grid-cols-2 gap-3">
-              {tierCerts.map(cert => <CertCard key={cert.id} cert={cert} />)}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
 
 // ── Discovery Page ────────────────────────────────────────────────────────────
 

@@ -14,6 +14,8 @@ services:
       - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
+    networks:
+      - trinetra_net
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U trinetra -d trinetra" ]
       interval: 10s
@@ -28,6 +30,8 @@ services:
     command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save ""
     ports:
       - "6379:6379"
+    networks:
+      - trinetra_net
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -54,6 +58,8 @@ services:
       - "8000:8000"
     volumes:
       - ./backend:/app/backend
+    networks:
+      - trinetra_net
     depends_on:
       postgres:
         condition: service_healthy
@@ -76,6 +82,8 @@ services:
       - .env
     volumes:
       - ./backend:/app/backend
+    networks:
+      - trinetra_net
     depends_on:
       postgres:
         condition: service_healthy
@@ -101,6 +109,8 @@ services:
       - .env
     ports:
       - "5555:5555"
+    networks:
+      - trinetra_net
     depends_on:
       - redis
       - worker
@@ -121,9 +131,15 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    networks:
+      - trinetra_net
     depends_on:
       - api
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  trinetra_net:
+    driver: bridge

@@ -31,9 +31,8 @@ SECURITY_HEADERS = {
     "referrer-policy": "Referrer-Policy",
 }
 
-QUANTUM_VULNERABLE_JWT_ALGS = {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512"}
-CLASSICAL_SAFE_JWT_ALGS = {"HS256", "HS384", "HS512"}
 PQC_JWT_ALGS = {"ML-DSA-65", "DILITHIUM3"}
+VULNERABLE_JWT_ALGS = {"RS256", "RS384", "RS512", "ES256", "ES384", "ES512", "PS256", "PS384", "PS512", "none"}
 
 
 @dataclass
@@ -112,6 +111,7 @@ class APIInspector:
                 self._check_cors(resp, result)
                 await self._check_graphql(client, url, result)
                 self._check_oauth_hints(body, result)
+                await self._check_well_known(client, url, result)
 
         except httpx.TimeoutException:
             result.error = "Request timed out"
@@ -204,7 +204,9 @@ class APIInspector:
                 result.jwt_algorithm = algo
                 result.jwt_location = "response_body"
                 result.jwt_quantum_safe = algo in PQC_JWT_ALGS
-                if algo in QUANTUM_VULNERABLE_JWT_ALGS:
+                if algo == "none":
+                    result.findings.append("CRITICAL: JWT 'none' algorithm allowed — signature bypass possible")
+                elif algo in VULNERABLE_JWT_ALGS:
                     result.findings.append(
                         f"JWT signed with quantum-vulnerable algorithm: {algo}"
                     )
@@ -218,7 +220,7 @@ class APIInspector:
                 result.jwt_algorithm = algo
                 result.jwt_location = "response_body.alg"
                 result.jwt_quantum_safe = algo in PQC_JWT_ALGS
-                if algo in QUANTUM_VULNERABLE_JWT_ALGS:
+                if algo in VULNERABLE_JWT_ALGS:
                     result.findings.append(
                         f"JWT algorithm field in JSON response: {algo} (quantum-vulnerable)"
                     )
@@ -312,7 +314,33 @@ class APIInspector:
             )
             if alg_match:
                 result.oauth_signing_algorithm = alg_match.group(1)
-                if result.oauth_signing_algorithm in QUANTUM_VULNERABLE_JWT_ALGS:
+                if result.oauth_signing_algorithm in VULNERABLE_JWT_ALGS:
                     result.findings.append(
                         f"OAuth OIDC signing algorithm exposed: {result.oauth_signing_algorithm}"
                     )
+
+    async def _check_well_known(self, client: httpx.AsyncClient, base_url: str, result: APIInspectResult) -> None:
+        """Check for OpenID Connect well-known configuration."""
+        well_known_path = "/.well-known/openid-configuration"
+        try:
+            url = base_url.rstrip("/") + well_known_path
+            resp = await client.get(url, timeout=5.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                # Extract signing algorithms
+                algs = data.get("id_token_signing_alg_values_supported", [])
+                if algs:
+                    result.oauth_signing_algorithm = algs[0]
+                    vulnerable = [a for a in algs if a in VULNERABLE_JWT_ALGS]
+                    if vulnerable:
+                        result.findings.append(
+                            f"OAuth OIDC supports quantum-vulnerable signing: {', '.join(vulnerable)}"
+                        )
+                
+                # Extract token endpoint
+                token_endpoint = data.get("token_endpoint")
+                if token_endpoint:
+                    result.oauth_token_endpoint = token_endpoint
+                    result.findings.append(f"OAuth token endpoint discovered: {token_endpoint}")
+        except Exception:
+            pass

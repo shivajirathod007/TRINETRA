@@ -121,14 +121,17 @@ class SSHProbe:
             result.kex_quantum_vulnerable = len(vulnerable_kex) > 0
             result.has_hybrid_kex = len(hybrid_kex) > 0
 
-        # Overall status
+        # Overall status (NIST SP 1800-38B Alignment)
         if result.error:
             result.quantum_safe_status = "SCAN_FAILED"
-        elif result.host_key_quantum_vulnerable:
+        elif result.host_key_quantum_vulnerable or result.kex_quantum_vulnerable:
+            # NIST Deprecated: ssh-rsa, group14-sha1, etc.
             result.quantum_safe_status = "VULNERABLE"
         elif result.has_hybrid_kex:
+            # Transitional PQC
             result.quantum_safe_status = "PQC_READY"
         elif result.host_key_algorithm in CLASSICAL_SAFE_HOST_KEYS:
+            # RFC 8332: Ed25519
             result.quantum_safe_status = "CLASSICAL_SAFE"
         else:
             result.quantum_safe_status = "UNKNOWN"
