@@ -1,0 +1,7 @@
+# Regulated data shelf-life values (years) per sensitivity tier.
+# Defaults reflect RBI Master Directions and DPDP Act minimums.
+# Override per deployment without a code release.
+shelf_life_years:
+  transaction: 7.0      # RBI Master Directions / DPDP Act minimum
+  authentication: 1.0
+  static: 0.0

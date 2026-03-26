@@ -188,6 +188,20 @@ class ScannedAsset(Base):
     hndl_urgency: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     # Values: IMMEDIATE | URGENT | PLANNED | MONITOR
 
+    # ── Data sensitivity tier ─────────────────────────────────────────────────
+    data_sensitivity_tier: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default="static"
+        # Values: transaction | authentication | static
+    )
+    data_sensitivity_tier_source: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True, default="auto_detected"
+        # Values: auto_detected | manual_override
+    )
+    sensitivity_override_reason: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True
+        # Free-text reason recorded when an analyst manually overrides the tier
+    )
+
     # ── CBOM ─────────────────────────────────────────────────────────────────
     cbom_entry: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     # Full CycloneDX 1.6 JSON entry for this asset

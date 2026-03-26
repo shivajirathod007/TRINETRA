@@ -69,6 +69,10 @@ class HNDLRiskResult:
     urgency_level: str           # IMMEDIATE | URGENT | PLANNED | MONITOR
     urgency_message: str         # Human-readable explanation
 
+    # Data sensitivity
+    data_sensitivity_tier: str       # "transaction" | "authentication" | "static"
+    data_shelf_life_years: float     # shelf-life used in Mosca X (from config)
+
     # Data at risk
     data_decryptable_in_years: Optional[float]   # Approx when intercepted traffic becomes readable
     hndl_active: bool            # True = adversaries likely storing traffic NOW
@@ -116,9 +120,16 @@ class HNDLEngine:
         is_pqc_safe = alg_risk <= 5
 
         # ── Mosca inputs ──────────────────────────────────────────────────────
-        from core.constants import DATA_SENSITIVITY_SHELF_LIFE_YEARS
-        regulated_shelf_life = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
-        
+        # Read shelf-life from SensitivityDetector config if available,
+        # otherwise fall back to constants.DATA_SENSITIVITY_SHELF_LIFE_YEARS
+        try:
+            from engine.discovery.sensitivity_detector import SensitivityDetector
+            _detector = SensitivityDetector()
+            regulated_shelf_life = _detector.get_shelf_life(data_sensitivity_tier.lower())
+        except Exception:
+            from core.constants import DATA_SENSITIVITY_SHELF_LIFE_YEARS
+            regulated_shelf_life = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
+
         # X: data shelf life = max(cert expiry window, regulated shelf life)
         mosca_x = max(cert_expiry_days / 365.0, regulated_shelf_life)
 
@@ -131,6 +142,16 @@ class HNDLEngine:
 
         # Mosca inequality: X + Y > Z means act now
         mosca_act_now = (mosca_x + mosca_y) > mosca_z and not is_pqc_safe
+
+        # Forced mosca_act_now for transaction tier:
+        # When data shelf life is 7 years and CRQC moderate is within 7 years,
+        # act now regardless of cert expiry — unless already PQC-safe (alg_risk <= 5)
+        if (
+            data_sensitivity_tier.lower() == "transaction"
+            and (crqc_m - current_year) <= 7
+            and alg_risk > 5
+        ):
+            mosca_act_now = True
 
         # ── Per-scenario deadlines ─────────────────────────────────────────────
         deadline_p = self._compute_deadline(today, mosca_x, crqc_p, migration_months)
@@ -175,6 +196,8 @@ class HNDLEngine:
             urgency_message=urgency_message,
             data_decryptable_in_years=data_decryptable_in_years,
             hndl_active=hndl_active,
+            data_sensitivity_tier=data_sensitivity_tier,
+            data_shelf_life_years=round(regulated_shelf_life, 2),
         )
 
         log.info(

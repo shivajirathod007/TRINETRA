@@ -46,6 +46,8 @@ class CBOMGenerator:
         pqc_certificate_id: Optional[str] = None,
         ai_detections: Optional[list] = None,
         data_sensitivity_tier: str = "static",
+        data_sensitivity_tier_source: str = "auto_detected",
+        data_shelf_life_years: float = 0.0,
     ) -> dict[str, Any]:
         """
         Builds a complete CycloneDX 1.6 CBOM entry for one asset.
@@ -111,7 +113,10 @@ class CBOMGenerator:
                     "hndl_timeline": score_result.breakdown.hndl_timeline_raw,
                     "public_exposure": score_result.breakdown.public_exposure_raw,
                     "weights": score_result.breakdown.weights,
-                    "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline×0.40) + (Exposure×0.20)",
+                    "data_sensitivity_tier": score_result.breakdown.data_sensitivity_tier,
+                    "data_shelf_life_years": score_result.breakdown.data_shelf_life_years,
+                    "sensitivity_tier_impact": score_result.breakdown.sensitivity_tier_impact,
+                    "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)",
                     "research_basis": "QARS formula — MDPI Electronics, August 2025",
                 },
             },
@@ -126,6 +131,9 @@ class CBOMGenerator:
                 "urgency_level": hndl_result.urgency_level,
                 "urgency_message": hndl_result.urgency_message,
                 "data_decryptable_in_years": hndl_result.data_decryptable_in_years,
+                "data_sensitivity_tier": data_sensitivity_tier,
+                "data_sensitivity_tier_source": data_sensitivity_tier_source,
+                "data_shelf_life_years": data_shelf_life_years,
                 "mosca": {
                     "act_now": hndl_result.mosca_act_now,
                     "x_data_shelf_life_years": hndl_result.mosca_x,
@@ -138,7 +146,6 @@ class CBOMGenerator:
                     "moderate": hndl_result.crqc_year_moderate,
                     "optimistic": hndl_result.crqc_year_optimistic,
                 },
-                "data_sensitivity_tier": data_sensitivity_tier,
             },
 
             # ── NIST compliance ───────────────────────────────────────────────
@@ -197,6 +204,7 @@ class CBOMGenerator:
                 "organization_quantum_exposure_score": organization_score,
                 "total_assets_scanned": len(asset_entries),
                 "risk_distribution": risk_counts,
+                "sensitivity_distribution": self._count_sensitivity_tiers(asset_entries),
                 "shadow_assets_found": sum(
                     1 for e in asset_entries
                     if e.get("asset", {}).get("is_shadow_asset", False)
@@ -311,4 +319,15 @@ class CBOMGenerator:
             tier = e.get("quantum_risk", {}).get("risk_level", "UNKNOWN")
             if tier in counts:
                 counts[tier] += 1
+        return counts
+
+    def _count_sensitivity_tiers(self, entries: list[dict]) -> dict:
+        """Counts assets per data_sensitivity_tier for org-level CBOM summary."""
+        counts = {"transaction": 0, "authentication": 0, "static": 0}
+        for e in entries:
+            tier = e.get("hndl", {}).get("data_sensitivity_tier", "static")
+            if tier in counts:
+                counts[tier] += 1
+            else:
+                counts["static"] += 1
         return counts

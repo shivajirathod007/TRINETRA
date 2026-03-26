@@ -7,6 +7,7 @@ import uuid
 from db.session import get_db
 from db.repository import ScanRepository
 from db.models import ScanJob, ScannedAsset
+from schemas.asset import SensitivityTierOverride, SensitivityTierOverrideResponse
 
 router = APIRouter()
 
@@ -63,6 +64,9 @@ async def list_assets(
             "cert_sha256": a.cert_sha256,
             "cert_expiry": a.cert_expiry.strftime("%d %b %Y") if a.cert_expiry else None,
             "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
+            # Sensitivity tier fields
+            "data_sensitivity_tier": a.data_sensitivity_tier or "static",
+            "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",
         }
         for a in assets
     ]
@@ -80,6 +84,12 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
     if not a:
         raise HTTPException(status_code=404, detail="Asset not found")
     cert_expiry = a.cert_expiry.isoformat() if a.cert_expiry else None
+
+    # Extract sensitivity tier impact from score_breakdown if available
+    score_breakdown = a.score_breakdown or {}
+    sensitivity_tier_impact = score_breakdown.get("sensitivity_tier_impact")
+    data_shelf_life_years = score_breakdown.get("data_shelf_life_years", 0.0)
+
     return {
         "id": str(a.id),
         "url": a.asset_url,
@@ -100,4 +110,148 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
         "pqc_status": a.quantum_safe_status or "UNKNOWN",
         "vulnerabilities": a.vulnerabilities or [],
         "recommendations": [],
+        # Sensitivity tier fields (Requirement 7.1, 7.2)
+        "data_sensitivity_tier": a.data_sensitivity_tier or "static",
+        "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",
+        "data_shelf_life_years": data_shelf_life_years,
+        "sensitivity_tier_impact": sensitivity_tier_impact,
     }
+
+
+@router.patch("/{asset_id}/sensitivity-tier", response_model=SensitivityTierOverrideResponse)
+async def override_sensitivity_tier(
+    asset_id: str,
+    body: SensitivityTierOverride,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Manually override the data sensitivity tier for an asset.
+    Synchronously recomputes HNDL urgency and QARS exposure score.
+    Returns updated scores in the response body.
+
+    Requirements: 4.1–4.7
+    """
+    # Validate asset_id format
+    try:
+        uid = uuid.UUID(asset_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid asset_id format")
+
+    repo = ScanRepository(db)
+    asset = await repo.get_asset(uid)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    # Synchronous re-score with the new tier
+    try:
+        from engine.analysis.exposure_scorer import ExposureScorer
+        from engine.analysis.hndl_engine import HNDLEngine
+        from engine.analysis.cbom_generator import CBOMGenerator
+        from engine.discovery.sensitivity_detector import SensitivityDetector
+        from core.config import settings
+
+        new_tier = body.data_sensitivity_tier
+
+        # Resolve shelf-life for the new tier
+        detector = SensitivityDetector()
+        shelf_life_years = detector.get_shelf_life(new_tier)
+
+        cert_expiry_days = asset.cert_expiry_days or 365
+
+        scorer = ExposureScorer()
+        score_result = scorer.score(
+            asset_url=asset.asset_url,
+            algorithm=asset.cert_algorithm or "RSA-2048",
+            asset_type=asset.asset_type,
+            cert_expiry_days=cert_expiry_days,
+            crqc_year=settings.crqc_moderate_year,
+            is_shadow_asset=asset.is_shadow_asset,
+            key_exchange=asset.key_exchange,
+            jwt_algorithm=asset.jwt_algorithm,
+            data_sensitivity_tier=new_tier,
+        )
+
+        hndl_engine = HNDLEngine()
+        hndl_result = hndl_engine.calculate(
+            asset_url=asset.asset_url,
+            algorithm=asset.cert_algorithm or "RSA-2048",
+            cert_expiry_days=cert_expiry_days,
+            data_sensitivity_tier=new_tier,
+        )
+
+        # Regenerate CBOM entry with updated tier
+        cbom_gen = CBOMGenerator()
+
+        class _Asset:
+            fqdn = asset.fqdn
+            ip_address = asset.ip_address
+            port = asset.port
+            asset_type = asset.asset_type
+            asset_url = asset.asset_url
+            is_shadow_asset = asset.is_shadow_asset
+
+        new_cbom_entry = cbom_gen.generate_asset_entry(
+            asset=_Asset(),
+            tls_result=None,
+            cert_info=None,
+            api_result=None,
+            ssh_result=None,
+            score_result=score_result,
+            hndl_result=hndl_result,
+            scan_id=str(asset.scan_job_id),
+            pqc_certificate_id=str(asset.pqc_certificate_id) if asset.pqc_certificate_id else None,
+            ai_detections=asset.ai_detections,
+            data_sensitivity_tier=new_tier,
+            data_sensitivity_tier_source="manual_override",
+            data_shelf_life_years=shelf_life_years,
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Score recomputation failed: {str(exc)[:200]}",
+        )
+
+    # Persist all updated fields in a single DB write
+    try:
+        asset.data_sensitivity_tier = new_tier
+        asset.data_sensitivity_tier_source = "manual_override"
+        asset.sensitivity_override_reason = body.override_reason
+        asset.quantum_exposure_score = score_result.score
+        asset.risk_level = score_result.risk_level
+        asset.hndl_deadline = hndl_result.primary_deadline
+        asset.hndl_urgency = hndl_result.urgency_level
+        asset.score_breakdown = {
+            "algorithm_risk": score_result.breakdown.algorithm_risk_raw,
+            "hndl_timeline": score_result.breakdown.hndl_timeline_raw,
+            "public_exposure": score_result.breakdown.public_exposure_raw,
+            "weights": score_result.breakdown.weights,
+            "data_sensitivity_tier": score_result.breakdown.data_sensitivity_tier,
+            "data_shelf_life_years": score_result.breakdown.data_shelf_life_years,
+            "sensitivity_tier_impact": score_result.breakdown.sensitivity_tier_impact,
+            "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)",
+        }
+        asset.cbom_entry = new_cbom_entry
+        await db.commit()
+        await db.refresh(asset)
+    except Exception as exc:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database write failed: {str(exc)[:200]}",
+        )
+
+    return SensitivityTierOverrideResponse(
+        asset_id=str(asset.id),
+        data_sensitivity_tier=new_tier,
+        data_sensitivity_tier_source="manual_override",
+        quantum_exposure_score=score_result.score,
+        risk_level=score_result.risk_level,
+        hndl_deadline=hndl_result.primary_deadline,
+        hndl_urgency=hndl_result.urgency_level,
+        mosca_x=hndl_result.mosca_x,
+        mosca_act_now=hndl_result.mosca_act_now,
+        data_shelf_life_years=shelf_life_years,
+        sensitivity_tier_impact=score_result.breakdown.sensitivity_tier_impact,
+        score_breakdown=asset.score_breakdown,
+    )

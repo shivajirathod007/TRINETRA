@@ -41,6 +41,9 @@ class MigrationPlan:
     immediate_action: str           # One-liner for the CISO summary
     nist_standards_applied: list[str]
     vendor_guides: list[str]
+    # Sensitivity tier fields (Requirement 10)
+    data_sensitivity_tier: str = "static"   # tier that drove complexity override
+    tier_rationale: str = ""                # auditable explanation of complexity assignment
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -131,11 +134,16 @@ class MigrationPlanner:
         jwt_algorithm: Optional[str] = None,
         vpn_type: Optional[str] = None,
         ssh_host_key: Optional[str] = None,
+        data_sensitivity_tier: str = "static",
     ) -> MigrationPlan:
         """
         Generates migration plan for a single asset.
 
         Priority: use worst algorithm across all detected sources.
+        data_sensitivity_tier drives complexity override:
+          transaction → HIGH (+ extra audit/rollback steps)
+          authentication → MEDIUM
+          static → LOW
         """
         # Find the applicable migration rule
         rule = self._find_rule(
@@ -143,7 +151,7 @@ class MigrationPlanner:
         )
 
         if rule is None:
-            return self._already_safe_plan(asset_url, asset_type, current_algorithm)
+            return self._already_safe_plan(asset_url, asset_type, current_algorithm, data_sensitivity_tier)
 
         # Generate steps based on asset type
         steps = self._build_steps(
@@ -157,6 +165,16 @@ class MigrationPlanner:
             rule=rule,
         )
 
+        # ── Tier-to-complexity override ───────────────────────────────────────
+        # Tier-driven complexity overrides algorithm-based complexity when higher.
+        # transaction assets are never rated below HIGH regardless of algorithm.
+        base_complexity = rule["complexity"]
+        base_sprints = rule["sprints"]
+        complexity, sprints, tier_rationale, extra_steps = self._apply_tier_override(
+            base_complexity, base_sprints, data_sensitivity_tier, steps
+        )
+        steps = extra_steps  # may have additional steps injected for transaction tier
+
         total_hours = sum(s.estimated_hours or 4 for s in steps)
 
         plan = MigrationPlan(
@@ -168,20 +186,23 @@ class MigrationPlanner:
             target_kex=rule["target_kex"],
             migration_path="hybrid_first",
             steps=steps,
-            estimated_sprints=rule["sprints"],
-            complexity=rule["complexity"],
+            estimated_sprints=sprints,
+            complexity=complexity,
             estimated_hours_total=total_hours,
             immediate_action=self._immediate_action(rule, current_algorithm),
             nist_standards_applied=[rule["nist_sig"], rule["nist_kex"]],
             vendor_guides=self._vendor_guides(asset_type, vpn_type),
+            data_sensitivity_tier=data_sensitivity_tier,
+            tier_rationale=tier_rationale,
         )
 
         log.info(
             "migration_plan_generated",
             url=asset_url,
-            complexity=rule["complexity"],
-            sprints=rule["sprints"],
+            complexity=complexity,
+            sprints=sprints,
             steps=len(steps),
+            tier=data_sensitivity_tier,
         )
         return plan
 
@@ -416,8 +437,89 @@ class MigrationPlanner:
             ),
         ]
 
+    def _apply_tier_override(
+        self,
+        base_complexity: str,
+        base_sprints: int,
+        data_sensitivity_tier: str,
+        steps: list[MigrationStep],
+    ) -> tuple[str, int, str, list[MigrationStep]]:
+        """
+        Applies tier-to-complexity override table.
+        Returns (complexity, sprints, tier_rationale, updated_steps).
+
+        transaction → HIGH (overrides if base is lower; adds 3 extra steps)
+        authentication → MEDIUM (overrides if base is simple)
+        static → LOW (no override — algorithm-based complexity stands)
+        """
+        _complexity_rank = {"simple": 0, "moderate": 1, "complex": 2, "critical": 3}
+        _tier_complexity = {
+            "transaction":    ("complex", 3),
+            "authentication": ("moderate", 2),
+            "static":         ("simple", 1),
+        }
+
+        tier_complexity, tier_sprints = _tier_complexity.get(
+            data_sensitivity_tier.lower(), ("simple", 1)
+        )
+
+        # Override only when tier-driven complexity is higher
+        base_rank = _complexity_rank.get(base_complexity, 1)
+        tier_rank = _complexity_rank.get(tier_complexity, 0)
+
+        if tier_rank > base_rank:
+            final_complexity = tier_complexity
+            final_sprints = max(base_sprints, tier_sprints)
+        else:
+            final_complexity = base_complexity
+            final_sprints = base_sprints
+
+        # Build tier_rationale
+        tier_labels = {
+            "transaction": "transaction tier → HIGH complexity (RBI 7-year retention mandate)",
+            "authentication": "authentication tier → MEDIUM complexity (standard migration template)",
+            "static": "static tier → LOW complexity (no regulated retention obligation)",
+        }
+        tier_rationale = tier_labels.get(data_sensitivity_tier.lower(), "unknown tier")
+
+        # Inject extra steps for transaction tier
+        updated_steps = list(steps)
+        if data_sensitivity_tier.lower() == "transaction":
+            next_n = len(updated_steps) + 1
+            updated_steps.append(MigrationStep(
+                step_number=next_n,
+                title="Encrypted transfer validation",
+                description=(
+                    "Verify all data-in-transit is encrypted end-to-end during migration. "
+                    "Transaction data (RBI 7-year retention) must not be exposed in plaintext "
+                    "at any point during the migration window."
+                ),
+                estimated_hours=4,
+            ))
+            updated_steps.append(MigrationStep(
+                step_number=next_n + 1,
+                title="Full audit trail requirement",
+                description=(
+                    "Maintain a complete, tamper-evident audit log of all migration steps "
+                    "for this transaction-tier asset. Required for CAG/RBI audit compliance."
+                ),
+                estimated_hours=2,
+            ))
+            updated_steps.append(MigrationStep(
+                step_number=next_n + 2,
+                title="Rollback checkpoint verification",
+                description=(
+                    "Define and test a rollback checkpoint before each migration step. "
+                    "Transaction-tier assets require a verified rollback path at every stage."
+                ),
+                estimated_hours=3,
+            ))
+
+        return final_complexity, final_sprints, tier_rationale, updated_steps
+
     def _already_safe_plan(
-        self, asset_url: str, asset_type: str, algorithm: str
+        self, asset_url: str, asset_type: str, algorithm: str,
+        data_sensitivity_tier: str = "static",
     ) -> MigrationPlan:
         return MigrationPlan(
             asset_url=asset_url,
@@ -444,6 +546,8 @@ class MigrationPlanner:
             immediate_action="No action required. Asset is quantum-safe.",
             nist_standards_applied=["NIST FIPS 203", "NIST FIPS 204"],
             vendor_guides=[],
+            data_sensitivity_tier=data_sensitivity_tier,
+            tier_rationale=f"{data_sensitivity_tier} tier — asset is already PQC-safe, no complexity override needed",
         )
 
     def _immediate_action(self, rule: dict, algorithm: str) -> str:

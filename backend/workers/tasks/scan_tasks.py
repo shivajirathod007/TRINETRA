@@ -158,20 +158,26 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     jwt_algorithm = api_result.jwt_algorithm if api_result else None
     cert_expiry_days = cert_info.days_until_expiry if cert_info and cert_info.days_until_expiry else 365
 
-    # ── Determine data sensitivity tier ───────────────────────────────────────
-    # Financial regulations require longer term secrecy for transactional data
-    sensitivity_map = {
-        "web_portal": "transaction",
-        "api_authenticated": "transaction",
-        "mobile_backend": "transaction",
-        "api_public": "authentication",
-        "vpn_gateway": "authentication",
-        "ssh_endpoint": "authentication",
-        "smtp_mta": "static",
-        "staging": "static",
-        "shadow_asset": "static",
-    }
-    data_sensitivity_tier = sensitivity_map.get(asset_type, "static")
+    # ── Determine data sensitivity tier via SensitivityDetector ──────────────
+    # Uses keyword matching + asset-type rules from config/sensitivity_keywords.yaml
+    # Falls back to "static" if config is missing (safe default)
+    try:
+        from engine.discovery.sensitivity_detector import SensitivityDetector
+        _sensitivity_detector = SensitivityDetector()
+        sensitivity_result = _sensitivity_detector.detect(
+            fqdn=asset_data["fqdn"],
+            asset_url=asset_url,
+            asset_type=asset_type,
+            jwt_algorithm=jwt_algorithm,
+        )
+        data_sensitivity_tier = sensitivity_result.tier
+        data_sensitivity_tier_source = sensitivity_result.source
+        data_shelf_life_years = sensitivity_result.shelf_life_years
+    except Exception as exc:
+        log.warning("sensitivity_detector_error", asset_url=asset_url, error=str(exc))
+        data_sensitivity_tier = "static"
+        data_sensitivity_tier_source = "auto_detected"
+        data_shelf_life_years = 0.0
 
     # ── Run AI Classifier (before scoring so detections can upgrade algorithm) ──
     # Triggers on response body OR headers alone — never silently skipped.
@@ -249,6 +255,7 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         jwt_algorithm=jwt_algorithm,
         vpn_type=vpn_type,
         ssh_host_key=ssh_result.host_key_algorithm if ssh_result else None,
+        data_sensitivity_tier=data_sensitivity_tier,
     )
 
     # ── Issue PQC certificate ─────────────────────────────────────────────────
@@ -288,6 +295,8 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         pqc_certificate_id=certificate["certificate_id"],
         ai_detections=ai_detections,
         data_sensitivity_tier=data_sensitivity_tier,
+        data_sensitivity_tier_source=data_sensitivity_tier_source,
+        data_shelf_life_years=data_shelf_life_years,
     )
 
     # ── Build flat result dict for DB persistence ─────────────────────────────
@@ -334,6 +343,9 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         },
         "hndl_deadline": hndl_result.primary_deadline,
         "hndl_urgency": hndl_result.urgency_level,
+        # Data sensitivity tier
+        "data_sensitivity_tier": data_sensitivity_tier,
+        "data_sensitivity_tier_source": data_sensitivity_tier_source,
         # CBOM + Plan
         "cbom_entry": cbom_entry,
         "migration_plan": {
@@ -352,6 +364,8 @@ async def _run_all_scanners(asset_data: dict) -> dict:
             "complexity": migration_plan.complexity,
             "immediate_action": migration_plan.immediate_action,
             "nist_standards": migration_plan.nist_standards_applied,
+            "data_sensitivity_tier": migration_plan.data_sensitivity_tier,
+            "tier_rationale": migration_plan.tier_rationale,
         },
         # Certificate
         "pqc_certificate_data": certificate,

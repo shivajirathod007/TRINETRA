@@ -1,0 +1,40 @@
+# Keyword lists for auto-detection of data sensitivity tier.
+# Keywords are matched case-insensitively against FQDN and URL path.
+# Add keywords here; no code release required.
+# Priority order: transaction > authentication > static (first match at highest priority wins).
+
+transaction:
+  - payment
+  - transaction
+  - transfer
+  - swift
+  - sepa
+  - fx
+  - trade
+  - clearing
+  - settlement
+  - core-banking
+  - iso20022
+  - rtgs
+  - neft
+  - imps
+  - nostro
+  - vostro
+  - correspondent
+  - reconciliation
+  - custody
+  - clearance
+  - iban
+  - bic
+
+authentication:
+  - auth
+  - login
+  - sso
+  - oauth
+  - oidc
+  - identity
+  - iam
+  - mfa
+  - token
+  - session

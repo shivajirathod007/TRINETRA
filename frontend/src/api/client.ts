@@ -36,6 +36,36 @@ export const assetsApi = {
 
   getByScan: (scanId: string) =>
     api.get<AssetSummary[]>(`/dashboard/${scanId}/assets`).then(r => r.data),
+
+  /**
+   * Manually override the data sensitivity tier for an asset.
+   * Synchronously recomputes HNDL urgency and QARS exposure score.
+   * Returns updated scores in the response body.
+   *
+   * Requirements: 4.1–4.7
+   */
+  patchSensitivityTier: (
+    assetId: string,
+    tier: "transaction" | "authentication" | "static",
+    overrideReason?: string,
+  ) =>
+    api.patch<{
+      asset_id: string;
+      data_sensitivity_tier: string;
+      data_sensitivity_tier_source: string;
+      quantum_exposure_score: number | null;
+      risk_level: string | null;
+      hndl_deadline: string | null;
+      hndl_urgency: string | null;
+      mosca_x: number | null;
+      mosca_act_now: boolean | null;
+      data_shelf_life_years: number | null;
+      sensitivity_tier_impact: number | null;
+      score_breakdown: Record<string, unknown> | null;
+    }>(`/assets/${assetId}/sensitivity-tier`, {
+      data_sensitivity_tier: tier,
+      override_reason: overrideReason ?? null,
+    }).then(r => r.data),
 }
 
 // ── Dashboard API ─────────────────────────────────────────────────────────────

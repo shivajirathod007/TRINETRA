@@ -44,6 +44,10 @@ class ScoreBreakdown:
     public_exposure_weighted: float # × 0.20
     final_score: float              # sum of weighted components
     weights: dict                   # SCORE_WEIGHTS snapshot
+    # Sensitivity tier fields (Requirement 6.1, 6.2)
+    data_sensitivity_tier: str = "static"       # tier used in this scoring run
+    data_shelf_life_years: float = 0.0          # shelf-life used in Mosca X
+    sensitivity_tier_impact: float = 0.0        # HNDL score delta vs static baseline
 
 
 @dataclass
@@ -115,6 +119,19 @@ class ExposureScorer:
         # ── Factor 2: HNDL Timeline Urgency (0-100) ───────────────────────────
         hndl_score = float(get_hndl_urgency_score(cert_expiry_days, crqc_year, data_sensitivity_tier))
 
+        # Compute sensitivity_tier_impact = delta vs static baseline
+        hndl_score_static_baseline = float(get_hndl_urgency_score(cert_expiry_days, crqc_year, "static"))
+        sensitivity_tier_impact = round(hndl_score - hndl_score_static_baseline, 1)
+
+        # Resolve shelf-life for breakdown transparency
+        try:
+            from engine.discovery.sensitivity_detector import SensitivityDetector
+            _detector = SensitivityDetector()
+            shelf_life_years = _detector.get_shelf_life(data_sensitivity_tier.lower())
+        except Exception:
+            from core.constants import DATA_SENSITIVITY_SHELF_LIFE_YEARS
+            shelf_life_years = DATA_SENSITIVITY_SHELF_LIFE_YEARS.get(data_sensitivity_tier.lower(), 0.0)
+
         # ── Factor 3: Public Exposure (0-100) ─────────────────────────────────
         exposure = float(get_exposure_score(asset_type, is_shadow_asset))
 
@@ -136,6 +153,9 @@ class ExposureScorer:
             public_exposure_weighted=round(exposure_weighted, 1),
             final_score=final_score,
             weights=dict(w),
+            data_sensitivity_tier=data_sensitivity_tier,
+            data_shelf_life_years=round(shelf_life_years, 2),
+            sensitivity_tier_impact=sensitivity_tier_impact,
         )
 
         # ── Derived fields ────────────────────────────────────────────────────
