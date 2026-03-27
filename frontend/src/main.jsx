@@ -7,16 +7,20 @@ import { ThemeProvider } from './context/ThemeContext.jsx'
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
+    queries: {
+      retry: 1,
+      staleTime: 60_000,          // 1 min — don't refetch on every focus
+      gcTime: 5 * 60_000,         // 5 min cache
+      refetchOnWindowFocus: false, // prevent refetch storm on tab switch
+      refetchOnMount: false,       // use cached data on remount
+    },
   },
 })
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <App />
-      </ThemeProvider>
-    </QueryClientProvider>
-  </StrictMode>,
+  <QueryClientProvider client={queryClient}>
+    <ThemeProvider>
+      <App />
+    </ThemeProvider>
+  </QueryClientProvider>,
 )

@@ -13,14 +13,25 @@ router = APIRouter()
 
 
 async def _latest_scan_id_for_domain(db: AsyncSession, domain: str):
-    result = await db.execute(
-        select(ScanJob.id)
-        .where(ScanJob.domain == domain)
-        .order_by(ScanJob.created_at.desc())
-        .limit(1)
-    )
-    row = result.scalar_one_or_none()
-    return str(row) if row else None
+    # Normalize domain
+    domain = domain.lower().strip()
+    for prefix in ("https://", "http://"):
+        if domain.startswith(prefix):
+            domain = domain[len(prefix):]
+    domain = domain.rstrip("/").removeprefix("www.")
+
+    # Try exact match and www variant
+    for candidate in [domain, f"www.{domain}"]:
+        result = await db.execute(
+            select(ScanJob.id)
+            .where(ScanJob.domain == candidate)
+            .order_by(ScanJob.created_at.desc())
+            .limit(1)
+        )
+        row = result.scalar_one_or_none()
+        if row:
+            return str(row)
+    return None
 
 
 @router.get("/")
@@ -50,7 +61,7 @@ async def list_assets(
         {
             "id": str(a.id),
             "url": a.asset_url,
-            "domain": domain,
+            "domain": domain or a.fqdn,
             "type": a.asset_type,
             "risk_level": a.risk_level or "UNKNOWN",
             "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
@@ -67,6 +78,8 @@ async def list_assets(
             # Sensitivity tier fields
             "data_sensitivity_tier": a.data_sensitivity_tier or "static",
             "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",
+            # Score breakdown for tooltip
+            "score_breakdown": a.score_breakdown,
         }
         for a in assets
     ]

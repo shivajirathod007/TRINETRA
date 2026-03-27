@@ -170,6 +170,29 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
             log.warning("port_scan_error", scan_id=scan_id, error=str(exc))
             port_results = []
 
+        # If port scan returned no open ports (firewall blocking), synthesize
+        # HTTPS results for all live assets so the classifier can still run
+        if not any(pr.open_ports for pr in port_results):
+            log.warning(
+                "port_scan_no_open_ports",
+                scan_id=scan_id,
+                msg="All ports appear blocked — synthesizing HTTPS port for live assets",
+            )
+            from engine.discovery.port_scanner import PortScanResult
+            port_results = [
+                PortScanResult(
+                    ip_address=a.ip_address or a.fqdn,
+                    fqdn=a.fqdn,
+                    open_ports=[443],
+                    services={443: "https"},
+                    has_https=True,
+                    has_ssh=False,
+                    has_smtp=False,
+                    has_vpn_ports=False,
+                )
+                for a in live_assets
+            ]
+
         # ── Step 4: Asset Classification ──────────────────────────────────────
         classifier = AssetClassifier()
         shadow_fqdns = {a.fqdn for a in live_assets if a.is_shadow_asset}
@@ -202,6 +225,7 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
 
             asset_dicts.append({
                 "asset_id": asset_id,
+                "scan_id": scan_id,          # ← inject scan_id so scan_tasks can use it
                 "fqdn": ca.fqdn,
                 "asset_url": ca.asset_url,
                 "asset_type": ca.asset_type,

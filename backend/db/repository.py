@@ -214,28 +214,44 @@ class ScanRepository:
 
     async def get_dashboard_stats(self, domain: str) -> dict:
         """Returns aggregated risk statistics for a domain's latest scan."""
-        latest_scan = await self.db.execute(
-            select(ScanJob)
-            .where(ScanJob.domain == domain, ScanJob.status == "COMPLETED")
-            .order_by(ScanJob.completed_at.desc())
-            .limit(1)
-        )
-        scan = latest_scan.scalar_one_or_none()
-        if not scan:
+        # Try multiple domain variants to handle https:// prefix, www, trailing slash
+        domain_clean = domain.lower().strip()
+        for prefix in ("https://", "http://"):
+            if domain_clean.startswith(prefix):
+                domain_clean = domain_clean[len(prefix):]
+        domain_clean = domain_clean.rstrip("/").removeprefix("www.")
+
+        # Try exact match first, then with/without www
+        candidates = list({domain_clean, f"www.{domain_clean}", domain})
+
+        latest_scan = None
+        for candidate in candidates:
+            result = await self.db.execute(
+                select(ScanJob)
+                .where(ScanJob.domain == candidate, ScanJob.status == "COMPLETED")
+                .order_by(ScanJob.completed_at.desc())
+                .limit(1)
+            )
+            scan = result.scalar_one_or_none()
+            if scan:
+                latest_scan = scan
+                break
+
+        if not latest_scan:
             return {}
 
         return {
-            "scan_id": str(scan.id),
-            "domain": scan.domain,
-            "organization_score": scan.organization_score,
-            "assets_scanned": scan.assets_scanned,
-            "critical_count": scan.critical_count,
-            "high_count": scan.high_count,
-            "medium_count": scan.medium_count,
-            "low_count": scan.low_count,
-            "safe_count": scan.safe_count,
-            "shadow_assets_found": scan.shadow_assets_found,
-            "completed_at": scan.completed_at.isoformat() if scan.completed_at else None,
+            "scan_id": str(latest_scan.id),
+            "domain": latest_scan.domain,
+            "organization_score": latest_scan.organization_score,
+            "assets_scanned": latest_scan.assets_scanned,
+            "critical_count": latest_scan.critical_count,
+            "high_count": latest_scan.high_count,
+            "medium_count": latest_scan.medium_count,
+            "low_count": latest_scan.low_count,
+            "safe_count": latest_scan.safe_count,
+            "shadow_assets_found": latest_scan.shadow_assets_found,
+            "completed_at": latest_scan.completed_at.isoformat() if latest_scan.completed_at else None,
         }
 
 

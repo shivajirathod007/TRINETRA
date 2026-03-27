@@ -1,41 +1,49 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const AnimatedCounters = ({ value, duration = 1000, prefix = '', suffix = '' }) => {
+const AnimatedCounters = ({ value, duration = 800, prefix = '', suffix = '' }) => {
     const [count, setCount] = useState(0);
+    const timerRef = useRef(null);
 
     useEffect(() => {
-        let start = 0;
-        const end = parseInt(value.toString().replace(/,/g, ''), 10) || 0;
+        const end = parseInt(String(value).replace(/,/g, ''), 10) || 0;
 
-        if (start === end) {
-            setCount(end);
+        // Clear any existing timer
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+
+        if (end === 0) {
+            setCount(0);
             return;
         }
 
-        const incrementTime = Math.max(Math.abs(Math.floor(duration / end)), 10);
-        const steps = Math.max(Math.floor(end / (duration / incrementTime)), 1);
+        const totalSteps = 30; // fixed number of animation steps
+        const stepTime = Math.max(Math.floor(duration / totalSteps), 16); // min 16ms (60fps)
+        const increment = Math.ceil(end / totalSteps);
+        let current = 0;
 
-        const timer = setInterval(() => {
-            start += steps;
-            if (start >= end) {
-                clearInterval(timer);
+        timerRef.current = setInterval(() => {
+            current += increment;
+            if (current >= end) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
                 setCount(end);
             } else {
-                setCount(start);
+                setCount(current);
             }
-        }, incrementTime);
+        }, stepTime);
 
-        return () => clearInterval(timer);
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+        };
     }, [value, duration]);
 
-    // Format with commas
-    const formattedCount = count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-
-    return (
-        <span className="font-mono">
-            {prefix}{formattedCount}{suffix}
-        </span>
-    );
+    const formatted = count.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return <span className="font-mono">{prefix}{formatted}{suffix}</span>;
 };
 
 export default AnimatedCounters;

@@ -33,6 +33,6 @@ celery_app.conf.update(
         "scan_tasks.*": {"queue": "scans"},
         "analysis_tasks.*": {"queue": "analysis"},
     },
-    task_soft_time_limit=120,   # 2 minutes per task
-    task_time_limit=180,        # Hard kill after 3 minutes
+    task_soft_time_limit=1800,  # 30 minutes soft limit per task
+    task_time_limit=2100,       # 35 minutes hard kill (gives 5 min grace after soft)
 )

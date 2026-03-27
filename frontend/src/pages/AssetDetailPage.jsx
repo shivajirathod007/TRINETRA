@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
     ArrowLeft, Shield, AlertTriangle, CheckCircle2, RefreshCw,
-    Server, Key, FileText, Lock, ExternalLink
+    Server, Key, FileText, Lock, ExternalLink, Code2, ChevronDown, ChevronUp, Copy, Check
 } from 'lucide-react';
 import { assetsApi } from '../api/index';
 import ThreatBadge from '../components/ThreatBadge';
+import { SensitivityBadge } from '../components/shared/SensitivityBadge';
+import { ScoreBreakdownTooltip } from '../components/shared/ScoreBreakdownTooltip';
 
 const Section = ({ title, children }) => (
     <div className="glass-card border p-6">
@@ -23,6 +25,63 @@ const Row = ({ label, value, mono = false, accent }) => (
         </span>
     </div>
 );
+
+/** Collapsible JSON viewer for raw scan result */
+const JsonViewer = ({ data, title = 'Raw Scan Result (JSON)' }) => {
+    const [open, setOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    if (!data) return null;
+
+    const json = JSON.stringify(data, null, 2);
+
+    const handleCopy = () => {
+        navigator.clipboard.writeText(json).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+
+    return (
+        <div className="glass-card border overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center justify-between p-4 hover:bg-surface-card-hover transition-colors"
+            >
+                <div className="flex items-center gap-2 text-xs font-bold text-secondary uppercase tracking-widest">
+                    <Code2 size={14} className="text-primary-indigo" />
+                    {title}
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="text-xs text-secondary font-mono">{Object.keys(data).length} fields</span>
+                    {open ? <ChevronUp size={16} className="text-secondary" /> : <ChevronDown size={16} className="text-secondary" />}
+                </div>
+            </button>
+
+            {open && (
+                <div className="border-t border-glass-border">
+                    <div className="flex justify-end px-4 py-2 bg-surface-card-hover border-b border-glass-border">
+                        <button
+                            type="button"
+                            onClick={handleCopy}
+                            className="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors"
+                        >
+                            {copied ? <Check size={12} className="text-status-safe" /> : <Copy size={12} />}
+                            {copied ? 'Copied!' : 'Copy JSON'}
+                        </button>
+                    </div>
+                    <pre
+                        className="p-4 text-xs font-mono overflow-x-auto overflow-y-auto text-status-pqc leading-relaxed"
+                        style={{ maxHeight: 480, background: 'rgba(0,0,0,0.3)' }}
+                    >
+                        {json}
+                    </pre>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const AssetDetailPage = () => {
     const { id: assetId } = useParams();
@@ -96,6 +155,11 @@ const AssetDetailPage = () => {
                             <span className={`font-bold uppercase ${asset.discovery === 'Shadow' ? 'text-status-high' : 'text-secondary'}`}>
                                 {asset.discovery === 'Shadow' ? '⚠ Shadow Asset' : 'Known Asset'}
                             </span>
+                            <span>•</span>
+                            <SensitivityBadge
+                                tier={asset.data_sensitivity_tier || 'static'}
+                                source={asset.data_sensitivity_tier_source}
+                            />
                         </div>
                     </div>
                 </div>
@@ -105,9 +169,11 @@ const AssetDetailPage = () => {
             {/* Risk Score Banner */}
             <div className="glass-card p-5 border flex items-center gap-6">
                 <div className="flex flex-col items-center">
-                    <div className={`text-5xl font-bold font-mono text-${riskColor}`}>
-                        {asset.score ?? 0}
-                    </div>
+                    <ScoreBreakdownTooltip score={asset.score ?? 0} breakdown={asset.score_breakdown}>
+                        <div className={`text-5xl font-bold font-mono text-${riskColor} cursor-pointer`}>
+                            {asset.score ?? 0}
+                        </div>
+                    </ScoreBreakdownTooltip>
                     <div className="text-xs text-secondary mt-1 uppercase tracking-wider">Risk Score</div>
                     <div className="w-full bg-surface-card rounded-full h-2 mt-2 overflow-hidden" style={{ width: 80 }}>
                         <div className="h-full rounded-full"
@@ -130,6 +196,32 @@ const AssetDetailPage = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Sensitivity Tier Detail */}
+            {(asset.data_sensitivity_tier || asset.data_shelf_life_years != null) && (
+                <div className="glass-card border p-4 flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-3">
+                        <span className="text-xs text-secondary uppercase tracking-widest">Data Sensitivity</span>
+                        <SensitivityBadge
+                            tier={asset.data_sensitivity_tier || 'static'}
+                            source={asset.data_sensitivity_tier_source}
+                        />
+                    </div>
+                    {asset.data_shelf_life_years != null && (
+                        <div className="text-xs text-secondary">
+                            Shelf life: <span className="font-mono text-primary">{asset.data_shelf_life_years} yr</span>
+                        </div>
+                    )}
+                    {asset.sensitivity_tier_impact != null && asset.sensitivity_tier_impact > 0 && (
+                        <div className="text-xs text-secondary">
+                            HNDL impact: <span className="font-mono text-amber-400">+{asset.sensitivity_tier_impact} pts</span>
+                        </div>
+                    )}
+                    {asset.data_sensitivity_tier_source === 'manual_override' && (
+                        <span className="text-xs text-amber-400 font-semibold">✎ Manually overridden</span>
+                    )}
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg-grid-cols-2 gap-6">
 
@@ -182,6 +274,9 @@ const AssetDetailPage = () => {
                     </Section>
                 )}
             </div>
+
+            {/* Raw JSON Scan Result */}
+            <JsonViewer data={asset} title="Raw Scan Result (JSON)" />
 
             <style>{`
         .bg-surface-card { background-color: var(--surface-card); }

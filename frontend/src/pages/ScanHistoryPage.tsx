@@ -326,7 +326,7 @@ export default function ScanHistoryPage() {
         <ScanDetailModal
           scan={selected}
           onClose={() => setSelected(null)}
-          onLoad={() => setActiveScan(selected.id, selected.domain)}
+          onLoad={() => setActiveScan(selected.scan_id ?? selected.id, selected.domain)}
         />
       )}
     </div>

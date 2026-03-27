@@ -49,9 +49,15 @@ async def get_dashboard_global(db: AsyncSession = Depends(get_db)):
     }
 
 
-@router.get("/{domain}")
+@router.get("/{domain:path}")
 async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db)):
     """Return aggregate cryptographic exposure metrics for a domain."""
+    # Normalize domain — strip protocol, trailing slash, www prefix
+    domain = domain.lower().strip()
+    for prefix in ("https://", "http://"):
+        if domain.startswith(prefix):
+            domain = domain[len(prefix):]
+    domain = domain.rstrip("/").removeprefix("www.")
     repo = ScanRepository(db)
     stats = await repo.get_dashboard_stats(domain)
     if not stats:

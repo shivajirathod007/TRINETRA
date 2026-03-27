@@ -1,9 +1,55 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Shield, Cpu, ArrowRight } from 'lucide-react';
+import { Terminal, Shield, Cpu, ArrowRight, Code2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { scanApi, setActiveScan, getScanIdForDomain } from '../api/index';
+import { scanApi, assetsApi, setActiveScan, getScanIdForDomain } from '../api/index';
 
 const POLL_INTERVAL_MS = 2000;
+
+/** Collapsible JSON viewer */
+const JsonViewer = ({ data, title }) => {
+    const [open, setOpen] = useState(true);
+    const [copied, setCopied] = useState(false);
+    if (!data) return null;
+    const json = JSON.stringify(data, null, 2);
+    const handleCopy = () => {
+        navigator.clipboard.writeText(json).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    };
+    return (
+        <div className="glass-card border overflow-hidden">
+            <button
+                type="button"
+                onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center justify-between p-4 hover:bg-surface-card-hover transition-colors"
+            >
+                <div className="flex items-center gap-2 text-xs font-bold text-secondary uppercase tracking-widest">
+                    <Code2 size={14} className="text-primary-indigo" />
+                    {title}
+                </div>
+                <div className="flex items-center gap-2">
+                    {open ? <ChevronUp size={16} className="text-secondary" /> : <ChevronDown size={16} className="text-secondary" />}
+                </div>
+            </button>
+            {open && (
+                <div className="border-t border-glass-border">
+                    <div className="flex justify-end px-4 py-2 bg-surface-card-hover border-b border-glass-border">
+                        <button type="button" onClick={handleCopy}
+                            className="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                            {copied ? <Check size={12} className="text-status-safe" /> : <Copy size={12} />}
+                            {copied ? 'Copied!' : 'Copy JSON'}
+                        </button>
+                    </div>
+                    <pre className="p-4 text-xs font-mono overflow-x-auto overflow-y-auto text-status-pqc leading-relaxed"
+                        style={{ maxHeight: 520, background: 'rgba(0,0,0,0.3)' }}>
+                        {json}
+                    </pre>
+                </div>
+            )}
+        </div>
+    );
+};
 
 const LiveScanPage = () => {
     const { domain } = useParams();
@@ -18,6 +64,8 @@ const LiveScanPage = () => {
     const [assetsFound, setAssetsFound] = useState(0);
     const [shadowAssets, setShadowAssets] = useState(0);
     const [error, setError] = useState(null);
+    const [scanResult, setScanResult] = useState(null);   // raw scan result JSON
+    const [scanSummary, setScanSummary] = useState(null); // scan status summary
     const bottomRef = useRef(null);
     const pollRef = useRef(null);
     const initStartedRef = useRef(false);
@@ -36,7 +84,7 @@ const LiveScanPage = () => {
         scanApi.initiate(domain)
             .then(result => {
                 setScanId(result.scan_id);
-                setActiveScan(domain, result.scan_id);
+                setActiveScan(result.scan_id, domain);
                 setLogs([`Initializing TRINETRA scanner for ${domain}...`]);
             })
             .catch(err => setError(err.message));
@@ -62,7 +110,16 @@ const LiveScanPage = () => {
                 if (data.status === 'completed' || data.status === 'failed') {
                     clearInterval(pollRef.current);
                     if (data.status === 'completed') {
-                        setTimeout(() => navigate('/dashboard'), 1500);
+                        // Fetch the full scan result JSON to display
+                        try {
+                            const assets = await assetsApi.list({ scan_id: scanId });
+                            setScanResult(assets);
+                        } catch (e) {
+                            console.warn('Could not fetch scan result JSON:', e);
+                        }
+                        setScanSummary(data);
+                        // Navigate after a short delay so user can see the result
+                        setTimeout(() => navigate('/dashboard'), 4000);
                     }
                 }
             } catch (err) {
@@ -216,6 +273,30 @@ const LiveScanPage = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Scan Result JSON — shown after completion */}
+            {status === 'completed' && scanResult && (
+                <div className="flex flex-col gap-3">
+                    {scanSummary && (
+                        <div className="glass-card border p-4 flex flex-wrap gap-6 items-center">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-status-safe" />
+                                <span className="text-sm font-bold text-status-safe uppercase tracking-wider">Scan Complete</span>
+                            </div>
+                            <div className="text-xs text-secondary">
+                                Assets scanned: <span className="font-mono text-primary">{scanSummary.assets_scanned ?? assetsFound}</span>
+                            </div>
+                            <div className="text-xs text-secondary">
+                                Org score: <span className="font-mono text-primary">{scanSummary.organization_score ?? '—'}</span>
+                            </div>
+                            <div className="text-xs text-secondary ml-auto">
+                                Redirecting to dashboard in 4s…
+                            </div>
+                        </div>
+                    )}
+                    <JsonViewer data={scanResult} title={`Scan Result — ${domain} (${Array.isArray(scanResult) ? scanResult.length : 1} assets)`} />
+                </div>
+            )}
 
             <style>{`
         .bg-status-critical\\/10 { background-color: rgba(239,68,68,0.1); }

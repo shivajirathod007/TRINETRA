@@ -49,6 +49,7 @@ const HistoryPage = () => {
         queryKey: ['scan-history'],
         queryFn: () => scanApi.list(null, 50),
         staleTime: 10_000,
+        refetchOnWindowFocus: false,
         refetchInterval: (query) => {
             const data = query.state.data ?? [];
             const hasActive = data.some(s => (s.status === 'pending' || s.status === 'running'));
@@ -79,7 +80,7 @@ const HistoryPage = () => {
 
     const handleReviewScan = (scan) => {
         if (scan.status === 'completed') {
-            setActiveScan(scan.domain, scan.scan_id);
+            setActiveScan(scan.scan_id, scan.domain);
             navigate('/dashboard');
         } else {
             navigate(`/scan/${scan.domain}`, { state: { scanId: scan.scan_id } });

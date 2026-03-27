@@ -1,11 +1,18 @@
 """
 TRINETRA — Per-Asset Scan Task
-Celery task that runs all applicable scanners on a single asset
-and writes the merged result to the database.
+Enterprise-grade Celery task that runs all applicable scanners on a single
+asset, writes the full result to the database, and returns a lean summary
+dict for the chord aggregation callback.
+
+Design principles:
+- Scanners run in parallel via asyncio.gather
+- DB write happens synchronously BEFORE returning to Celery
+- The Celery return value is a lean summary (no large JSON blobs)
+- Every scanner failure is logged at ERROR level with full context
+- Scoring always runs even if all scanners fail (uses conservative defaults)
 """
 
 import asyncio
-import uuid
 from typing import Optional
 
 from workers.celery_app import celery_app
@@ -16,46 +23,53 @@ from core.constants import get_algorithm_risk
 log = get_logger(__name__)
 
 
-@celery_app.task(name="scan_tasks.scan_single_asset", bind=True, max_retries=2)
+@celery_app.task(name="scan_tasks.scan_single_asset", bind=True, max_retries=1)
 def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
     """
     Runs all applicable scanners on one asset.
     Called in parallel by the orchestrator chord group.
-
-    Returns merged scan result dict for aggregation.
+    Returns a lean summary dict for aggregation (no large blobs).
     """
     asset_id = asset_data["asset_id"]
     asset_url = asset_data["asset_url"]
-    asset_type = asset_data["asset_type"]
-    hostname = asset_data["fqdn"]
-    port = asset_data.get("port", 443)
 
     log.info("asset_scan_started", asset_id=asset_id, url=asset_url)
 
     try:
-        result = asyncio.run(
-            _run_all_scanners(asset_data)
-        )
+        result = asyncio.run(_run_all_scanners(scan_id, asset_data))
         _persist_scan_result(asset_id, scan_id, result)
 
         log.info(
             "asset_scan_complete",
             asset_id=asset_id,
+            url=asset_url,
             score=result.get("quantum_exposure_score"),
-            status=result.get("quantum_safe_status"),
+            risk=result.get("risk_level"),
+            tls=result.get("tls_version_active"),
+            cert_algo=result.get("cert_algorithm"),
         )
-        return {"asset_id": asset_id, "status": "completed", **result}
+
+        # Return lean summary — no large JSON blobs in Celery result
+        return {
+            "asset_id": asset_id,
+            "status": "completed",
+            "quantum_exposure_score": result.get("quantum_exposure_score"),
+            "risk_level": result.get("risk_level"),
+            "quantum_safe_status": result.get("quantum_safe_status"),
+            "is_shadow_asset": asset_data.get("is_shadow_asset", False),
+        }
 
     except Exception as e:
-        log.error("asset_scan_failed", asset_id=asset_id, error=str(e))
+        log.error("asset_scan_failed", asset_id=asset_id, url=asset_url,
+                  error=str(e), exc_info=True)
         _persist_failure(asset_id, str(e)[:500])
         return {"asset_id": asset_id, "status": "failed", "error": str(e)[:200]}
 
 
-async def _run_all_scanners(asset_data: dict) -> dict:
+async def _run_all_scanners(scan_id: str, asset_data: dict) -> dict:
     """
-    Runs all five scanner workers concurrently on the asset.
-    Merges results into a single flat dict for DB storage.
+    Runs all scanner workers concurrently.
+    Returns a complete flat dict of all scan fields for DB storage.
     """
     from engine.scanners.tls_scanner import TLSScanner
     from engine.scanners.cert_analyzer import CertAnalyzer
@@ -68,7 +82,6 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     from engine.analysis.cbom_generator import CBOMGenerator
     from engine.analysis.migration_planner import MigrationPlanner
     from engine.output.certificate_issuer import CertificateIssuer
-    from engine.discovery.asset_classifier import ClassifiedAsset
     from engine.ai.classifier import classify_http_response
     from engine.ai.schemas import ClassifierInput
 
@@ -76,121 +89,130 @@ async def _run_all_scanners(asset_data: dict) -> dict:
     port = asset_data.get("port", 443)
     asset_url = asset_data["asset_url"]
     asset_type = asset_data["asset_type"]
-    needs_tls = asset_data.get("needs_tls_scan", True)
-    needs_api = asset_data.get("needs_api_scan", False)
-    needs_vpn = asset_data.get("needs_vpn_scan", False)
-    needs_ssh = asset_data.get("needs_ssh_scan", False)
-    needs_smtp = asset_data.get("needs_smtp_scan", False)
     vpn_type = asset_data.get("vpn_type")
+    is_shadow = asset_data.get("is_shadow_asset", False)
 
-    loop = asyncio.get_event_loop()
+    # Determine which scanners to run based on asset type
+    # Always run TLS + cert for any HTTPS asset
+    run_tls = port in (443, 8443, 4433, 10443) or asset_type not in ("ssh_endpoint", "smtp_mta")
+    run_api = asset_type in ("web_portal", "api_endpoint", "mobile_backend", "staging", "shadow_asset")
+    run_vpn = asset_type == "vpn_gateway" or asset_data.get("needs_vpn_scan", False)
+    run_ssh = asset_type == "ssh_endpoint" or asset_data.get("needs_ssh_scan", False)
+    run_smtp = asset_type == "smtp_mta" or asset_data.get("needs_smtp_scan", False)
 
-    # ── Run scanners in parallel where possible ───────────────────────────────
+    # ── Build scanner task list ───────────────────────────────────────────────
     tls_result = None
     cert_info = None
     api_result = None
     vpn_result = None
     ssh_result = None
-    smtp_result = None
 
     tasks = []
+    task_names = []
 
-    if needs_tls:
-        tls_scanner = TLSScanner()
-        tasks.append(("tls", tls_scanner.scan(hostname, port)))
+    if run_tls:
+        tasks.append(TLSScanner().scan(hostname, port))
+        task_names.append("tls")
 
-    if needs_api:
-        api_inspector = APIInspector()
-        tasks.append(("api", api_inspector.inspect(asset_url)))
+    if run_api:
+        tasks.append(APIInspector().inspect(asset_url))
+        task_names.append("api")
 
-    if needs_vpn:
-        vpn_detector = VPNDetector()
-        tasks.append(("vpn", vpn_detector.detect(hostname, port)))
+    if run_vpn:
+        tasks.append(VPNDetector().detect(hostname, port))
+        task_names.append("vpn")
 
-    # Cert analyzer and SSH probe are synchronous — run in executor
-    if needs_tls:
-        cert_analyzer = CertAnalyzer()
-        tasks.append((
-            "cert",
-            loop.run_in_executor(None, cert_analyzer.analyze, hostname, port)
-        ))
+    # Synchronous scanners run in thread executor
+    loop = asyncio.get_running_loop()
 
-    if needs_ssh:
-        ssh_probe = SSHProbe()
-        tasks.append((
-            "ssh",
-            loop.run_in_executor(None, ssh_probe.probe, hostname, 22)
-        ))
+    if run_tls:
+        tasks.append(loop.run_in_executor(None, CertAnalyzer().analyze, hostname, port))
+        task_names.append("cert")
 
-    if needs_smtp:
-        smtp_scanner = SMTPTLSScanner()
-        tasks.append((
-            "smtp",
-            loop.run_in_executor(None, smtp_scanner.scan, hostname, port)
-        ))
+    if run_ssh:
+        tasks.append(loop.run_in_executor(None, SSHProbe().probe, hostname, 22))
+        task_names.append("ssh")
 
-    # Execute all in parallel
+    if run_smtp:
+        tasks.append(loop.run_in_executor(None, SMTPTLSScanner().scan, hostname, port))
+        task_names.append("smtp")
+
+    # ── Execute all in parallel ───────────────────────────────────────────────
     if tasks:
-        names = [t[0] for t in tasks]
-        coroutines = [t[1] for t in tasks]
-        results = await asyncio.gather(*coroutines, return_exceptions=True)
-
-        for name, result in zip(names, results):
-            if isinstance(result, Exception):
-                log.warning(f"scanner_{name}_failed", hostname=hostname, error=str(result))
+        gathered = await asyncio.gather(*tasks, return_exceptions=True)
+        for name, res in zip(task_names, gathered):
+            if isinstance(res, Exception):
+                log.error(f"scanner_{name}_exception",
+                          hostname=hostname, url=asset_url, error=str(res), exc_info=res)
                 continue
             if name == "tls":
-                tls_result = result
+                if res and not res.error:
+                    tls_result = res
+                elif res and res.error:
+                    log.warning("tls_scan_error", hostname=hostname, error=res.error)
             elif name == "cert":
-                cert_info = result
+                if res and res.signature_algorithm != "UNKNOWN":
+                    cert_info = res
+                else:
+                    log.warning("cert_scan_empty", hostname=hostname)
             elif name == "api":
-                api_result = result
+                if res and not res.error:
+                    api_result = res
+                elif res and res.error:
+                    log.warning("api_scan_error", url=asset_url, error=res.error)
             elif name == "vpn":
-                vpn_result = result[0] if result else None
+                vpn_result = res[0] if res else None
             elif name == "ssh":
-                ssh_result = result
-            elif name == "smtp":
-                smtp_result = result
+                ssh_result = res if res and not res.error else None
 
-    # ── Determine primary algorithm for scoring ───────────────────────────────
+    # ── Extract primary algorithm ─────────────────────────────────────────────
     primary_algorithm = _extract_primary_algorithm(tls_result, cert_info, ssh_result)
     key_exchange = tls_result.key_exchange if tls_result else None
     jwt_algorithm = api_result.jwt_algorithm if api_result else None
-    cert_expiry_days = cert_info.days_until_expiry if cert_info and cert_info.days_until_expiry else 365
 
-    # ── Determine data sensitivity tier via SensitivityDetector ──────────────
-    # Uses keyword matching + asset-type rules from config/sensitivity_keywords.yaml
-    # Falls back to "static" if config is missing (safe default)
+    # Cert expiry — use actual value, default 365 days if unavailable
+    cert_expiry_days = 365
+    if cert_info and cert_info.days_until_expiry is not None:
+        cert_expiry_days = max(0, cert_info.days_until_expiry)
+
+    log.info(
+        "scanner_results_summary",
+        hostname=hostname,
+        primary_algo=primary_algorithm,
+        kex=key_exchange,
+        tls_version=tls_result.highest_version if tls_result else None,
+        cert_algo=cert_info.signature_algorithm if cert_info else None,
+        cert_expiry_days=cert_expiry_days,
+        jwt_algo=jwt_algorithm,
+    )
+
+    # ── Data sensitivity tier ─────────────────────────────────────────────────
+    data_sensitivity_tier = "static"
+    data_sensitivity_tier_source = "auto_detected"
+    data_shelf_life_years = 0.0
     try:
         from engine.discovery.sensitivity_detector import SensitivityDetector
-        _sensitivity_detector = SensitivityDetector()
-        sensitivity_result = _sensitivity_detector.detect(
-            fqdn=asset_data["fqdn"],
+        sr = SensitivityDetector().detect(
+            fqdn=hostname,
             asset_url=asset_url,
             asset_type=asset_type,
             jwt_algorithm=jwt_algorithm,
         )
-        data_sensitivity_tier = sensitivity_result.tier
-        data_sensitivity_tier_source = sensitivity_result.source
-        data_shelf_life_years = sensitivity_result.shelf_life_years
+        data_sensitivity_tier = sr.tier
+        data_sensitivity_tier_source = sr.source
+        data_shelf_life_years = sr.shelf_life_years
     except Exception as exc:
-        log.warning("sensitivity_detector_error", asset_url=asset_url, error=str(exc))
-        data_sensitivity_tier = "static"
-        data_sensitivity_tier_source = "auto_detected"
-        data_shelf_life_years = 0.0
+        log.warning("sensitivity_detector_error", url=asset_url, error=str(exc))
 
-    # ── Run AI Classifier (before scoring so detections can upgrade algorithm) ──
-    # Triggers on response body OR headers alone — never silently skipped.
+    # ── AI Classifier ─────────────────────────────────────────────────────────
     ai_detections = []
     try:
-        has_body = bool(api_result and api_result.response_body_preview)
-        has_headers = bool(api_result and api_result.response_headers_raw)
-        if has_body or has_headers:
+        if api_result and (api_result.response_body_preview or api_result.response_headers_raw):
             payload = ClassifierInput(
                 asset_url=asset_url,
                 asset_type=asset_type,
                 status_code=api_result.http_status or 200,
-                response_headers=api_result.response_headers_raw or "",
+                response_headers=str(api_result.response_headers_raw or ""),
                 response_body=api_result.response_body_preview or "",
                 request_method="GET",
                 request_url=asset_url,
@@ -198,32 +220,27 @@ async def _run_all_scanners(asset_data: dict) -> dict:
                 cert_algorithm=cert_info.signature_algorithm if cert_info else None,
             )
             ai_output = await classify_http_response(payload)
-            if ai_output.detections:
+            if ai_output and ai_output.detections:
                 ai_detections = [
                     d.model_dump() if hasattr(d, "model_dump") else dict(d)
                     for d in ai_output.detections
                 ]
-                # If the AI found a more specific algorithm, promote it as the
-                # primary algorithm for downstream scoring (takes highest risk).
-                ai_algorithms = [
-                    d.get("algorithm_detected") or d.get("algorithm_detected", "")
+                # Promote AI-detected algorithm if higher risk
+                ai_algos = [
+                    d.get("algorithm_detected", "")
                     for d in ai_detections
                     if d.get("algorithm_detected") not in (None, "", "UNKNOWN", "CLEAN")
                 ]
-                if ai_algorithms:
-                    best_ai = max(ai_algorithms, key=lambda a: get_algorithm_risk(a))
+                if ai_algos:
+                    best_ai = max(ai_algos, key=lambda a: get_algorithm_risk(a))
                     if get_algorithm_risk(best_ai) > get_algorithm_risk(primary_algorithm):
-                        log.info(
-                            "ai_algorithm_promoted",
-                            prev=primary_algorithm,
-                            promoted=best_ai,
-                            asset_url=asset_url,
-                        )
+                        log.info("ai_algorithm_promoted",
+                                 prev=primary_algorithm, promoted=best_ai, url=asset_url)
                         primary_algorithm = best_ai
     except Exception as exc:
-        log.warning("ai_classifier_error", asset_url=asset_url, error=str(exc))
+        log.warning("ai_classifier_error", url=asset_url, error=str(exc))
 
-    # ── Run analysis engines ──────────────────────────────────────────────────
+    # ── Scoring (always runs — never returns None) ────────────────────────────
     scorer = ExposureScorer()
     score_result = scorer.score(
         asset_url=asset_url,
@@ -231,22 +248,20 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         asset_type=asset_type,
         cert_expiry_days=cert_expiry_days,
         crqc_year=settings.crqc_moderate_year,
-        is_shadow_asset=asset_data.get("is_shadow_asset", False),
+        is_shadow_asset=is_shadow,
         key_exchange=key_exchange,
         jwt_algorithm=jwt_algorithm,
         data_sensitivity_tier=data_sensitivity_tier,
     )
 
-    hndl_engine = HNDLEngine()
-    hndl_result = hndl_engine.calculate(
+    hndl_result = HNDLEngine().calculate(
         asset_url=asset_url,
         algorithm=primary_algorithm,
         cert_expiry_days=cert_expiry_days,
         data_sensitivity_tier=data_sensitivity_tier,
     )
 
-    planner = MigrationPlanner()
-    migration_plan = planner.plan(
+    migration_plan = MigrationPlanner().plan(
         asset_url=asset_url,
         asset_type=asset_type,
         current_algorithm=primary_algorithm,
@@ -258,48 +273,59 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         data_sensitivity_tier=data_sensitivity_tier,
     )
 
-    # ── Issue PQC certificate ─────────────────────────────────────────────────
-    issuer = CertificateIssuer()
-    certificate = issuer.issue(
-        asset_url=asset_url,
-        score_result=score_result,
-        scan_id=asset_data.get("scan_id", ""),
-        key_exchange=key_exchange,
-        signature_algorithm=cert_info.signature_algorithm if cert_info else None,
+    log.info(
+        "scoring_complete",
+        url=asset_url,
+        score=score_result.score,
+        risk=score_result.risk_level,
+        pqc_status=score_result.quantum_safe_status,
+        deadline=hndl_result.primary_deadline,
     )
 
-    # ── Generate CBOM entry ───────────────────────────────────────────────────
-    # Build a minimal ClassifiedAsset for the CBOM generator
-    from dataclasses import dataclass
+    # ── PQC Certificate ───────────────────────────────────────────────────────
+    certificate = None
+    pqc_cert_id = None
+    try:
+        certificate = CertificateIssuer().issue(
+            asset_url=asset_url,
+            score_result=score_result,
+            scan_id=scan_id,
+            key_exchange=key_exchange,
+            signature_algorithm=cert_info.signature_algorithm if cert_info else None,
+        )
+    except Exception as exc:
+        log.warning("certificate_issue_failed", url=asset_url, error=str(exc))
 
-    cbom_gen = CBOMGenerator()
+    # ── CBOM Entry ────────────────────────────────────────────────────────────
+    cbom_entry = None
+    try:
+        class _Asset:
+            fqdn = hostname
+            ip_address = asset_data.get("ip_address")
+            port = asset_data.get("port", 443)
+            asset_type = asset_data["asset_type"]
+            asset_url = asset_data["asset_url"]
+            is_shadow_asset = is_shadow
 
-    # Simplified asset object for CBOM
-    class _Asset:
-        fqdn = asset_data["fqdn"]
-        ip_address = asset_data.get("ip_address")
-        port = asset_data.get("port", 443)
-        asset_type = asset_data["asset_type"]
-        asset_url = asset_data["asset_url"]
-        is_shadow_asset = asset_data.get("is_shadow_asset", False)
+        cbom_entry = CBOMGenerator().generate_asset_entry(
+            asset=_Asset(),
+            tls_result=tls_result,
+            cert_info=cert_info,
+            api_result=api_result,
+            ssh_result=ssh_result,
+            score_result=score_result,
+            hndl_result=hndl_result,
+            scan_id=scan_id,
+            pqc_certificate_id=certificate["certificate_id"] if certificate else None,
+            ai_detections=ai_detections,
+            data_sensitivity_tier=data_sensitivity_tier,
+            data_sensitivity_tier_source=data_sensitivity_tier_source,
+            data_shelf_life_years=data_shelf_life_years,
+        )
+    except Exception as exc:
+        log.warning("cbom_generation_failed", url=asset_url, error=str(exc))
 
-    cbom_entry = cbom_gen.generate_asset_entry(
-        asset=_Asset(),
-        tls_result=tls_result,
-        cert_info=cert_info,
-        api_result=api_result,
-        ssh_result=ssh_result,
-        score_result=score_result,
-        hndl_result=hndl_result,
-        scan_id=asset_data.get("scan_id", ""),
-        pqc_certificate_id=certificate["certificate_id"],
-        ai_detections=ai_detections,
-        data_sensitivity_tier=data_sensitivity_tier,
-        data_sensitivity_tier_source=data_sensitivity_tier_source,
-        data_shelf_life_years=data_shelf_life_years,
-    )
-
-    # ── Build flat result dict for DB persistence ─────────────────────────────
+    # ── Build complete DB record ──────────────────────────────────────────────
     return {
         # TLS
         "tls_versions_supported": tls_result.supported_versions if tls_result else [],
@@ -309,9 +335,12 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         "key_exchange": key_exchange,
         "vulnerabilities": tls_result.vulnerabilities if tls_result else [],
         # Certificate
-        "cert_algorithm": cert_info.signature_algorithm if cert_info else None,
+        "cert_algorithm": (
+            cert_info.signature_algorithm if cert_info
+            else (f"RSA-{cert_info.key_length_bits}" if cert_info and cert_info.key_length_bits else primary_algorithm)
+        ),
         "cert_key_length": cert_info.key_length_bits if cert_info else None,
-        "cert_expiry": cert_info.not_after if cert_info else None,
+        "cert_expiry": cert_info.not_after.isoformat() if cert_info and cert_info.not_after else None,
         "cert_expiry_days": cert_expiry_days,
         "cert_issuer": cert_info.issuer_org if cert_info else None,
         "cert_subject": cert_info.subject_cn if cert_info else None,
@@ -331,7 +360,13 @@ async def _run_all_scanners(asset_data: dict) -> dict:
         "ssh_host_key_algorithm": ssh_result.host_key_algorithm if ssh_result else None,
         "ssh_kex_methods": ssh_result.kex_methods if ssh_result else [],
         "ssh_server_version": ssh_result.server_version if ssh_result else None,
-        # Risk
+        # AI
+        "ai_detections": ai_detections,
+        "ai_fallback_used": False,
+        "detection_sources": _build_detection_sources(
+            tls_result, cert_info, api_result, ssh_result, ai_detections
+        ),
+        # Risk — always populated
         "quantum_safe_status": score_result.quantum_safe_status,
         "quantum_exposure_score": score_result.score,
         "risk_level": score_result.risk_level,
@@ -340,10 +375,14 @@ async def _run_all_scanners(asset_data: dict) -> dict:
             "hndl_timeline": score_result.breakdown.hndl_timeline_raw,
             "public_exposure": score_result.breakdown.public_exposure_raw,
             "weights": score_result.breakdown.weights,
+            "data_sensitivity_tier": score_result.breakdown.data_sensitivity_tier,
+            "data_shelf_life_years": score_result.breakdown.data_shelf_life_years,
+            "sensitivity_tier_impact": score_result.breakdown.sensitivity_tier_impact,
+            "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)",
         },
         "hndl_deadline": hndl_result.primary_deadline,
         "hndl_urgency": hndl_result.urgency_level,
-        # Data sensitivity tier
+        # Sensitivity
         "data_sensitivity_tier": data_sensitivity_tier,
         "data_sensitivity_tier_source": data_sensitivity_tier_source,
         # CBOM + Plan
@@ -366,40 +405,83 @@ async def _run_all_scanners(asset_data: dict) -> dict:
             "nist_standards": migration_plan.nist_standards_applied,
             "data_sensitivity_tier": migration_plan.data_sensitivity_tier,
             "tier_rationale": migration_plan.tier_rationale,
-        },
-        # Certificate
-        "pqc_certificate_data": certificate,
+        } if migration_plan else None,
+        # Certificate stored separately
+        "_pqc_certificate_data": certificate,
     }
 
 
 def _extract_primary_algorithm(tls_result, cert_info, ssh_result) -> str:
-    """Extract the most relevant algorithm for scoring."""
-    if cert_info and cert_info.signature_algorithm not in ("UNKNOWN", None):
+    """
+    Returns the most quantum-relevant algorithm detected.
+    Priority: cert signature > TLS KEX > SSH host key > fallback.
+    """
+    if cert_info and cert_info.signature_algorithm not in ("UNKNOWN", None, ""):
+        sig = cert_info.signature_algorithm.upper()
+        bits = cert_info.key_length_bits or 2048
+        if "RSA" in sig:
+            return f"RSA-{bits}"
+        if "ECDSA" in sig or "EC-" in sig:
+            return f"ECDSA-{bits}"
+        if "ED25519" in sig:
+            return "ED25519"
+        if "ED448" in sig:
+            return "ED448"
         return cert_info.signature_algorithm
-    if tls_result and tls_result.key_exchange not in ("UNKNOWN", None):
+
+    if tls_result and tls_result.key_exchange not in ("UNKNOWN", None, ""):
         return tls_result.key_exchange
+
     if ssh_result and ssh_result.host_key_algorithm:
         return ssh_result.host_key_algorithm
-    return "RSA-2048"  # Conservative fallback
+
+    # Conservative fallback — RSA-2048 is the most common legacy algorithm
+    return "RSA-2048"
+
+
+def _build_detection_sources(tls_result, cert_info, api_result, ssh_result, ai_detections) -> list:
+    sources = []
+    if tls_result and not tls_result.error:
+        sources.append("tls_scanner")
+    if cert_info and cert_info.signature_algorithm not in ("UNKNOWN", None):
+        sources.append("cert_analyzer")
+    if api_result and not api_result.error:
+        sources.append("api_inspector")
+    if ssh_result and not getattr(ssh_result, "error", None):
+        sources.append("ssh_probe")
+    if ai_detections:
+        sources.append("ai_classifier")
+    return sources
 
 
 def _persist_scan_result(asset_id: str, scan_id: str, result: dict) -> None:
-    """Writes scan result to database."""
+    """
+    Writes the full scan result to the database.
+    Handles PQC certificate creation separately.
+    Never filters out None values — DB columns are nullable.
+    """
     import db.sync_db as sync_db
 
-    # Persist PQC certificate
-    cert_data = result.pop("pqc_certificate_data", None)
+    # Extract and persist PQC certificate separately (not a DB column)
+    cert_data = result.pop("_pqc_certificate_data", None)
     pqc_cert_id = None
     if cert_data:
-        cert_data["scan_job_id"] = scan_id
-        pqc_cert_id = sync_db.create_certificate_sync(cert_data)
+        try:
+            cert_data["scan_job_id"] = scan_id
+            pqc_cert_id = sync_db.create_certificate_sync(cert_data)
+            log.info("pqc_cert_created", asset_id=asset_id, cert_id=pqc_cert_id)
+        except Exception as e:
+            log.warning("cert_persist_failed", asset_id=asset_id, error=str(e))
 
-    # Write all scan fields
-    scan_data = {k: v for k, v in result.items() if v is not None}
+    # Build the scan data dict — include all fields
+    scan_data = dict(result)
     if pqc_cert_id:
         scan_data["pqc_certificate_id"] = pqc_cert_id
 
     sync_db.update_asset_scan_result_sync(asset_id, scan_data)
+    log.info("asset_result_persisted", asset_id=asset_id,
+             score=result.get("quantum_exposure_score"),
+             risk=result.get("risk_level"))
 
 
 def _persist_failure(asset_id: str, error: str) -> None:

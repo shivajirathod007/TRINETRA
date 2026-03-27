@@ -10,6 +10,7 @@ import ThreatBadge from '../components/ThreatBadge';
 import AnimatedCounters from '../components/AnimatedCounters';
 import { dashboardApi, assetsApi, scanApi, certApi } from '../api/index';
 import { useScanStore } from '../store';
+import { SensitivityBadge } from '../components/shared/SensitivityBadge';
 
 const RISK_COLORS = {
     CRITICAL: '#EF4444',
@@ -51,7 +52,8 @@ const DashboardPage = () => {
     const { data: recentScans = [], isLoading: recentLoading } = useQuery({
         queryKey: ['scans-recent'],
         queryFn: () => scanApi.list(null, 10),
-        staleTime: 60_000,
+        staleTime: 120_000,          // 2 min — don't hammer the scans list
+        refetchOnWindowFocus: false,
     });
 
     // ── Dashboard aggregate stats for active domain ─────────────────────────
@@ -59,7 +61,8 @@ const DashboardPage = () => {
         queryKey: ['dashboard', domain],
         queryFn: () => dashboardApi.getStats(domain),
         enabled: !!domain,
-        staleTime: 30_000,
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
     });
 
     // ── All scanned assets for the active scan ──────────────────────────────
@@ -67,7 +70,8 @@ const DashboardPage = () => {
         queryKey: ['assets', activeScanId],
         queryFn: () => assetsApi.list({ scan_id: activeScanId }),
         enabled: !!activeScanId,
-        staleTime: 30_000,
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
     });
 
     // ── PQC Certificates for the active scan ────────────────────────────────
@@ -75,18 +79,23 @@ const DashboardPage = () => {
         queryKey: ['dashboard-certs', activeScanId],
         queryFn: () => certApi.getByScan(activeScanId),
         enabled: !!activeScanId,
-        staleTime: 60_000,
+        staleTime: 120_000,
+        refetchOnWindowFocus: false,
     });
 
     const noDomain = !domain;
 
     // Auto-load the most recent completed scan if no domain is selected
+    // Use a ref to prevent this from running more than once
+    const autoLoadedRef = React.useRef(false);
     React.useEffect(() => {
+        if (autoLoadedRef.current) return;
         if (noDomain && recentScans.length > 0) {
+            autoLoadedRef.current = true;
             const latest = recentScans.find(s => s.status === 'completed') || recentScans[0];
             if (latest) setActiveScan(latest.scan_id, latest.domain);
         }
-    }, [noDomain, recentScans, setActiveScan]);
+    }, [noDomain, recentScans]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const isLoading = recentLoading || (!noDomain && (statsLoading || assetsLoading));
 
@@ -215,7 +224,24 @@ const DashboardPage = () => {
                     <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
                     <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
                 </div>
-                <div className="text-secondary text-sm font-mono flex items-center gap-2">
+                <div className="text-secondary text-sm font-mono flex items-center gap-2 flex-wrap">
+                    {/* Scan selector — lets users switch between historical scans */}
+                    {recentScans.length > 1 && (
+                        <select
+                            className="bg-surface-card border border-glass-border text-primary text-xs font-mono rounded px-2 py-1 focus:outline-none focus:border-primary-indigo cursor-pointer"
+                            value={activeScanId || ''}
+                            onChange={e => {
+                                const scan = recentScans.find(s => s.scan_id === e.target.value);
+                                if (scan) setActiveScan(scan.scan_id, scan.domain);
+                            }}
+                        >
+                            {recentScans.map(s => (
+                                <option key={s.scan_id} value={s.scan_id}>
+                                    {s.domain} — {s.started_at ? new Date(s.started_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'pending'} ({s.status})
+                                </option>
+                            ))}
+                        </select>
+                    )}
                     <span>Target: <span className="text-primary font-bold">{domain}</span></span>
                     <span>|</span>
                     <span className="flex items-center gap-1">
@@ -376,7 +402,7 @@ const DashboardPage = () => {
                             <table className="data-table">
                                 <thead className="sticky top-0 bg-surface-card-hover">
                                     <tr>
-                                        <th>URL</th><th>Type</th><th>Status</th><th>Risk Score</th><th>Discovery</th><th />
+                                        <th>URL</th><th>Type</th><th>Tier</th><th>Status</th><th>Risk Score</th><th>Discovery</th><th />
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -390,6 +416,12 @@ const DashboardPage = () => {
                                             </td>
                                             <td className="text-secondary">
                                                 {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
+                                            </td>
+                                            <td>
+                                                <SensitivityBadge
+                                                    tier={asset.data_sensitivity_tier || 'static'}
+                                                    source={asset.data_sensitivity_tier_source}
+                                                />
                                             </td>
                                             <td><ThreatBadge level={asset.risk_level} /></td>
                                             <td>

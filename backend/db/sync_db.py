@@ -163,25 +163,52 @@ def create_asset_sync(scan_job_id: str, fqdn: str, asset_url: str, asset_type: s
 def update_asset_scan_result_sync(asset_id: str, scan_data: dict) -> None:
     try:
         scan_data["scan_status"] = "COMPLETED"
-        
+
+        # Known DB columns on scanned_assets — skip anything else
+        KNOWN_COLUMNS = {
+            "scan_status", "scan_error",
+            "tls_versions_supported", "tls_version_active", "cipher_suite_active",
+            "cipher_suites_all", "key_exchange", "vulnerabilities",
+            "cert_algorithm", "cert_key_length", "cert_expiry", "cert_expiry_days",
+            "cert_issuer", "cert_subject", "cert_sha256", "cert_is_self_signed",
+            "ocsp_stapling", "hsts_enabled", "hsts_max_age",
+            "jwt_algorithm", "auth_type", "cors_policy", "graphql_introspection",
+            "vpn_type",
+            "ssh_host_key_algorithm", "ssh_kex_methods", "ssh_server_version",
+            "ai_detections", "ai_fallback_used", "detection_sources",
+            "quantum_safe_status", "quantum_exposure_score", "risk_level",
+            "score_breakdown", "hndl_deadline", "hndl_urgency",
+            "data_sensitivity_tier", "data_sensitivity_tier_source",
+            "sensitivity_override_reason",
+            "cbom_entry", "migration_plan", "pqc_certificate_id",
+        }
+
         updates = []
         params = []
         for key, value in scan_data.items():
+            if key not in KNOWN_COLUMNS:
+                continue
             updates.append(f"{key} = %s")
-            
-            # Handle JSON dicts/lists
             if isinstance(value, (dict, list)):
                 params.append(json.dumps(value))
+            elif hasattr(value, 'isoformat'):
+                params.append(value.isoformat())
             else:
                 params.append(value)
-                
+
+        if not updates:
+            log.warning("update_asset_no_valid_columns", asset_id=asset_id)
+            return
+
         params.append(asset_id)
-        
+
         with get_sync_conn() as conn:
             with conn.cursor() as cur:
                 query = f"UPDATE scanned_assets SET {', '.join(updates)} WHERE id = %s"
                 cur.execute(query, params)
             conn.commit()
+
+        log.info("update_asset_scan_result_ok", asset_id=asset_id, columns=len(updates))
     except Exception as e:
         log.error("sync_db_update_asset_failed", asset_id=asset_id, error=str(e))
         raise

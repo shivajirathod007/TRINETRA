@@ -62,6 +62,12 @@ export const assetsApi = {
     },
 
     getDetail: (assetId) => request(`/assets/${assetId}`),
+
+    patchSensitivityTier: (assetId, tier, overrideReason = null) =>
+        request(`/assets/${assetId}/sensitivity-tier`, {
+            method: 'PATCH',
+            body: JSON.stringify({ data_sensitivity_tier: tier, override_reason: overrideReason }),
+        }),
 };
 
 // ── CBOM ──────────────────────────────────────────────────────────────────────

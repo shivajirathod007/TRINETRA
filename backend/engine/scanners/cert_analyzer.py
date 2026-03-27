@@ -85,21 +85,24 @@ class CertAnalyzer:
 
     def _fetch_chain(self, hostname: str, port: int) -> list[bytes]:
         """
-        Connects with DER certificate retrieval.
-        Returns list of PEM-encoded certs (leaf first).
+        Connects and retrieves the leaf certificate.
+        Uses a robust approach that works on most public-facing servers.
         """
         ctx = ssl.create_default_context()
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE  # We check validity ourselves
 
         chain_pem = []
-        with socket.create_connection((hostname, port), timeout=settings.cert_fetch_timeout) as sock:
-            with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
-                # Get leaf certificate
-                der = ssock.getpeercert(binary_form=True)
-                if der:
-                    pem = ssl.DER_cert_to_PEM_cert(der).encode()
-                    chain_pem.append(pem)
+        try:
+            with socket.create_connection((hostname, port), timeout=settings.cert_fetch_timeout) as sock:
+                with ctx.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    # getpeercert(binary_form=True) returns DER bytes even with CERT_NONE
+                    der = ssock.getpeercert(binary_form=True)
+                    if der:
+                        pem = ssl.DER_cert_to_PEM_cert(der).encode()
+                        chain_pem.append(pem)
+        except (socket.timeout, ConnectionRefusedError, OSError) as e:
+            log.warning("cert_fetch_connection_error", hostname=hostname, port=port, error=str(e))
 
         return chain_pem
 

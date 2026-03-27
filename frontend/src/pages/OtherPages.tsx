@@ -7,19 +7,7 @@ import { LoadingSpinner, EmptyState, SectionHeader, ScoreBadge, AlgorithmTag, HN
 import { CertCard } from '../components/certificate'
 import { cbomApi, scanApi } from '../api/client'
 import { ASSET_TYPE_ICON, ASSET_TYPE_LABEL } from '../utils'
-
-function useAutoLoadScan() {
-  const { activeScanId, setActiveScan } = useScanStore()
-  const [attempted, setAttempted] = useState(false)
-  useEffect(() => {
-    if (!activeScanId && !attempted) {
-      setAttempted(true)
-      scanApi.list('', 1).then(res => {
-        if (res && res.length > 0) setActiveScan(res[0].scan_id, res[0].domain)
-      }).catch(console.error)
-    }
-  }, [activeScanId, setActiveScan, attempted])
-}
+import { useAutoLoadScan } from '../hooks/useAutoLoadScan'
 import type { AssetSummary } from '@/types'
 
 // ── CBOM Page ─────────────────────────────────────────────────────────────────

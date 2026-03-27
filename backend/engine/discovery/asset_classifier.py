@@ -175,21 +175,31 @@ class AssetClassifier:
         """
         Sends HEAD (fallback GET) to collect response metadata.
         Returns dict of status, server, content_type, body_preview, headers.
+        Always returns a dict — never raises.
         """
         try:
             async with httpx.AsyncClient(
-                timeout=settings.http_inspect_timeout,
+                timeout=httpx.Timeout(10.0, connect=5.0),
                 follow_redirects=True,
                 verify=False,  # We handle cert validation in cert_analyzer
             ) as client:
                 try:
-                    resp = await client.head(url, headers=HTTP_HEADERS)
-                except httpx.RemoteProtocolError:
-                    resp = await client.get(url, headers=HTTP_HEADERS)
+                    resp = await client.head(url, headers={
+                        "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
+                        "Accept": "text/html,application/xhtml+xml,application/json",
+                    })
+                except (httpx.RemoteProtocolError, httpx.ReadError):
+                    resp = await client.get(url, headers={
+                        "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
+                        "Accept": "text/html,application/xhtml+xml,application/json",
+                    })
 
                 body_preview = ""
                 if resp.method == "GET":
-                    body_preview = resp.text[:500]
+                    try:
+                        body_preview = resp.text[:500]
+                    except Exception:
+                        pass
 
                 return {
                     "status": resp.status_code,
@@ -198,19 +208,15 @@ class AssetClassifier:
                     "x_powered_by": resp.headers.get("x-powered-by", ""),
                     "body_preview": body_preview,
                     "headers": dict(resp.headers),
-                    "url": str(resp.url),  # After redirects
+                    "url": str(resp.url),
                 }
 
+        except httpx.TimeoutException:
+            return {"status": None, "server": "", "content_type": "", "error": "timeout",
+                    "body_preview": "", "headers": {}, "url": url}
         except Exception as e:
-            return {
-                "status": None,
-                "server": "",
-                "content_type": "",
-                "error": str(e)[:200],
-                "body_preview": "",
-                "headers": {},
-                "url": url,
-            }
+            return {"status": None, "server": "", "content_type": "", "error": str(e)[:200],
+                    "body_preview": "", "headers": {}, "url": url}
 
     def _detect_vpn(self, fingerprint: dict, port: int) -> Optional[str]:
         """
@@ -250,24 +256,30 @@ class AssetClassifier:
         content_type = fingerprint.get("content_type", "").lower()
         body = fingerprint.get("body_preview", "").lower()
         fqdn_lower = fqdn.lower()
+        status = fingerprint.get("status")
 
         # Staging/UAT detection — before other checks
         if any(kw in fqdn_lower for kw in ["staging", "uat", "test", "dev", "qa"]):
             return "staging"
 
-        # API endpoint indicators
-        api_indicators = [
-            "application/json" in content_type,
-            any(kw in fqdn_lower for kw in ["api", "services", "gateway", "gw"]),
-            body.startswith("{") or body.startswith("["),
-            '{"' in body[:50],
-        ]
-        if sum(api_indicators) >= 2:
+        # API endpoint indicators — check FQDN keywords first (most reliable)
+        api_fqdn_keywords = ["api", "services", "gateway", "gw", "ws", "rest",
+                             "graphql", "oauth", "auth", "sso", "token", "openid"]
+        if any(kw in fqdn_lower.split(".") or kw in fqdn_lower for kw in api_fqdn_keywords):
+            return "api_endpoint"
+
+        # API endpoint from content type
+        if "application/json" in content_type or "application/xml" in content_type:
+            return "api_endpoint"
+
+        # API endpoint from body structure
+        if body and (body.strip().startswith("{") or body.strip().startswith("[")):
             return "api_endpoint"
 
         # Mobile backend
-        if any(kw in fqdn_lower for kw in ["mobile", "app", "m."]):
+        if any(kw in fqdn_lower for kw in ["mobile", "app.", "m.", "mapi"]):
             return "mobile_backend"
 
-        # Default: web portal
+        # If we got a non-200 or connection error, still classify as web_portal
+        # so TLS scanning still runs
         return "web_portal"

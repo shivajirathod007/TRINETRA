@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # ── Scanning ──────────────────────────────────────────────────────────────
     max_concurrent_scans: int = 50
-    scan_timeout_seconds: int = 30
+    scan_timeout_seconds: int = 1800   # 30 minutes for full domain scan
     ct_log_cache_ttl_hours: int = 24
     rate_limit_scans_per_hour: int = 20
 

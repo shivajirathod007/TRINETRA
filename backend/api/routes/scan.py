@@ -13,7 +13,7 @@ router = APIRouter()
 log = get_logger(__name__)
 
 # Scans stuck in RUNNING/PENDING longer than this are auto-failed
-STALE_TIMEOUT_MINUTES = 30
+STALE_TIMEOUT_MINUTES = 90
 
 
 class ScanRequest(BaseModel):
@@ -71,7 +71,7 @@ async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db)):
         domain = domain[7:]
     if domain.startswith("https://"):
         domain = domain[8:]
-    domain = domain.rstrip("/")
+    domain = domain.rstrip("/").removeprefix("www.")
     if not domain:
         raise HTTPException(status_code=400, detail="domain is required")
     crqc_year = _crqc_year(request.crqc_scenario or "moderate")
