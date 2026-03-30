@@ -13,7 +13,7 @@ router = APIRouter()
 log = get_logger(__name__)
 
 # Scans stuck in RUNNING/PENDING longer than this are auto-failed
-STALE_TIMEOUT_MINUTES = 90
+STALE_TIMEOUT_MINUTES = 15  # Reduced from 90 — most scans complete in < 5 min
 
 
 class ScanRequest(BaseModel):
@@ -225,6 +225,70 @@ async def cancel_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
     except Exception as e:
         log.exception("cancel_scan_error", scan_id=scan_id, error=str(e))
         raise HTTPException(status_code=503, detail="Database error") from e
+
+
+@router.post("/{scan_id}/force-complete")
+async def force_complete_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
+    """
+    Force-complete a stuck RUNNING scan using whatever partial results exist.
+    Useful when Celery chord callback never fires (e.g. rate-limited targets).
+    """
+    import uuid
+    from sqlalchemy import select, func
+    from db.models import ScanJob, ScannedAsset
+    try:
+        uid = uuid.UUID(scan_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid scan_id")
+
+    repo = ScanRepository(db)
+    scan = await repo.get_scan(uid)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    if scan.status == "COMPLETED":
+        return {"scan_id": scan_id, "status": "completed", "message": "Already completed"}
+
+    # Count completed assets
+    result = await db.execute(
+        select(func.count(ScannedAsset.id))
+        .where(ScannedAsset.scan_job_id == uid, ScannedAsset.scan_status == "COMPLETED")
+    )
+    completed_count = result.scalar() or 0
+
+    # Compute org score from completed assets
+    assets = await repo.get_assets_for_scan(uid)
+    scores = [a.quantum_exposure_score for a in assets if a.quantum_exposure_score is not None]
+    org_score = round(sum(scores) / len(scores), 1) if scores else 0.0
+
+    risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "SAFE": 0}
+    for a in assets:
+        rl = a.risk_level or "UNKNOWN"
+        if rl in risk_counts:
+            risk_counts[rl] += 1
+
+    shadow_count = sum(1 for a in assets if a.is_shadow_asset)
+
+    await repo.finalize_scan(
+        scan_id=uid,
+        organization_score=org_score,
+        risk_counts=risk_counts,
+        shadow_assets_found=shadow_count,
+    )
+    # Update assets_scanned count
+    from sqlalchemy import update
+    from db.models import ScanJob as SJ
+    await db.execute(
+        update(SJ).where(SJ.id == uid).values(assets_scanned=completed_count)
+    )
+    await db.commit()
+
+    return {
+        "scan_id": scan_id,
+        "status": "completed",
+        "assets_scanned": completed_count,
+        "organization_score": org_score,
+        "message": f"Force-completed with {completed_count} scanned assets"
+    }
 
 
 @router.get("/{scan_id}/results")
