@@ -35,7 +35,7 @@ export const assetsApi = {
     api.get<AssetDetail>(`/assets/${assetId}`).then(r => r.data),
 
   getByScan: (scanId: string) =>
-    api.get<AssetSummary[]>(`/dashboard/${scanId}/assets`).then(r => r.data),
+    api.get<any[]>(`/assets/`, { params: { scan_id: scanId } }).then(r => r.data),
 
   /**
    * Manually override the data sensitivity tier for an asset.

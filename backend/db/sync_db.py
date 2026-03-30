@@ -206,7 +206,15 @@ def update_asset_scan_result_sync(asset_id: str, scan_data: dict) -> None:
             with conn.cursor() as cur:
                 query = f"UPDATE scanned_assets SET {', '.join(updates)} WHERE id = %s"
                 cur.execute(query, params)
+                rows_updated = cur.rowcount
             conn.commit()
+
+        if rows_updated == 0:
+            log.error("update_asset_no_rows_matched", asset_id=asset_id,
+                      msg="UPDATE matched 0 rows — asset_id may not exist in DB")
+        else:
+            log.info("update_asset_scan_result_ok", asset_id=asset_id,
+                     columns=len(updates), rows=rows_updated)
 
         log.info("update_asset_scan_result_ok", asset_id=asset_id, columns=len(updates))
     except Exception as e:

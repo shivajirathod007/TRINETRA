@@ -21,6 +21,15 @@ export function useScanHistory(domain: string | null = null) {
   return useQuery({
     queryKey: ['scan-history', domain],
     queryFn: () => scanApi.list(domain || null),
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) => {
+      const data = (query.state.data as any[]) ?? []
+      const hasActive = data.some(s => {
+        const st = s.status?.toUpperCase()
+        return st === 'RUNNING' || st === 'PENDING'
+      })
+      return hasActive ? 3000 : false  // poll every 3s while active scans exist
+    },
   })
 }
 

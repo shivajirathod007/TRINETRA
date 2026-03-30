@@ -1,14 +1,20 @@
 /**
- * ScanHistoryPage — Dedicated scan history with:
- *   • localStorage persistence (reads trinetra_scan_history)
- *   • clickable rows → drill-down modal with full scan details
- *   • bar + line analysis charts (risk score over time, assets trend)
+ * ScanHistoryPage — Scan history with:
+ *   • Clickable rows → live scan page (running) or dashboard (completed)
+ *   • Cancel button for running/pending scans
+ *   • Risk score trend + assets + critical findings charts
  */
-import { useState, useEffect } from 'react';
-import { Clock, CheckCircle, AlertCircle, XCircle, TrendingUp, BarChart2, X, ExternalLink, RefreshCw } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Clock, CheckCircle, AlertCircle, XCircle, TrendingUp, BarChart2,
+  X, ExternalLink, RefreshCw, StopCircle, Play, Eye
+} from 'lucide-react';
 import { SectionHeader } from '../components/shared';
 import { useScanStore } from '../store';
 import { useScanHistory } from '../hooks';
+import { scanApi } from '../api/index';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip,
   ResponsiveContainer, CartesianGrid, Cell
@@ -17,119 +23,42 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ScanRecord {
-  id:    string;
+  scan_id:    string;
+  id?:        string;
   domain:     string;
-  status:     'COMPLETED' | 'FAILED' | 'RUNNING' | string;
-  created_at?: string;
+  status:     'completed' | 'failed' | 'running' | 'pending' | string;
+  started_at?: string;
   completed_at?: string;
+  assets_found?: number;
   assets_scanned?: number;
   critical_count?: number;
   high_count?: number;
   medium_count?: number;
+  exposure_score?: number;
   organization_score?: number;
+  error_message?: string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(d?: string) {
   if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' });
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function statusChip(status: string) {
-  const map: Record<string, { icon: React.ReactNode; cls: string }> = {
-    COMPLETED: { icon: <CheckCircle size={12} />, cls: 'bg-status-safe/10 text-status-safe border-status-safe/30' },
-    FAILED:    { icon: <XCircle size={12} />,     cls: 'bg-status-critical/10 text-status-critical border-status-critical/30' },
-    RUNNING:   { icon: <RefreshCw size={12} className="animate-spin" />, cls: 'bg-primary-indigo/10 text-primary-indigo border-primary-indigo/30' },
+  const s = status?.toUpperCase();
+  const map: Record<string, { icon: React.ReactNode; cls: string; label: string }> = {
+    COMPLETED: { icon: <CheckCircle size={12} />, cls: 'bg-status-safe/10 text-status-safe border-status-safe/30', label: 'Completed' },
+    FAILED:    { icon: <XCircle size={12} />,     cls: 'bg-status-critical/10 text-status-critical border-status-critical/30', label: 'Failed' },
+    RUNNING:   { icon: <RefreshCw size={12} className="animate-spin" />, cls: 'bg-primary-indigo/10 text-primary-indigo border-primary-indigo/30', label: 'Running' },
+    PENDING:   { icon: <Clock size={12} className="animate-pulse" />, cls: 'bg-status-medium/10 text-status-medium border-status-medium/30', label: 'Queued' },
   };
-  const s = map[status] ?? { icon: <AlertCircle size={12} />, cls: 'bg-surface-card text-secondary border-glass-border' };
+  const cfg = map[s] ?? { icon: <AlertCircle size={12} />, cls: 'bg-surface-card text-secondary border-glass-border', label: status };
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${s.cls}`}>
-      {s.icon} {status}
+    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${cfg.cls}`}>
+      {cfg.icon} {cfg.label}
     </span>
-  );
-}
-
-// ─── Drill-down Modal ─────────────────────────────────────────────────────────
-
-function ScanDetailModal({ scan, onClose, onLoad }: { scan: ScanRecord; onClose: () => void; onLoad: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
-      onClick={onClose}
-    >
-      <div
-        className="glass-card border rounded-2xl w-full max-w-2xl overflow-hidden"
-        style={{ borderColor: 'rgba(99,102,241,0.3)', boxShadow: '0 0 60px rgba(99,102,241,0.2)' }}
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-glass-border flex items-center justify-between"
-          style={{ background: 'rgba(99,102,241,0.08)' }}>
-          <div>
-            <div className="font-black text-primary text-lg font-mono">{scan.domain}</div>
-            <div className="text-xs text-secondary font-mono mt-0.5">{scan.id}</div>
-          </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary transition-colors p-1">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Stats grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ background: 'var(--glass-border)' }}>
-          {[
-            { label: 'Status',       value: statusChip(scan.status) },
-            { label: 'Assets Found', value: <span className="text-2xl font-black font-mono text-primary">{scan.assets_scanned ?? '—'}</span> },
-            { label: 'Risk Score',   value: <span className="text-2xl font-black font-mono" style={{ color: (scan.organization_score ?? 0) > 70 ? '#ef4444' : (scan.organization_score ?? 0) > 40 ? '#f59e0b' : '#22c55e' }}>{scan.organization_score ?? '—'}</span> },
-            { label: 'Critical',     value: <span className="text-2xl font-black font-mono text-status-critical">{scan.critical_count ?? '—'}</span> },
-          ].map(k => (
-            <div key={k.label} className="p-4 text-center" style={{ background: 'var(--surface-card)' }}>
-              <div className="text-xs text-secondary uppercase tracking-wider font-semibold mb-2">{k.label}</div>
-              {k.value}
-            </div>
-          ))}
-        </div>
-
-        {/* Risk breakdown */}
-        <div className="px-6 py-4">
-          <div className="text-xs font-bold text-secondary uppercase tracking-wider mb-3">Risk Breakdown</div>
-          {[
-            { label: 'Critical', count: scan.critical_count ?? 0, color: '#ef4444', total: 10 },
-            { label: 'High',     count: scan.high_count ?? 0,     color: '#f97316', total: 10 },
-            { label: 'Medium',   count: scan.medium_count ?? 0,   color: '#eab308', total: 10 },
-          ].map(r => (
-            <div key={r.label} className="flex items-center gap-3 mb-2">
-              <div className="w-16 text-xs font-bold" style={{ color: r.color }}>{r.label}</div>
-              <div className="flex-1 bg-surface-card-hover rounded-full h-2 overflow-hidden">
-                <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (r.count / Math.max(1, r.total)) * 100)}%`, background: r.color }} />
-              </div>
-              <div className="w-6 text-xs font-mono text-secondary text-right">{r.count}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Dates */}
-        <div className="px-6 pb-4 flex flex-wrap gap-4 text-xs text-secondary">
-          <span>Started: <span className="text-primary font-mono">{fmtDate(scan.created_at)}</span></span>
-          <span>Completed: <span className="text-primary font-mono">{fmtDate(scan.completed_at)}</span></span>
-        </div>
-
-        {/* Actions */}
-        <div className="px-6 py-4 border-t border-glass-border flex gap-3">
-          <button
-            onClick={() => { onLoad(); onClose(); }}
-            className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-primary-indigo text-white font-bold text-sm rounded-lg hover:opacity-90 transition-opacity"
-          >
-            <ExternalLink size={14} /> Load this Scan
-          </button>
-          <button onClick={onClose}
-            className="px-5 py-2.5 border border-glass-border text-secondary rounded-lg font-bold text-sm hover:text-primary transition-colors">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -142,24 +71,22 @@ const CHART_TOOLTIP_STYLE = {
 };
 
 function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
-  // Build time-series data (most recent last)
-  const sorted = [...scans].sort((a, b) =>
-    (a.created_at ?? '').localeCompare(b.created_at ?? ''),
+  const completed = scans.filter(s => s.status === 'completed' || s.status === 'COMPLETED');
+  const sorted = [...completed].sort((a, b) =>
+    (a.started_at ?? '').localeCompare(b.started_at ?? ''),
   );
-  const chartData = sorted.map((s, i) => ({
+  const chartData = sorted.map(s => ({
     name: s.domain.split('.')[0].substring(0, 8),
-    idx: i + 1,
-    score: s.organization_score ?? 0,
-    assets: s.assets_scanned ?? 0,
+    score: s.exposure_score ?? s.organization_score ?? 0,
+    assets: s.assets_found ?? s.assets_scanned ?? 0,
     critical: s.critical_count ?? 0,
-    date: fmtDate(s.created_at),
+    date: fmtDate(s.started_at).split(',')[0],
   }));
 
   if (chartData.length === 0) return null;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Risk score trend */}
       <div className="glass-card border rounded-xl p-5 overflow-hidden">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp size={16} className="text-primary-indigo" />
@@ -177,7 +104,6 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Assets per scan bar */}
       <div className="glass-card border rounded-xl p-5 overflow-hidden">
         <div className="flex items-center gap-2 mb-4">
           <BarChart2 size={16} className="text-status-safe" />
@@ -198,7 +124,6 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
         </ResponsiveContainer>
       </div>
 
-      {/* Critical findings bar */}
       <div className="glass-card border rounded-xl p-5 overflow-hidden md:col-span-2">
         <div className="flex items-center gap-2 mb-4">
           <AlertCircle size={16} className="text-status-critical" />
@@ -225,28 +150,96 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function ScanHistoryPage() {
-  const { data: scansData } = useScanHistory(null);
-  const scans: any[] = scansData || [];
+  const { data: scansData, refetch } = useScanHistory(null);
+  const scans: ScanRecord[] = (scansData as any[]) || [];
   const { setActiveScan } = useScanStore();
-  const [selected, setSelected] = useState<ScanRecord | null>(null);
-  const [filter, setFilter] = useState<'ALL' | 'COMPLETED' | 'FAILED'>('ALL');
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [filter, setFilter] = useState<'ALL' | 'COMPLETED' | 'FAILED' | 'RUNNING'>('ALL');
+  const [cancelling, setCancelling] = useState<Record<string, boolean>>({});
 
-  const filtered = scans.filter(s => filter === 'ALL' || s.status === filter);
+  const statusNorm = (s: string) => s?.toUpperCase();
+
+  const filtered = scans.filter(s => {
+    if (filter === 'ALL') return true;
+    return statusNorm(s.status) === filter;
+  });
+
+  const handleRowClick = (scan: ScanRecord) => {
+    const st = statusNorm(scan.status);
+    const sid = scan.scan_id ?? scan.id ?? '';
+
+    if (st === 'RUNNING' || st === 'PENDING') {
+      // Navigate to live scan page to watch progress
+      navigate(`/scan/${encodeURIComponent(scan.domain)}`, { state: { scanId: sid } });
+    } else if (st === 'COMPLETED') {
+      // Load this scan into the store and go to dashboard
+      setActiveScan(sid, scan.domain);
+      navigate('/dashboard');
+    }
+    // FAILED — do nothing on row click (no useful page to show)
+  };
+
+  const handleCancel = async (e: React.MouseEvent, scan: ScanRecord) => {
+    e.stopPropagation(); // don't trigger row click
+    const sid = scan.scan_id ?? scan.id ?? '';
+    setCancelling(prev => ({ ...prev, [sid]: true }));
+    try {
+      await scanApi.cancel(sid);
+      await refetch();
+      queryClient.invalidateQueries({ queryKey: ['scan-history'] });
+      queryClient.invalidateQueries({ queryKey: ['scans-recent'] });
+    } catch (err) {
+      console.error('Cancel failed:', err);
+    } finally {
+      setCancelling(prev => ({ ...prev, [sid]: false }));
+    }
+  };
+
+  const completedScans = scans.filter(s => statusNorm(s.status) === 'COMPLETED');
+  const runningScans   = scans.filter(s => statusNorm(s.status) === 'RUNNING' || statusNorm(s.status) === 'PENDING');
+  const avgScore = completedScans.length
+    ? Math.round(completedScans.reduce((a, s) => a + (s.exposure_score ?? s.organization_score ?? 0), 0) / completedScans.length)
+    : 0;
 
   return (
     <div className="flex flex-col gap-6">
       <SectionHeader
         title="Scan History"
-        subtitle={`${scans.length} scans stored • click any row to view full details`}
+        subtitle={`${scans.length} scans stored • click a row to open it`}
       />
+
+      {/* ── Active scans banner ────────────────────────────────────── */}
+      {runningScans.length > 0 && (
+        <div className="glass-card border rounded-xl p-4 flex items-center gap-4"
+          style={{ borderColor: 'rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.06)' }}>
+          <RefreshCw size={18} className="text-primary-indigo animate-spin flex-shrink-0" />
+          <div className="flex-1">
+            <span className="text-sm font-bold text-primary-indigo">
+              {runningScans.length} scan{runningScans.length > 1 ? 's' : ''} in progress
+            </span>
+            <span className="text-xs text-secondary ml-2">
+              {runningScans.map(s => s.domain).join(', ')}
+            </span>
+          </div>
+          <button
+            onClick={() => navigate(`/scan/${encodeURIComponent(runningScans[0].domain)}`, {
+              state: { scanId: runningScans[0].scan_id ?? runningScans[0].id }
+            })}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary-indigo text-white text-xs font-bold rounded-lg hover:opacity-90 transition-opacity"
+          >
+            <Eye size={12} /> Watch Live
+          </button>
+        </div>
+      )}
 
       {/* ── Summary KPI bar ────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Scans',    value: scans.length,                                                      color: '#6366f1' },
-          { label: 'Completed',      value: scans.filter(s => s.status === 'COMPLETED').length,                color: '#22c55e' },
-          { label: 'Failed',         value: scans.filter(s => s.status === 'FAILED').length,                   color: '#ef4444' },
-          { label: 'Avg Risk Score', value: Math.round(scans.reduce((a, s) => a + (s.organization_score ?? 0), 0) / Math.max(1, scans.filter(s => s.organization_score).length)), color: '#f59e0b' },
+          { label: 'Total Scans',    value: scans.length,           color: '#6366f1' },
+          { label: 'Completed',      value: completedScans.length,  color: '#22c55e' },
+          { label: 'Failed',         value: scans.filter(s => statusNorm(s.status) === 'FAILED').length, color: '#ef4444' },
+          { label: 'Avg Risk Score', value: avgScore,               color: '#f59e0b' },
         ].map(k => (
           <div key={k.label} className="glass-card border rounded-xl p-4 text-center"
             style={{ borderColor: `${k.color}33`, background: `${k.color}0d` }}>
@@ -267,7 +260,7 @@ export default function ScanHistoryPage() {
             <span className="font-bold text-primary">History ({filtered.length})</span>
           </div>
           <div className="flex gap-2">
-            {(['ALL', 'COMPLETED', 'FAILED'] as const).map(f => (
+            {(['ALL', 'COMPLETED', 'RUNNING', 'FAILED'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
                   filter === f
@@ -275,6 +268,11 @@ export default function ScanHistoryPage() {
                     : 'border-glass-border text-secondary hover:text-primary'
                 }`}>
                 {f}
+                {f === 'RUNNING' && runningScans.length > 0 && (
+                  <span className="ml-1.5 bg-primary-indigo text-white rounded-full px-1.5 py-0.5 text-[10px]">
+                    {runningScans.length}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -284,35 +282,98 @@ export default function ScanHistoryPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface-card-hover">
-                {['Date', 'Domain', 'Assets', 'Risk Score', 'Critical', 'Status', ''].map(h => (
+                {['Date', 'Domain', 'Assets', 'Risk Score', 'Critical', 'Status', 'Action'].map(h => (
                   <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {filtered.map(scan => (
-                <tr key={scan.id}
-                  onClick={() => setSelected(scan)}
-                  className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
-                  <td className="px-5 py-3.5 font-mono text-secondary text-xs">{fmtDate(scan.created_at)}</td>
-                  <td className="px-5 py-3.5 font-mono text-primary font-semibold">{scan.domain}</td>
-                  <td className="px-5 py-3.5 font-mono text-primary">{scan.assets_scanned ?? '—'}</td>
-                  <td className="px-5 py-3.5">
-                    <span className="font-bold font-mono text-sm" style={{
-                      color: (scan.organization_score ?? 0) > 70 ? '#ef4444' : (scan.organization_score ?? 0) > 40 ? '#f59e0b' : '#22c55e'
-                    }}>
-                      {scan.organization_score ?? '—'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3.5 font-bold text-status-critical font-mono">{scan.critical_count ?? '—'}</td>
-                  <td className="px-5 py-3.5">{statusChip(scan.status)}</td>
-                  <td className="px-5 py-3.5 text-right">
-                    <span className="text-primary-indigo text-xs opacity-0 group-hover:opacity-100 transition-opacity font-semibold">
-                      View →
-                    </span>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(scan => {
+                const sid = scan.scan_id ?? scan.id ?? '';
+                const st = statusNorm(scan.status);
+                const isActive = st === 'RUNNING' || st === 'PENDING';
+                const isCompleted = st === 'COMPLETED';
+                const isCancelling = cancelling[sid];
+
+                return (
+                  <tr key={sid}
+                    onClick={() => handleRowClick(scan)}
+                    className={`border-b border-glass-border/30 transition-colors group ${
+                      isActive ? 'cursor-pointer hover:bg-primary-indigo/5' :
+                      isCompleted ? 'cursor-pointer hover:bg-surface-card-hover/60' :
+                      'cursor-default opacity-70'
+                    }`}>
+                    <td className="px-5 py-3.5 font-mono text-secondary text-xs whitespace-nowrap">
+                      {fmtDate(scan.started_at)}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        {isActive && <span className="w-1.5 h-1.5 rounded-full bg-primary-indigo animate-pulse flex-shrink-0" />}
+                        <span className="font-mono text-primary font-semibold">{scan.domain}</span>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3.5 font-mono text-primary">
+                      {scan.assets_found ?? scan.assets_scanned ?? '—'}
+                    </td>
+                    <td className="px-5 py-3.5">
+                      {isCompleted ? (
+                        <span className="font-bold font-mono text-sm" style={{
+                          color: (scan.exposure_score ?? scan.organization_score ?? 0) > 70 ? '#ef4444'
+                            : (scan.exposure_score ?? scan.organization_score ?? 0) > 40 ? '#f59e0b' : '#22c55e'
+                        }}>
+                          {scan.exposure_score ?? scan.organization_score ?? '—'}
+                        </span>
+                      ) : (
+                        <span className="text-secondary text-xs">—</span>
+                      )}
+                    </td>
+                    <td className="px-5 py-3.5 font-bold text-status-critical font-mono">
+                      {scan.critical_count ?? '—'}
+                    </td>
+                    <td className="px-5 py-3.5">{statusChip(scan.status)}</td>
+                    <td className="px-5 py-3.5" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-2">
+                        {isActive && (
+                          <>
+                            <button
+                              onClick={e => { e.stopPropagation(); navigate(`/scan/${encodeURIComponent(scan.domain)}`, { state: { scanId: sid } }); }}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-primary-indigo/10 text-primary-indigo border border-primary-indigo/30 rounded text-xs font-bold hover:bg-primary-indigo hover:text-white transition-colors"
+                              title="Watch live"
+                            >
+                              <Play size={10} /> Live
+                            </button>
+                            <button
+                              onClick={e => handleCancel(e, scan)}
+                              disabled={isCancelling}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded text-xs font-bold hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
+                              title="Cancel scan"
+                            >
+                              {isCancelling
+                                ? <RefreshCw size={10} className="animate-spin" />
+                                : <StopCircle size={10} />}
+                              {isCancelling ? '…' : 'Cancel'}
+                            </button>
+                          </>
+                        )}
+                        {isCompleted && (
+                          <button
+                            onClick={e => { e.stopPropagation(); setActiveScan(sid, scan.domain); navigate('/dashboard'); }}
+                            className="flex items-center gap-1 px-2.5 py-1 bg-status-safe/10 text-status-safe border border-status-safe/30 rounded text-xs font-bold hover:bg-status-safe hover:text-black transition-colors"
+                            title="View results"
+                          >
+                            <Eye size={10} /> Results
+                          </button>
+                        )}
+                        {st === 'FAILED' && scan.error_message && (
+                          <span className="text-[10px] text-secondary truncate max-w-[120px]" title={scan.error_message}>
+                            {scan.error_message.substring(0, 30)}…
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {filtered.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-14 text-secondary">No scans match this filter.</td></tr>
               )}
@@ -320,15 +381,6 @@ export default function ScanHistoryPage() {
           </table>
         </div>
       </div>
-
-      {/* ── Drill-down Modal ─────────────────────────────────────────── */}
-      {selected && (
-        <ScanDetailModal
-          scan={selected}
-          onClose={() => setSelected(null)}
-          onLoad={() => setActiveScan(selected.scan_id ?? selected.id, selected.domain)}
-        />
-      )}
     </div>
   );
 }

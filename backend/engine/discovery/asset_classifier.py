@@ -139,7 +139,7 @@ class AssetClassifier:
                 server_header=fingerprint.get("server"),
                 content_type=fingerprint.get("content_type"),
                 needs_tls_scan=True,
-                needs_api_scan=(asset_type == "api_endpoint"),
+                needs_api_scan=True,  # Always inspect HTTP — can't know what's there without probing
             ))
 
         # ── SSH ───────────────────────────────────────────────────────────────
@@ -251,35 +251,65 @@ class AssetClassifier:
 
     def _detect_web_type(self, fingerprint: dict, fqdn: str) -> str:
         """
-        Determines if an HTTPS endpoint is a web portal or API endpoint.
+        Determines asset type from FQDN keywords, content-type, and body.
+        Banking-aware: covers Indian banking subdomain patterns.
         """
         content_type = fingerprint.get("content_type", "").lower()
         body = fingerprint.get("body_preview", "").lower()
         fqdn_lower = fqdn.lower()
-        status = fingerprint.get("status")
+        # Split into subdomain segments for exact-segment matching
+        fqdn_parts = set(fqdn_lower.replace("-", "").split("."))
 
-        # Staging/UAT detection — before other checks
-        if any(kw in fqdn_lower for kw in ["staging", "uat", "test", "dev", "qa"]):
+        # ── Staging/UAT — highest priority ────────────────────────────────────
+        staging_kw = {"staging", "uat", "test", "dev", "qa", "sandbox", "preprod", "sit"}
+        if fqdn_parts & staging_kw or any(kw in fqdn_lower for kw in staging_kw):
             return "staging"
 
-        # API endpoint indicators — check FQDN keywords first (most reliable)
-        api_fqdn_keywords = ["api", "services", "gateway", "gw", "ws", "rest",
-                             "graphql", "oauth", "auth", "sso", "token", "openid"]
-        if any(kw in fqdn_lower.split(".") or kw in fqdn_lower for kw in api_fqdn_keywords):
+        # ── Mobile backend ─────────────────────────────────────────────────────
+        mobile_kw = {"mobile", "mapi", "mbanking", "mbankingapi"}
+        if fqdn_parts & mobile_kw or any(kw in fqdn_lower for kw in ["mobile.", "mapi.", "m."]):
+            return "mobile_backend"
+
+        # ── API endpoint — FQDN segment exact match (most reliable) ───────────
+        api_exact_segments = {
+            "api", "apis", "gateway", "gw", "ws", "rest", "graphql",
+            "oauth", "auth", "sso", "token", "openid", "oidc", "idp",
+            "services", "service", "microservice", "backend",
+            # Banking-specific API patterns
+            "mcaapi", "ncaapi", "corpapi", "retailapi", "ibankingapi",
+            "payapi", "upiapi", "neftapi", "rtgsapi", "impsapi",
+        }
+        if fqdn_parts & api_exact_segments:
             return "api_endpoint"
 
-        # API endpoint from content type
+        # ── API endpoint — substring in full FQDN ─────────────────────────────
+        api_substring_kw = [
+            "api.", ".api.", "-api.", "api-",
+            "gateway.", ".gateway", "services.",
+            "oauth.", "auth.", "sso.", "token.",
+            "mcaapi", "ncaapi", "corpapi",
+        ]
+        if any(kw in fqdn_lower for kw in api_substring_kw):
+            return "api_endpoint"
+
+        # ── API endpoint — content-type signals ───────────────────────────────
         if "application/json" in content_type or "application/xml" in content_type:
             return "api_endpoint"
 
-        # API endpoint from body structure
-        if body and (body.strip().startswith("{") or body.strip().startswith("[")):
+        # ── API endpoint — JSON body ───────────────────────────────────────────
+        body_stripped = body.strip()
+        if body_stripped and (body_stripped.startswith("{") or body_stripped.startswith("[")):
             return "api_endpoint"
 
-        # Mobile backend
-        if any(kw in fqdn_lower for kw in ["mobile", "app.", "m.", "mapi"]):
-            return "mobile_backend"
+        # ── Banking internet banking portals ───────────────────────────────────
+        # These are customer-facing web portals, not APIs
+        banking_portal_kw = {
+            "ibanking", "netbanking", "internetbanking", "ebanking",
+            "onlinebanking", "icorp", "iretail", "ibusiness",
+            "kyc", "kyc360", "locate", "branch", "atm",
+            "retail", "corp", "corporate", "sme", "nri",
+        }
+        if fqdn_parts & banking_portal_kw:
+            return "web_portal"
 
-        # If we got a non-200 or connection error, still classify as web_portal
-        # so TLS scanning still runs
         return "web_portal"

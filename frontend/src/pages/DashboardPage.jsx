@@ -44,6 +44,7 @@ const SERVER_TYPES = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway
 
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
+    const [viewMode, setViewMode] = useState('scan'); // 'scan' | 'all'
     const navigate = useNavigate();
     const { activeDomain, activeScanId, setActiveScan } = useScanStore();
     const domain = activeDomain || '';
@@ -52,15 +53,24 @@ const DashboardPage = () => {
     const { data: recentScans = [], isLoading: recentLoading } = useQuery({
         queryKey: ['scans-recent'],
         queryFn: () => scanApi.list(null, 10),
-        staleTime: 120_000,          // 2 min — don't hammer the scans list
+        staleTime: 120_000,
         refetchOnWindowFocus: false,
+    });
+
+    // ── Aggregate stats across ALL scans ────────────────────────────────────
+    const { data: aggregateStats = {}, isLoading: aggregateLoading } = useQuery({
+        queryKey: ['dashboard-aggregate'],
+        queryFn: () => dashboardApi.getAggregate(),
+        staleTime: 60_000,
+        refetchOnWindowFocus: false,
+        enabled: viewMode === 'all',
     });
 
     // ── Dashboard aggregate stats for active domain ─────────────────────────
     const { data: stats = {}, isLoading: statsLoading, refetch: refetchStats } = useQuery({
         queryKey: ['dashboard', domain],
         queryFn: () => dashboardApi.getStats(domain),
-        enabled: !!domain,
+        enabled: !!domain && viewMode === 'scan',
         staleTime: 60_000,
         refetchOnWindowFocus: false,
     });
@@ -69,7 +79,7 @@ const DashboardPage = () => {
     const { data: assets = [], isLoading: assetsLoading } = useQuery({
         queryKey: ['assets', activeScanId],
         queryFn: () => assetsApi.list({ scan_id: activeScanId }),
-        enabled: !!activeScanId,
+        enabled: !!activeScanId && viewMode === 'scan',
         staleTime: 60_000,
         refetchOnWindowFocus: false,
     });
@@ -78,7 +88,7 @@ const DashboardPage = () => {
     const { data: certs = [] } = useQuery({
         queryKey: ['dashboard-certs', activeScanId],
         queryFn: () => certApi.getByScan(activeScanId),
-        enabled: !!activeScanId,
+        enabled: !!activeScanId && viewMode === 'scan',
         staleTime: 120_000,
         refetchOnWindowFocus: false,
     });
@@ -97,17 +107,22 @@ const DashboardPage = () => {
         }
     }, [noDomain, recentScans]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const isLoading = recentLoading || (!noDomain && (statsLoading || assetsLoading));
+    const isLoading = recentLoading || (viewMode === 'all' ? aggregateLoading : (!noDomain && (statsLoading || assetsLoading)));
+
+    // In "all" mode, use aggregate stats; otherwise use per-scan stats
+    const activeStats = viewMode === 'all' ? aggregateStats : stats;
+    const activeAssets = viewMode === 'all' ? [] : assets;
+    const activeCerts = viewMode === 'all' ? [] : certs;
 
     // ── Derived KPI counts from actual backend asset_type values ────────────
-    const webApps   = assets.filter(a => WEB_APP_TYPES.has(a.type)).length;
-    const apis      = assets.filter(a => API_TYPES.has(a.type)).length;
-    const servers   = assets.filter(a => SERVER_TYPES.has(a.type)).length;
-    const shadowAssets = assets.filter(a => a.discovery === 'Shadow');
+    const webApps   = activeAssets.filter(a => WEB_APP_TYPES.has(a.type)).length;
+    const apis      = activeAssets.filter(a => API_TYPES.has(a.type)).length;
+    const servers   = activeAssets.filter(a => SERVER_TYPES.has(a.type)).length;
+    const shadowAssets = activeAssets.filter(a => a.discovery === 'Shadow');
 
     // ── Cert expiry timeline from real cert data (no fallbacks) ─────────────
     const now = new Date();
-    const expiringCertsCount = certs.filter(c => {
+    const expiringCertsCount = activeCerts.filter(c => {
         if (!c.valid_to) return false;
         const days = (new Date(c.valid_to) - now) / 86400000;
         return days > 0 && days <= 90;
@@ -123,7 +138,7 @@ const DashboardPage = () => {
     const expiryTimelineData = expiryBuckets.map(bucket => ({
         name: bucket.name,
         color: bucket.color,
-        count: certs.filter(c => {
+        count: activeCerts.filter(c => {
             if (!c.valid_to) return false;
             const days = (new Date(c.valid_to) - now) / 86400000;
             const absDays = Math.abs(days);
@@ -133,39 +148,50 @@ const DashboardPage = () => {
         }).length,
     }));
 
-    // Total assets = from stats (accurate after backfill) or fallback to asset list length
-    const totalAssets = (stats.total_assets !== undefined && stats.total_assets !== null)
-        ? stats.total_assets
-        : assets.length;
+    // Total assets
+    const totalAssets = viewMode === 'all'
+        ? (activeStats.total_assets ?? 0)
+        : ((activeStats.total_assets !== undefined && activeStats.total_assets !== null)
+            ? activeStats.total_assets
+            : activeAssets.length);
 
-    const highRiskAssets = (stats.critical_count ?? 0) + (stats.high_count ?? 0);
+    const highRiskAssets = (activeStats.critical_count ?? 0) + (activeStats.high_count ?? 0);
 
-    const kpis = [
-        { label: 'Total Assets',    value: totalAssets,        icon: Server,     color: 'text-primary' },
-        { label: 'Public Web Apps', value: webApps,            icon: AppWindow,  color: 'text-status-safe' },
-        { label: 'APIs',            value: apis,               icon: Cpu,        color: 'text-primary-indigo' },
-        { label: 'Servers',         value: servers,            icon: Server,     color: 'text-secondary' },
-        { label: 'Expiring Certs',  value: expiringCertsCount, icon: Key,        color: 'text-status-high' },
-        { label: 'High Risk Assets',value: highRiskAssets,     icon: ShieldAlert,color: 'text-status-critical' },
-    ];
+    const kpis = viewMode === 'all'
+        ? [
+            { label: 'Total Scans',     value: activeStats.total_scans ?? 0,    icon: Activity,   color: 'text-primary-indigo' },
+            { label: 'Total Assets',    value: totalAssets,                      icon: Server,     color: 'text-primary' },
+            { label: 'Critical',        value: activeStats.critical_count ?? 0,  icon: ShieldAlert,color: 'text-status-critical' },
+            { label: 'High Risk',       value: activeStats.high_count ?? 0,      icon: ShieldAlert,color: 'text-status-high' },
+            { label: 'Shadow Assets',   value: activeStats.shadow_count ?? 0,    icon: Server,     color: 'text-status-medium' },
+            { label: 'Avg Risk Score',  value: activeStats.exposure_score ?? 0,  icon: Activity,   color: 'text-status-safe' },
+        ]
+        : [
+            { label: 'Total Assets',    value: totalAssets,        icon: Server,     color: 'text-primary' },
+            { label: 'Public Web Apps', value: webApps,            icon: AppWindow,  color: 'text-status-safe' },
+            { label: 'APIs',            value: apis,               icon: Cpu,        color: 'text-primary-indigo' },
+            { label: 'Servers',         value: servers,            icon: Server,     color: 'text-secondary' },
+            { label: 'Expiring Certs',  value: expiringCertsCount, icon: Key,        color: 'text-status-high' },
+            { label: 'High Risk Assets',value: highRiskAssets,     icon: ShieldAlert,color: 'text-status-critical' },
+        ];
 
-    // ── Risk distribution from backend stats (preferred) or from asset list ─
-    const riskData = stats.risk_distribution?.length
-        ? stats.risk_distribution
+    // ── Risk distribution ─────────────────────────────────────────────────
+    const riskData = activeStats.risk_distribution?.length
+        ? activeStats.risk_distribution
         : Object.entries(
-            assets.reduce((acc, a) => {
+            activeAssets.reduce((acc, a) => {
                 if (!a.risk_level) return acc;
                 acc[a.risk_level] = (acc[a.risk_level] ?? 0) + 1;
                 return acc;
             }, {})
         ).map(([name, value]) => ({ name, value, color: RISK_COLORS[name] ?? '#6366F1' }));
 
-    const algoData = stats.algorithm_breakdown ?? [];
-
-    const ipData = stats.ip_distribution ?? [{ name: 'IPv4', value: 100, color: '#3B82F6' }];
+    const algoData = activeStats.algorithm_breakdown ?? [];
+    const ipData = activeStats.ip_distribution ?? [{ name: 'IPv4', value: 100, color: '#3B82F6' }];
+    const scansBreakdown = activeStats.scans_breakdown ?? [];
 
     // ── Asset table sort ────────────────────────────────────────────────────
-    const sortedAssets = [...assets].sort((a, b) =>
+    const sortedAssets = [...activeAssets].sort((a, b) =>
         sortField === 'score' ? (b.score ?? 0) - (a.score ?? 0) : 0
     );
 
@@ -225,8 +251,32 @@ const DashboardPage = () => {
                     <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
                 </div>
                 <div className="text-secondary text-sm font-mono flex items-center gap-2 flex-wrap">
-                    {/* Scan selector — lets users switch between historical scans */}
-                    {recentScans.length > 1 && (
+                    {/* View mode toggle */}
+                    <div className="flex items-center rounded-lg border border-glass-border overflow-hidden">
+                        <button
+                            onClick={() => setViewMode('scan')}
+                            className={`px-3 py-1.5 text-xs font-bold transition-colors ${
+                                viewMode === 'scan'
+                                    ? 'bg-primary-indigo text-white'
+                                    : 'text-secondary hover:text-primary'
+                            }`}
+                        >
+                            Single Scan
+                        </button>
+                        <button
+                            onClick={() => setViewMode('all')}
+                            className={`px-3 py-1.5 text-xs font-bold transition-colors border-l border-glass-border ${
+                                viewMode === 'all'
+                                    ? 'bg-primary-indigo text-white'
+                                    : 'text-secondary hover:text-primary'
+                            }`}
+                        >
+                            All Scans
+                        </button>
+                    </div>
+
+                    {/* Scan selector — only shown in single scan mode */}
+                    {viewMode === 'scan' && recentScans.length > 1 && (
                         <select
                             className="bg-surface-card border border-glass-border text-primary text-xs font-mono rounded px-2 py-1 focus:outline-none focus:border-primary-indigo cursor-pointer"
                             value={activeScanId || ''}
@@ -242,19 +292,28 @@ const DashboardPage = () => {
                             ))}
                         </select>
                     )}
-                    <span>Target: <span className="text-primary font-bold">{domain}</span></span>
+
+                    <span>
+                        Target: <span className="text-primary font-bold">
+                            {viewMode === 'all' ? `${aggregateStats.total_scans ?? 0} scans` : domain}
+                        </span>
+                    </span>
                     <span>|</span>
                     <span className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-status-safe animate-pulse" /> Live Sync
                     </span>
-                    <button onClick={() => refetchStats()} className="ml-2 text-secondary hover:text-primary transition-colors" title="Refresh">
+                    <button
+                        onClick={() => viewMode === 'all' ? null : refetchStats()}
+                        className="ml-2 text-secondary hover:text-primary transition-colors"
+                        title="Refresh"
+                    >
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                     </button>
                 </div>
             </div>
 
-            {/* Shadow Asset Alert Banner */}
-            {shadowAssets.length > 0 && (
+            {/* Shadow Asset Alert Banner — only in single scan mode */}
+            {viewMode === 'scan' && shadowAssets.length > 0 && (
                 <div className="bg-status-critical/10 border border-status-critical/30 rounded-lg p-4 flex items-start gap-4 animate-pulse-subtle">
                     <AlertTriangle size={24} className="text-status-critical flex-shrink-0 mt-1" />
                     <div className="flex-1">
@@ -271,6 +330,23 @@ const DashboardPage = () => {
                             ))}
                             {shadowAssets.length > 3 && ` and ${shadowAssets.length - 3} more`} operating outside known inventory. Immediate investigation required.
                         </p>
+                    </div>
+                </div>
+            )}
+
+            {/* All Scans summary banner */}
+            {viewMode === 'all' && (aggregateStats.total_scans ?? 0) > 0 && (
+                <div className="glass-card border p-4 flex flex-wrap gap-6 items-center"
+                    style={{ borderColor: 'rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)' }}>
+                    <div className="flex items-center gap-2">
+                        <Activity size={16} className="text-primary-indigo" />
+                        <span className="text-sm font-bold text-primary">Aggregate Intelligence</span>
+                        <span className="text-xs text-secondary">— across all {aggregateStats.total_scans} completed scans</span>
+                    </div>
+                    <div className="flex gap-4 text-xs">
+                        <span className="text-secondary">Avg Risk Score: <span className="font-mono font-bold text-primary">{aggregateStats.exposure_score ?? 0}</span></span>
+                        <span className="text-secondary">Total Assets: <span className="font-mono font-bold text-primary">{aggregateStats.total_assets ?? 0}</span></span>
+                        <span className="text-secondary">Shadow: <span className="font-mono font-bold text-status-high">{aggregateStats.shadow_count ?? 0}</span></span>
                     </div>
                 </div>
             )}
@@ -376,7 +452,8 @@ const DashboardPage = () => {
                     </div>
                 </div>
 
-                {/* Cryptographic Asset Map Table */}
+                {/* Cryptographic Asset Map Table — single scan mode */}
+                {viewMode === 'scan' && (
                 <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
                     <div className="p-4 border-b flex flex-wrap gap-2 items-center justify-between bg-surface-card-hover">
                         <h2 className="font-bold">Cryptographic Asset Map</h2>
@@ -393,7 +470,7 @@ const DashboardPage = () => {
                             <div className="flex items-center justify-center h-full text-secondary">
                                 <RefreshCw size={18} className="animate-spin mr-2" /> Loading assets...
                             </div>
-                        ) : assets.length === 0 ? (
+                        ) : activeAssets.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
                                 <Server size={32} className="opacity-30" />
                                 <p className="text-sm">No assets yet. Run a scan from the home page.</p>
@@ -464,6 +541,75 @@ const DashboardPage = () => {
                         )}
                     </div>
                 </div>
+                )}
+
+                {/* All Scans breakdown table */}
+                {viewMode === 'all' && (
+                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
+                    <div className="p-4 border-b flex items-center justify-between bg-surface-card-hover">
+                        <h2 className="font-bold">Scan History — Risk Breakdown</h2>
+                        <span className="text-xs text-secondary">{scansBreakdown.length} scans</span>
+                    </div>
+                    <div className="table-container flex-1">
+                        {aggregateLoading ? (
+                            <div className="flex items-center justify-center h-full text-secondary">
+                                <RefreshCw size={18} className="animate-spin mr-2" /> Loading...
+                            </div>
+                        ) : scansBreakdown.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
+                                <Server size={32} className="opacity-30" />
+                                <p className="text-sm">No completed scans yet.</p>
+                            </div>
+                        ) : (
+                            <table className="data-table">
+                                <thead className="sticky top-0 bg-surface-card-hover">
+                                    <tr>
+                                        <th>Domain</th><th>Date</th><th>Assets</th><th>Critical</th><th>Risk Score</th><th />
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {scansBreakdown.map(scan => (
+                                        <tr key={scan.scan_id} className="cursor-pointer hover:bg-surface-card-hover/50"
+                                            onClick={() => {
+                                                const found = recentScans.find(s => s.scan_id === scan.scan_id);
+                                                if (found) { setActiveScan(found.scan_id, found.domain); setViewMode('scan'); }
+                                            }}>
+                                            <td className="font-mono font-medium text-primary-indigo">{scan.domain}</td>
+                                            <td className="text-secondary text-xs font-mono">
+                                                {scan.completed_at ? new Date(scan.completed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                                            </td>
+                                            <td className="font-mono">{scan.assets}</td>
+                                            <td>
+                                                <span className={`font-mono font-bold ${scan.critical > 0 ? 'text-status-critical' : 'text-status-safe'}`}>
+                                                    {scan.critical}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold w-8"
+                                                        style={{ color: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)' }}>
+                                                        {scan.score}
+                                                    </span>
+                                                    <div className="w-20 bg-surface-card rounded-full h-1.5 overflow-hidden">
+                                                        <div className="h-full rounded-full"
+                                                            style={{
+                                                                width: `${scan.score}%`,
+                                                                backgroundColor: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)'
+                                                            }} />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="text-right">
+                                                <ChevronRight size={16} className="text-secondary" />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+                )}
 
                 {/* Algorithm Breakdown (live from backend) */}
                 {algoData.length > 0 && (

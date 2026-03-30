@@ -7,7 +7,7 @@ based on HTTP response text and headers.
 import os
 import time
 import torch
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 from transformers import (
     DistilBertForSequenceClassification,
     DistilBertTokenizerFast

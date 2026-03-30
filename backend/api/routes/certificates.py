@@ -9,6 +9,25 @@ from db.models import PQCCertificate
 
 router = APIRouter()
 
+def _cert_to_dict(c) -> dict:
+    return {
+        "id": str(c.id),
+        "certificate_id": c.certificate_id,
+        "asset_url": c.asset_url,
+        "scan_job_id": str(c.scan_job_id),
+        "status": c.status,
+        "label": c.label,
+        "key_exchange": c.key_exchange,
+        "signature_algorithm": c.signature_algorithm,
+        "nist_standard": c.nist_standard,
+        "quantum_exposure_score": c.quantum_exposure_score,
+        "issued_date": c.issued_date,
+        "valid_until": c.valid_until,
+        "issuing_platform": c.issuing_platform,
+        "certificate_json": c.certificate_json,
+    }
+
+
 @router.get("/")
 async def list_certificates(
     scan_id: Optional[str] = None,
@@ -17,26 +36,23 @@ async def list_certificates(
 ):
     """List all PQC certificates, optionally filtered by scan or domain."""
     repo = CertificateRepository(db)
-    
+
     if scan_id:
         try:
             sid = uuid.UUID(scan_id)
             certs = await repo.get_certificates_for_scan(sid)
-            return certs
+            return [_cert_to_dict(c) for c in certs]
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid scan_id format")
-            
+
     if domain:
-        # Find the latest scan for this domain first
         scan_repo = ScanRepository(db)
         scans = await scan_repo.get_scans_by_domain(domain, limit=1)
         if not scans:
             return []
         certs = await repo.get_certificates_for_scan(scans[0].id)
-        return certs
+        return [_cert_to_dict(c) for c in certs]
 
-    # Default: return recent certificates (could add a generic list method to repo)
-    # For now, let's assume we need a specific context.
     return []
 
 @router.get("/scan/{scan_id}")
@@ -49,7 +65,7 @@ async def get_certificates_by_scan(
     try:
         sid = uuid.UUID(scan_id)
         certs = await repo.get_certificates_for_scan(sid)
-        return certs
+        return [_cert_to_dict(c) for c in certs]
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scan_id format")
 
@@ -76,6 +92,6 @@ async def get_certificate(
             
         if not cert:
             raise HTTPException(status_code=404, detail="Certificate not found")
-        return cert
+        return _cert_to_dict(cert)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid certificate ID format")

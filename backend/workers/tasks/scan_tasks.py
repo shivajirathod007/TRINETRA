@@ -38,7 +38,6 @@ def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
     try:
         result = asyncio.run(_run_all_scanners(scan_id, asset_data))
         _persist_scan_result(asset_id, scan_id, result)
-
         log.info(
             "asset_scan_complete",
             asset_id=asset_id,
@@ -68,9 +67,55 @@ def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
 
 async def _run_all_scanners(scan_id: str, asset_data: dict) -> dict:
     """
-    Runs all scanner workers concurrently.
+    Runs all scanner workers concurrently with a 120s hard timeout per asset.
     Returns a complete flat dict of all scan fields for DB storage.
     """
+    try:
+        return await asyncio.wait_for(
+            _run_scanners_inner(scan_id, asset_data),
+            timeout=120.0,  # 2 min max per asset — prevents hanging
+        )
+    except asyncio.TimeoutError:
+        asset_url = asset_data.get("asset_url", "unknown")
+        log.error("asset_scan_timeout", url=asset_url, timeout=120)
+        # Return minimal result with conservative defaults so scoring still runs
+        from engine.analysis.exposure_scorer import ExposureScorer
+        from engine.analysis.hndl_engine import HNDLEngine
+        scorer = ExposureScorer()
+        score_result = scorer.score(
+            asset_url=asset_url,
+            algorithm="RSA-2048",
+            asset_type=asset_data.get("asset_type", "web_portal"),
+            cert_expiry_days=365,
+            crqc_year=settings.crqc_moderate_year,
+            is_shadow_asset=asset_data.get("is_shadow_asset", False),
+        )
+        hndl_result = HNDLEngine().calculate(
+            asset_url=asset_url,
+            algorithm="RSA-2048",
+            cert_expiry_days=365,
+        )
+        return {
+            "quantum_safe_status": score_result.quantum_safe_status,
+            "quantum_exposure_score": score_result.score,
+            "risk_level": score_result.risk_level,
+            "hndl_deadline": hndl_result.primary_deadline,
+            "hndl_urgency": hndl_result.urgency_level,
+            "data_sensitivity_tier": "static",
+            "data_sensitivity_tier_source": "auto_detected",
+            "score_breakdown": {
+                "algorithm_risk": score_result.breakdown.algorithm_risk_raw,
+                "hndl_timeline": score_result.breakdown.hndl_timeline_raw,
+                "public_exposure": score_result.breakdown.public_exposure_raw,
+                "weights": score_result.breakdown.weights,
+                "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline×0.40) + (Exposure×0.20)",
+                "note": "Timeout fallback — scanners did not complete in 120s",
+            },
+            "_pqc_certificate_data": None,
+        }
+
+
+async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     from engine.scanners.tls_scanner import TLSScanner
     from engine.scanners.cert_analyzer import CertAnalyzer
     from engine.scanners.vpn_detector import VPNDetector
@@ -93,9 +138,10 @@ async def _run_all_scanners(scan_id: str, asset_data: dict) -> dict:
     is_shadow = asset_data.get("is_shadow_asset", False)
 
     # Determine which scanners to run based on asset type
-    # Always run TLS + cert for any HTTPS asset
+    # Always run TLS + cert + API for ALL HTTPS assets — we can't know
+    # what's behind a URL until we probe it. Classification is a hint, not a gate.
     run_tls = port in (443, 8443, 4433, 10443) or asset_type not in ("ssh_endpoint", "smtp_mta")
-    run_api = asset_type in ("web_portal", "api_endpoint", "mobile_backend", "staging", "shadow_asset")
+    run_api = run_tls  # Always inspect HTTP for any HTTPS asset
     run_vpn = asset_type == "vpn_gateway" or asset_data.get("needs_vpn_scan", False)
     run_ssh = asset_type == "ssh_endpoint" or asset_data.get("needs_ssh_scan", False)
     run_smtp = asset_type == "smtp_mta" or asset_data.get("needs_smtp_scan", False)

@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func
 import uuid
 
 from db.session import get_db
 from db.repository import ScanRepository
+from db.models import ScanJob, ScannedAsset
 
 router = APIRouter()
 
@@ -26,6 +28,109 @@ def _asset_to_response(a):
         "risk_level": a.risk_level or "UNKNOWN",
         "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
         "discovery": "Shadow" if a.is_shadow_asset else "Known",
+    }
+
+
+@router.get("/aggregate")
+async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db)):
+    """
+    Returns aggregate stats across ALL completed scans.
+    Used for the 'All Scans' view in the dashboard.
+    """
+    # Sum risk counts across all completed scans
+    result = await db.execute(
+        select(
+            func.count(ScanJob.id).label("total_scans"),
+            func.sum(ScanJob.assets_scanned).label("total_assets"),
+            func.sum(ScanJob.critical_count).label("critical_count"),
+            func.sum(ScanJob.high_count).label("high_count"),
+            func.sum(ScanJob.medium_count).label("medium_count"),
+            func.sum(ScanJob.low_count).label("low_count"),
+            func.sum(ScanJob.safe_count).label("safe_count"),
+            func.sum(ScanJob.shadow_assets_found).label("shadow_count"),
+            func.avg(ScanJob.organization_score).label("avg_score"),
+        )
+        .where(ScanJob.status == "COMPLETED")
+    )
+    row = result.one_or_none()
+
+    if not row or not row.total_scans:
+        return {
+            "domain": "ALL SCANS",
+            "total_scans": 0,
+            "exposure_score": 0,
+            "total_assets": 0,
+            "critical_count": 0,
+            "high_count": 0,
+            "medium_count": 0,
+            "pqc_ready": 0,
+            "safe": 0,
+            "shadow_count": 0,
+            "risk_distribution": [],
+            "algorithm_breakdown": [],
+            "ip_distribution": [{"name": "IPv4", "value": 100, "color": "#3B82F6"}],
+            "scans_breakdown": [],
+        }
+
+    # Per-scan breakdown for the trend chart
+    scans_result = await db.execute(
+        select(ScanJob)
+        .where(ScanJob.status == "COMPLETED")
+        .order_by(ScanJob.completed_at.desc())
+        .limit(20)
+    )
+    scans = list(scans_result.scalars().all())
+
+    scans_breakdown = [
+        {
+            "scan_id": str(s.id),
+            "domain": s.domain,
+            "score": round(s.organization_score or 0, 0),
+            "assets": s.assets_scanned or 0,
+            "critical": s.critical_count or 0,
+            "completed_at": s.completed_at.isoformat() if s.completed_at else None,
+        }
+        for s in scans
+    ]
+
+    # Algorithm breakdown across all scans
+    algo_result = await db.execute(
+        select(ScannedAsset.cert_algorithm, func.count(ScannedAsset.id).label("count"))
+        .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
+        .where(ScanJob.status == "COMPLETED", ScannedAsset.cert_algorithm.isnot(None))
+        .group_by(ScannedAsset.cert_algorithm)
+        .order_by(func.count(ScannedAsset.id).desc())
+        .limit(10)
+    )
+    algorithm_breakdown = [
+        {"name": r.cert_algorithm, "count": r.count}
+        for r in algo_result.all()
+    ]
+
+    risk_distribution = [
+        {"name": "CRITICAL", "value": int(row.critical_count or 0), "color": RISK_COLORS["CRITICAL"]},
+        {"name": "HIGH",     "value": int(row.high_count or 0),     "color": RISK_COLORS["HIGH"]},
+        {"name": "MEDIUM",   "value": int(row.medium_count or 0),   "color": RISK_COLORS["MEDIUM"]},
+        {"name": "LOW",      "value": int(row.low_count or 0),      "color": RISK_COLORS["LOW"]},
+        {"name": "SAFE",     "value": int(row.safe_count or 0),     "color": RISK_COLORS["SAFE"]},
+    ]
+    risk_distribution = [r for r in risk_distribution if r["value"] > 0]
+
+    return {
+        "domain": "ALL SCANS",
+        "total_scans": int(row.total_scans or 0),
+        "exposure_score": round(float(row.avg_score or 0), 0),
+        "total_assets": int(row.total_assets or 0),
+        "critical_count": int(row.critical_count or 0),
+        "high_count": int(row.high_count or 0),
+        "medium_count": int(row.medium_count or 0),
+        "pqc_ready": 0,
+        "safe": int(row.safe_count or 0),
+        "shadow_count": int(row.shadow_count or 0),
+        "risk_distribution": risk_distribution,
+        "algorithm_breakdown": algorithm_breakdown,
+        "ip_distribution": [{"name": "IPv4", "value": 100, "color": "#3B82F6"}],
+        "scans_breakdown": scans_breakdown,
     }
 
 

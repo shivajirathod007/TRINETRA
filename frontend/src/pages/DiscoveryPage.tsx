@@ -1,51 +1,65 @@
 /**
  * DiscoveryPage — Asset Discovery & Scan Initiation
- * Per-tab column schemas matching the prototype screenshots:
- *   Domains  → Detection Date, Domain Name, Registration Date, Registrar, Company Name
- *   SSL      → Detection Date, SSL SHA Fingerprint, Valid From, Common Name, Company Name, CA
- *   IP       → Detection Date, IP Address, Ports, Subnet, ASN, ISP, Location, Company
- *   Software → Detection Date, Product, Version, Type, Port, Host, Company Name
+ * All data is sourced from the backend — no hardcoded values.
  */
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Calendar, Globe, Shield, Network, Code2, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, Globe, Shield, Network, Code2, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useScanStore } from '../store';
-import { useAssets } from '../hooks';
+import { useAssets, useScanStatus } from '../hooks';
 import { SectionHeader, LoadingSpinner } from '../components/shared';
 import { scanApi } from '../api/client';
 import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 
-// ─── Tab configuration ─────────────────────────────────────────────────────────
-
 type Category = 'Domains' | 'SSL' | 'IP Address/Subnets' | 'Software';
-type StatusFilter = 'All' | 'New' | 'Confirmed' | 'False or ignore';
-
-const STATUS_COUNTS: Record<StatusFilter, number> = { 'New': 0, 'False or ignore': 0, 'Confirmed': 0, 'All': 0 };
+type StatusFilter = 'All' | 'Shadow' | 'Known';
 
 const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
-  'Domains':           <Globe size={14} />,
-  'SSL':               <Shield size={14} />,
-  'IP Address/Subnets':<Network size={14} />,
-  'Software':          <Code2 size={14} />,
+  'Domains':            <Globe size={14} />,
+  'SSL':                <Shield size={14} />,
+  'IP Address/Subnets': <Network size={14} />,
+  'Software':           <Code2 size={14} />,
 };
 
-// ─── Table renderers ───────────────────────────────────────────────────────────
+const RISK_COLORS: Record<string, string> = {
+  CRITICAL: 'text-red-400',
+  HIGH:     'text-orange-400',
+  MEDIUM:   'text-yellow-400',
+  LOW:      'text-blue-400',
+  SAFE:     'text-green-400',
+  UNKNOWN:  'text-secondary',
+};
 
-function DomainsTable({ company, data }: { company: string, data: any[] }) {
+function EmptyRow({ cols }: { cols: number }) {
+  return (
+    <tr>
+      <td colSpan={cols} className="px-5 py-10 text-center text-secondary text-sm">
+        No data available for this scan yet.
+      </td>
+    </tr>
+  );
+}
+
+function DomainsTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'Domain Name', 'Registration Date', 'Registrar', 'Company Name'].map(h => (
+        {['Detection Date', 'Domain Name', 'Asset Type', 'Risk Level', 'Discovery', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {data.map((row, i) => (
+        {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.domain}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.regDate}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs">{row.registrar}</td>
+            <td className="px-5 py-3.5 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
+            <td className={`px-5 py-3.5 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
+            <td className="px-5 py-3.5 text-xs">
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${row.discovery === 'Shadow' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+                {row.discovery}
+              </span>
+            </td>
             <td className="px-5 py-3.5 font-bold text-primary tracking-wide flex items-center justify-between">
               {company} <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
             </td>
@@ -56,23 +70,23 @@ function DomainsTable({ company, data }: { company: string, data: any[] }) {
   );
 }
 
-function SSLTable({ company, data }: { company: string, data: any[] }) {
+function SSLTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'SSL SHA Fingerprint', 'Expires', 'Common Name', 'Company Name', 'Certificate Authority'].map(h => (
+        {['Detection Date', 'SSL SHA256 Fingerprint', 'Expires', 'Common Name', 'Certificate Authority', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {data.map((row, i) => (
+        {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 font-mono text-primary text-xs">{row.fingerprint}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.validFrom}</td>
+            <td className="px-5 py-3.5 font-mono text-primary text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
+            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.expiry}</td>
             <td className="px-5 py-3.5 text-secondary text-xs">{row.commonName}</td>
-            <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
             <td className="px-5 py-3.5 text-secondary text-xs">{row.ca}</td>
+            <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
           </tr>
         ))}
       </tbody>
@@ -80,24 +94,22 @@ function SSLTable({ company, data }: { company: string, data: any[] }) {
   );
 }
 
-function IPTable({ company, data }: { company: string, data: any[] }) {
+function IPTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'IP Address', 'Ports', 'Subnet', 'ASN', 'ISP', 'Location', 'Company'].map(h => (
+        {['Detection Date', 'IP Address', 'Port', 'TLS Version', 'Asset Type', 'Company'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {data.map((row, i) => (
+        {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.ip}</td>
-            <td className="px-5 py-3.5 font-mono text-primary">{row.ports}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.subnet}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.asn}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs">{row.isp}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs">{row.location}</td>
+            <td className="px-5 py-3.5 font-mono text-primary">{row.port ?? '—'}</td>
+            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
+            <td className="px-5 py-3.5 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
             <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
           </tr>
         ))}
@@ -106,23 +118,23 @@ function IPTable({ company, data }: { company: string, data: any[] }) {
   );
 }
 
-function SoftwareTable({ company, data }: { company: string, data: any[] }) {
+function SoftwareTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
-        {['Detection Date', 'Product/Service', 'Version', 'Type', 'Port', 'Host', 'Company Name'].map(h => (
+        {['Detection Date', 'Asset Type', 'TLS Version', 'Cipher Suite', 'Port', 'Host', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
-        {data.map((row, i) => (
+        {data.length === 0 ? <EmptyRow cols={7} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 text-primary font-semibold">{row.product}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary">{row.version}</td>
-            <td className="px-5 py-3.5 text-secondary">{row.type}</td>
-            <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.port}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.host}</td>
+            <td className="px-5 py-3.5 text-primary font-semibold capitalize">{row.type?.replace(/_/g, ' ')}</td>
+            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
+            <td className="px-5 py-3.5 font-mono text-secondary text-xs truncate max-w-xs" title={row.cipherSuite}>{row.cipherSuite ?? '—'}</td>
+            <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.port ?? '—'}</td>
+            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.host ?? '—'}</td>
             <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
           </tr>
         ))}
@@ -131,68 +143,185 @@ function SoftwareTable({ company, data }: { company: string, data: any[] }) {
   );
 }
 
-// ─── Main Component ────────────────────────────────────────────────────────────
+function TopologyGraph({ assets, domain }: { assets: any[]; domain: string }) {
+  const satellites = useMemo(() => {
+    const seen = new Set<string>();
+    return assets
+      .filter(a => a.url)
+      .slice(0, 15)
+      .map(a => {
+        const label = (a.url as string)
+          .replace(/^https?:\/\//, '')
+          .replace(/\/$/, '')
+          .split('/')[0]
+          .slice(0, 12);
+        if (seen.has(label)) return null;
+        seen.add(label);
+        return { label, risk: a.risk_level as string };
+      })
+      .filter(Boolean) as { label: string; risk: string }[];
+  }, [assets]);
+
+  const cx = 450, cy = 120, radius = 130;
+  const positions = satellites.map((_, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(satellites.length, 1) - Math.PI / 2;
+    return {
+      x: Math.round(cx + radius * Math.cos(angle)),
+      y: Math.round(cy + radius * Math.sin(angle)),
+    };
+  });
+
+  const rootLabel = domain ? domain.split('.')[0].toUpperCase().slice(0, 6) : 'ROOT';
+
+  const nodeColor = (risk: string) => {
+    if (risk === 'CRITICAL') return '#EF4444';
+    if (risk === 'HIGH')     return '#F97316';
+    if (risk === 'MEDIUM')   return '#EAB308';
+    if (risk === 'LOW')      return '#3B82F6';
+    if (risk === 'SAFE')     return '#22C55E';
+    return '#6366f1';
+  };
+
+  return (
+    <div className="glass-card border rounded-xl overflow-hidden"
+      style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(10,16,36,0.6)' }}>
+      <div className="px-5 py-3 border-b border-glass-border flex items-center justify-between">
+        <span className="text-xs font-bold uppercase tracking-widest text-secondary">Domain Relationship Map</span>
+        <span className="text-xs font-mono text-primary-indigo">Live Topology</span>
+      </div>
+      <div style={{ height: 240, position: 'relative', overflow: 'hidden' }}>
+        {assets.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-secondary text-sm gap-2">
+            <AlertTriangle size={16} /> No scan data — run a scan to populate the topology
+          </div>
+        ) : (
+          <svg width="100%" height="240" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
+                <stop offset="100%" stopColor="#d97706" stopOpacity="0.8"/>
+              </radialGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            {positions.map((pos, i) => (
+              <line key={i} x1={cx} y1={cy} x2={pos.x} y2={pos.y}
+                stroke="rgba(99,102,241,0.35)" strokeWidth="1.2" strokeDasharray="4 3">
+                <animate attributeName="stroke-opacity" values="0.2;0.6;0.2"
+                  dur={`${2 + i * 0.3}s`} repeatCount="indefinite"/>
+              </line>
+            ))}
+            {satellites.map((node, i) => (
+              <g key={i}>
+                <circle cx={positions[i].x} cy={positions[i].y} r="11"
+                  fill={nodeColor(node.risk)} filter="url(#glow)" opacity="0.85">
+                  <animate attributeName="r" values="9;12;9"
+                    dur={`${3 + i * 0.4}s`} repeatCount="indefinite"/>
+                </circle>
+                <text x={positions[i].x} y={positions[i].y + 22}
+                  textAnchor="middle" fontSize="8"
+                  fill="rgba(148,163,184,0.8)" fontFamily="monospace">
+                  {node.label}
+                </text>
+              </g>
+            ))}
+            <circle cx={cx} cy={cy} r="22" fill="url(#rootGrad)" filter="url(#glow)">
+              <animate attributeName="r" values="20;25;20" dur="2.5s" repeatCount="indefinite"/>
+            </circle>
+            <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9"
+              fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
+            <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7"
+              fill="rgba(255,255,255,0.7)" fontFamily="monospace">ROOT</text>
+          </svg>
+        )}
+        <div style={{
+          position: 'absolute', bottom: 8, right: 12,
+          fontSize: 10, fontFamily: 'monospace', color: 'rgba(148,163,184,0.5)',
+        }}>
+          {assets.length} nodes discovered
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DiscoveryPage() {
   useAutoLoadScan();
-  const { activeScanId, setActiveScan } = useScanStore();
+  const { activeScanId, activeDomain, setActiveScan } = useScanStore();
   const { data: assets = [], isLoading } = useAssets(activeScanId);
+  const { data: scanStatus } = useScanStatus(activeScanId);
+
   const [search, setSearch] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [category, setCategory] = useState<Category>('Domains');
-  const [status, setStatus] = useState<StatusFilter>('All');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
   const navigate = useNavigate();
 
-  const company = activeScanId
-    ? activeScanId.split('.')[0].toUpperCase().replace(/-/g, '')
-    : 'UNKNOWN';
+  // Company label derived from the active domain, not the UUID scan ID
+  const company = activeDomain ? activeDomain.split('.')[0].toUpperCase() : '—';
 
-  // Dynamic Data Derived from Backend
-  const domainsData = assets.map((a: any) => ({
-    date: a.scan_timestamp,
-    domain: a.url,
-    regDate: '—',
-    registrar: '—',
-    company
-  }));
+  const filteredAssets = useMemo(() => {
+    if (statusFilter === 'All') return assets;
+    return assets.filter((a: any) =>
+      statusFilter === 'Shadow' ? a.discovery === 'Shadow' : a.discovery === 'Known'
+    );
+  }, [assets, statusFilter]);
 
-  const sslData = assets.filter((a: any) => a.cert_issuer).map((a: any) => ({
-    date: a.scan_timestamp,
-    fingerprint: a.cert_sha256?.substring(0, 32) || '—',
-    validFrom: a.cert_expiry || '—',
-    commonName: a.cert_subject || '—',
-    ca: a.cert_issuer,
-    company
-  }));
+  const domainsData = useMemo(() =>
+    filteredAssets.map((a: any) => ({
+      date: a.scan_timestamp ?? '—',
+      domain: a.url ?? '—',
+      type: a.type ?? '—',
+      risk: a.risk_level ?? 'UNKNOWN',
+      discovery: a.discovery ?? 'Known',
+    })), [filteredAssets]);
 
-  const ipData = assets.filter((a: any) => a.ip_address).map((a: any) => ({
-    date: a.scan_timestamp,
-    ip: a.ip_address,
-    ports: a.port,
-    subnet: '—',
-    asn: '—',
-    isp: '—',
-    location: '—',
-    company
-  }));
+  const sslData = useMemo(() =>
+    filteredAssets
+      .filter((a: any) => a.cert_issuer || a.cert_sha256 || a.cert_subject)
+      .map((a: any) => ({
+        date: a.scan_timestamp ?? '—',
+        fingerprint: a.cert_sha256 ?? '—',
+        expiry: a.cert_expiry ?? '—',
+        commonName: a.cert_subject ?? '—',
+        ca: a.cert_issuer ?? '—',
+      })), [filteredAssets]);
 
-  const softwareData = assets.map((a: any) => ({
-    date: a.scan_timestamp,
-    product: a.tls_version || 'Service Target',
-    version: '—',
-    type: a.type,
-    port: a.port,
-    host: a.ip_address || '—',
-    company
-  }));
+  const ipData = useMemo(() =>
+    filteredAssets
+      .filter((a: any) => a.ip_address)
+      .map((a: any) => ({
+        date: a.scan_timestamp ?? '—',
+        ip: a.ip_address,
+        port: a.port ?? '—',
+        tlsVersion: a.tls_version ?? '—',
+        type: a.type ?? '—',
+      })), [filteredAssets]);
 
-  const CATEGORY_COUNTS: Record<Category, number> = { 
-    'Domains': domainsData.length, 
-    'SSL': sslData.length, 
-    'IP Address/Subnets': ipData.length, 
-    'Software': softwareData.length 
+  const softwareData = useMemo(() =>
+    filteredAssets.map((a: any) => ({
+      date: a.scan_timestamp ?? '—',
+      type: a.type ?? '—',
+      tlsVersion: a.tls_version ?? '—',
+      cipherSuite: a.cipher_suite ?? '—',
+      port: a.port ?? '—',
+      host: a.ip_address ?? '—',
+    })), [filteredAssets]);
+
+  const CATEGORY_COUNTS: Record<Category, number> = {
+    'Domains':            domainsData.length,
+    'SSL':                sslData.length,
+    'IP Address/Subnets': ipData.length,
+    'Software':           softwareData.length,
   };
 
+  const STATUS_COUNTS: Record<StatusFilter, number> = {
+    'All':    assets.length,
+    'Shadow': assets.filter((a: any) => a.discovery === 'Shadow').length,
+    'Known':  assets.filter((a: any) => a.discovery === 'Known').length,
+  };
 
   const handleInitiate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,6 +337,8 @@ export default function DiscoveryPage() {
     }
   };
 
+  const isRunning = scanStatus?.status?.toLowerCase() === 'running' || scanStatus?.status?.toLowerCase() === 'pending';
+
   return (
     <div className="flex flex-col gap-6">
       <SectionHeader
@@ -215,77 +346,7 @@ export default function DiscoveryPage() {
         subtitle="Deep network exposure intelligence & CT log mining"
       />
 
-      {/* ── Network Topology Graph ───────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden"
-        style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(10,16,36,0.6)' }}>
-        <div className="px-5 py-3 border-b border-glass-border flex items-center justify-between">
-          <span className="text-xs font-bold uppercase tracking-widest text-secondary">Domain Relationship Map</span>
-          <span className="text-xs font-mono text-primary-indigo">Live Topology</span>
-        </div>
-        <div style={{ height: 240, position: 'relative', overflow: 'hidden' }}>
-          <svg width="100%" height="240" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <radialGradient id="nodeGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.9"/>
-                <stop offset="100%" stopColor="#4338ca" stopOpacity="0.6"/>
-              </radialGradient>
-              <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
-                <stop offset="100%" stopColor="#d97706" stopOpacity="0.8"/>
-              </radialGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-            </defs>
-
-            {/* Edge lines */}
-            {[
-              [450,120, 200,60], [450,120, 150,140], [450,120, 250,190],
-              [450,120, 380,50], [450,120, 520,45],  [450,120, 600,80],
-              [450,120, 680,130],[450,120, 620,190], [450,120, 340,185],
-              [200,60,  120,30], [200,60,  90,90],
-              [600,80,  700,40], [600,80,  750,110],
-              [680,130, 780,160],[680,130, 820,90],
-            ].map(([x1,y1,x2,y2], i) => (
-              <line key={i} x1={x1} y1={y1} x2={x2} y2={y2}
-                stroke="rgba(99,102,241,0.35)" strokeWidth="1.2" strokeDasharray="4 3">
-                <animate attributeName="stroke-opacity" values="0.2;0.6;0.2" dur={`${2 + i * 0.3}s`} repeatCount="indefinite"/>
-              </line>
-            ))}
-
-            {/* Satellite nodes */}
-            {[
-              [200,60,'www.cos'], [150,140,'pnb.bank'], [250,190,'postman'], [380,50,'m.pnb'],
-              [520,45,'api.pnb'], [600,80,'hcm.pnb'], [680,130,'proxy'], [620,190,'netsafety'],
-              [340,185,'cbom.io'],[120,30,'cert1'], [90,90,'cert2'], [700,40,'ip1'],
-              [750,110,'subnet'],[780,160,'ip2'],[820,90,'scan4'],
-            ].map(([cx,cy,label], i) => (
-              <g key={i}>
-                <circle cx={cx as number} cy={cy as number} r="12" fill="url(#nodeGrad)" filter="url(#glow)" opacity="0.85">
-                  <animate attributeName="r" values="10;13;10" dur={`${3 + i * 0.4}s`} repeatCount="indefinite"/>
-                </circle>
-                <text x={cx as number} y={(cy as number) + 22} textAnchor="middle" fontSize="8"
-                  fill="rgba(148,163,184,0.8)" fontFamily="monospace">{label as string}</text>
-              </g>
-            ))}
-
-            {/* Root node */}
-            <circle cx="450" cy="120" r="22" fill="url(#rootGrad)" filter="url(#glow)">
-              <animate attributeName="r" values="20;25;20" dur="2.5s" repeatCount="indefinite"/>
-            </circle>
-            <text x="450" y="115" textAnchor="middle" fontSize="9" fill="white" fontWeight="bold" fontFamily="monospace">PNB</text>
-            <text x="450" y="126" textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.7)" fontFamily="monospace">ROOT</text>
-          </svg>
-          <div style={{
-            position: 'absolute', bottom: 8, right: 12,
-            fontSize: 10, fontFamily: 'monospace', color: 'rgba(148,163,184,0.5)',
-          }}>
-            {domainsData.length + ipData.length} nodes discovered
-          </div>
-        </div>
-      </div>
-
+      <TopologyGraph assets={assets} domain={activeDomain ?? ''} />
 
       <form onSubmit={handleInitiate} className="w-full">
         <div className="glass-card border rounded-xl overflow-hidden"
@@ -307,19 +368,26 @@ export default function DiscoveryPage() {
               {isScanning ? <RefreshCw size={14} className="animate-spin" /> : 'Scan Now'}
             </button>
           </div>
-          <div className="bg-surface-card-hover px-6 py-4 flex items-center gap-6">
-            <div>
-              <div className="text-xs font-bold uppercase tracking-widest text-primary-indigo mb-1">Time Period</div>
-              <div className="flex items-center gap-2 text-sm bg-surface-card px-4 py-2 border border-glass-border rounded-lg cursor-pointer hover:border-primary-indigo/50 transition-colors w-fit">
-                <Calendar size={13} className="text-primary-indigo" />
-                <span className="font-mono text-secondary text-xs">Start — End</span>
-              </div>
+          {activeDomain && (
+            <div className="bg-surface-card-hover px-6 py-3 flex items-center gap-4 text-xs">
+              <span className="text-secondary font-mono">Active domain:</span>
+              <span className="text-primary font-bold font-mono">{activeDomain}</span>
+              {isRunning && (
+                <span className="flex items-center gap-1.5 text-yellow-400">
+                  <RefreshCw size={11} className="animate-spin" />
+                  Scanning… {(scanStatus as any)?.progress ?? 0}%
+                </span>
+              )}
+              {scanStatus?.status?.toLowerCase() === 'completed' && (
+                <span className="text-green-400 font-semibold">
+                  ✓ Scan complete — {(scanStatus as any)?.assets_found ?? assets.length} assets found
+                </span>
+              )}
             </div>
-          </div>
+          )}
         </div>
       </form>
 
-      {/* ── Category Tabs (Tier 1) ───────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
         {(Object.keys(CATEGORY_COUNTS) as Category[]).map(cat => (
           <button
@@ -336,15 +404,14 @@ export default function DiscoveryPage() {
         ))}
       </div>
 
-      {/* ── Status Tabs (Tier 2) ─────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-bold text-secondary uppercase tracking-widest">Status:</span>
         {(Object.keys(STATUS_COUNTS) as StatusFilter[]).map(s => (
           <button
             key={s}
-            onClick={() => setStatus(s)}
+            onClick={() => setStatusFilter(s)}
             className={`px-5 py-1.5 rounded-full font-bold text-xs transition-all border ${
-              status === s
+              statusFilter === s
                 ? 'bg-brand-gold text-black border-brand-gold shadow-[0_0_10px_rgba(234,179,8,0.35)]'
                 : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
             }`}
@@ -354,7 +421,6 @@ export default function DiscoveryPage() {
         ))}
       </div>
 
-      {/* ── Data Table ──────────────────────────────────────────────── */}
       <div className="glass-card border rounded-xl overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-16 text-secondary gap-3">

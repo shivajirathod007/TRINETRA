@@ -84,7 +84,7 @@ class APIInspector:
 
         try:
             async with httpx.AsyncClient(
-                timeout=settings.http_inspect_timeout,
+                timeout=httpx.Timeout(8.0, connect=4.0),  # 8s total, 4s connect
                 verify=False,
                 follow_redirects=True,
             ) as client:
@@ -280,8 +280,13 @@ class APIInspector:
     async def _check_graphql(
         self, client: httpx.AsyncClient, base_url: str, result: APIInspectResult
     ) -> None:
-        """Check for exposed GraphQL introspection."""
-        graphql_paths = ["/graphql", "/api/graphql", "/v1/graphql", "/query"]
+        """Check for exposed GraphQL introspection. Only probe if URL looks like an API."""
+        # Skip GraphQL probing for obvious non-API endpoints to save time
+        url_lower = base_url.lower()
+        if not any(kw in url_lower for kw in ["api", "graphql", "query", "gql"]):
+            return
+
+        graphql_paths = ["/graphql", "/api/graphql"]  # Reduced from 4 to 2 paths
         introspection_query = '{"query":"{ __schema { types { name } } }"}'
 
         for path in graphql_paths:
@@ -291,7 +296,7 @@ class APIInspector:
                     url,
                     content=introspection_query,
                     headers={"Content-Type": "application/json"},
-                    timeout=5.0,
+                    timeout=2.0,  # Tight timeout — 2s max per probe
                 )
                 if resp.status_code == 200 and "__schema" in resp.text:
                     result.graphql_introspection = True
@@ -324,10 +329,9 @@ class APIInspector:
         well_known_path = "/.well-known/openid-configuration"
         try:
             url = base_url.rstrip("/") + well_known_path
-            resp = await client.get(url, timeout=5.0)
+            resp = await client.get(url, timeout=2.0)  # 2s max
             if resp.status_code == 200:
                 data = resp.json()
-                # Extract signing algorithms
                 algs = data.get("id_token_signing_alg_values_supported", [])
                 if algs:
                     result.oauth_signing_algorithm = algs[0]
@@ -336,8 +340,6 @@ class APIInspector:
                         result.findings.append(
                             f"OAuth OIDC supports quantum-vulnerable signing: {', '.join(vulnerable)}"
                         )
-                
-                # Extract token endpoint
                 token_endpoint = data.get("token_endpoint")
                 if token_endpoint:
                     result.oauth_token_endpoint = token_endpoint

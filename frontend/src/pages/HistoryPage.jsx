@@ -307,22 +307,34 @@ const HistoryPage = () => {
                                                 </div>
                                             </td>
                                             <td className="text-right">
-                                                {isCancellable ? (
-                                                    <button
-                                                        onClick={(e) => handleCancel(e, scan)}
-                                                        disabled={isCancelling}
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border border-status-critical/30 text-status-critical hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
-                                                        title="Cancel scan"
-                                                    >
-                                                        {isCancelling
-                                                            ? <RefreshCw size={14} className="animate-spin" />
-                                                            : <XCircle size={16} />}
-                                                    </button>
-                                                ) : (
-                                                    <div className={`inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo transition-colors`}>
-                                                        <ChevronRight size={16} />
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {isCancellable ? (
+                                                        <>
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); navigate(`/scan/${scan.domain}`, { state: { scanId: scan.scan_id } }); }}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1 bg-primary-indigo/10 text-primary-indigo border border-primary-indigo/30 rounded text-xs font-bold hover:bg-primary-indigo hover:text-white transition-colors"
+                                                                title="Watch live"
+                                                            >
+                                                                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                                                                Live
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => handleCancel(e, scan)}
+                                                                disabled={isCancelling}
+                                                                className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border border-status-critical/30 text-status-critical hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
+                                                                title="Cancel scan"
+                                                            >
+                                                                {isCancelling
+                                                                    ? <RefreshCw size={14} className="animate-spin" />
+                                                                    : <XCircle size={16} />}
+                                                            </button>
+                                                        </>
+                                                    ) : scan.status === 'completed' ? (
+                                                        <div className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-surface-card border text-secondary group-hover:bg-primary-indigo group-hover:text-white group-hover:border-primary-indigo transition-colors">
+                                                            <ChevronRight size={16} />
+                                                        </div>
+                                                    ) : null}
+                                                </div>
                                             </td>
                                         </tr>
                                     );

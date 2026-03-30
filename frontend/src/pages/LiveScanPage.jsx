@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Shield, Cpu, ArrowRight, Code2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import { Terminal, Shield, Cpu, ArrowRight, Code2, ChevronDown, ChevronUp, Copy, Check, StopCircle, LayoutDashboard } from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { scanApi, assetsApi, setActiveScan, getScanIdForDomain } from '../api/index';
 
@@ -64,8 +64,9 @@ const LiveScanPage = () => {
     const [assetsFound, setAssetsFound] = useState(0);
     const [shadowAssets, setShadowAssets] = useState(0);
     const [error, setError] = useState(null);
-    const [scanResult, setScanResult] = useState(null);   // raw scan result JSON
-    const [scanSummary, setScanSummary] = useState(null); // scan status summary
+    const [scanResult, setScanResult] = useState(null);
+    const [scanSummary, setScanSummary] = useState(null);
+    const [cancelling, setCancelling] = useState(false);
     const bottomRef = useRef(null);
     const pollRef = useRef(null);
     const initStartedRef = useRef(false);
@@ -118,8 +119,7 @@ const LiveScanPage = () => {
                             console.warn('Could not fetch scan result JSON:', e);
                         }
                         setScanSummary(data);
-                        // Navigate after a short delay so user can see the result
-                        setTimeout(() => navigate('/dashboard'), 4000);
+                        // No auto-redirect — user clicks "Go to Dashboard"
                     }
                 }
             } catch (err) {
@@ -137,6 +137,21 @@ const LiveScanPage = () => {
 
     const isPending = status === 'pending' || status === 'running';
     const overallProgress = Math.round((tlsProgress + aiProgress) / 2);
+
+    const handleCancel = async () => {
+        if (!scanId || cancelling) return;
+        setCancelling(true);
+        try {
+            await scanApi.cancel(scanId);
+            setStatus('failed');
+            setError('Scan cancelled by user.');
+            clearInterval(pollRef.current);
+        } catch (e) {
+            console.error('Cancel failed:', e);
+        } finally {
+            setCancelling(false);
+        }
+    };
 
     const stages = [
         { step: 1, name: 'INPUT', active: true, done: true },
@@ -160,8 +175,21 @@ const LiveScanPage = () => {
                         </p>
                     </div>
                 </div>
-                <div className={`badge ${status === 'completed' ? 'badge-safe' : 'badge-high animate-pulse-subtle'}`}>
-                    {status === 'completed' ? 'SCAN COMPLETE' : status === 'failed' ? 'FAILED' : 'SCAN IN PROGRESS'}
+                <div className="flex items-center gap-3">
+                    {/* Cancel button — only shown while scan is running */}
+                    {isPending && scanId && (
+                        <button
+                            onClick={handleCancel}
+                            disabled={cancelling}
+                            className="flex items-center gap-2 px-4 py-2 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded-lg text-sm font-bold hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
+                        >
+                            <StopCircle size={14} />
+                            {cancelling ? 'Cancelling…' : 'Cancel Scan'}
+                        </button>
+                    )}
+                    <div className={`badge ${status === 'completed' ? 'badge-safe' : status === 'failed' ? 'badge-critical' : 'badge-high animate-pulse-subtle'}`}>
+                        {status === 'completed' ? 'SCAN COMPLETE' : status === 'failed' ? 'FAILED' : 'SCAN IN PROGRESS'}
+                    </div>
                 </div>
             </div>
 
@@ -278,19 +306,25 @@ const LiveScanPage = () => {
             {status === 'completed' && scanResult && (
                 <div className="flex flex-col gap-3">
                     {scanSummary && (
-                        <div className="glass-card border p-4 flex flex-wrap gap-6 items-center">
+                        <div className="glass-card border p-4 flex flex-wrap gap-6 items-center"
+                            style={{ borderColor: 'rgba(34,197,94,0.3)', background: 'rgba(34,197,94,0.05)' }}>
                             <div className="flex items-center gap-2">
                                 <span className="w-2 h-2 rounded-full bg-status-safe" />
                                 <span className="text-sm font-bold text-status-safe uppercase tracking-wider">Scan Complete</span>
                             </div>
                             <div className="text-xs text-secondary">
-                                Assets scanned: <span className="font-mono text-primary">{scanSummary.assets_scanned ?? assetsFound}</span>
+                                Assets scanned: <span className="font-mono text-primary">{scanSummary.assets_found ?? assetsFound}</span>
                             </div>
                             <div className="text-xs text-secondary">
-                                Org score: <span className="font-mono text-primary">{scanSummary.organization_score ?? '—'}</span>
+                                Org score: <span className="font-mono text-primary">{scanSummary.exposure_score ?? '—'}</span>
                             </div>
-                            <div className="text-xs text-secondary ml-auto">
-                                Redirecting to dashboard in 4s…
+                            <div className="ml-auto">
+                                <button
+                                    onClick={() => navigate('/dashboard')}
+                                    className="flex items-center gap-2 px-5 py-2 bg-primary-indigo text-white font-bold text-sm rounded-lg hover:opacity-90 transition-opacity"
+                                >
+                                    <LayoutDashboard size={14} /> Go to Dashboard
+                                </button>
                             </div>
                         </div>
                     )}

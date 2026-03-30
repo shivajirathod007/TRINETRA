@@ -47,7 +47,8 @@ export const dashboardApi = {
     getStats: (domain) => {
         const path = domain ? `/dashboard/${domain}` : '/dashboard/';
         return request(path);
-    }
+    },
+    getAggregate: () => request('/dashboard/aggregate'),
 };
 
 // ── Assets ────────────────────────────────────────────────────────────────────
