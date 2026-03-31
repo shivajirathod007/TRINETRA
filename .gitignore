@@ -72,6 +72,7 @@ lerna-debug.log*
 # Logs
 logs/
 *.log
+*.error.log
 
 # Docker
 .docker/
@@ -98,6 +99,10 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Kiro workflow tool
+.kiro/
+.kirocrc
 .cursor/
 .cursorrules
 
