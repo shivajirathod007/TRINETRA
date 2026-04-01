@@ -432,14 +432,12 @@ const DashboardPage = () => {
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
                         <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">IP Version Breakdown</h3>
                         <div className="flex-1 relative flex items-center justify-center">
-                            <ResponsiveContainer width={160} height={160}>
-                                <PieChart>
-                                    <Pie data={ipData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="none" dataKey="value">
-                                        {ipData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                                    </Pie>
-                                    <Tooltip />
-                                </PieChart>
-                            </ResponsiveContainer>
+                            <PieChart width={160} height={160}>
+                                <Pie data={ipData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="none" dataKey="value">
+                                    {ipData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
+                                </Pie>
+                                <Tooltip />
+                            </PieChart>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                 <span className="text-2xl font-bold text-primary">
                                     {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a, b) => a + b.value, 0)) * 100) : 0}%
