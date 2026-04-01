@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 
-from api.routes import scan, dashboard, cbom, certificate, assets
+from api.routes import scan, dashboard, cbom, certificate, assets, chat
 
 
 @asynccontextmanager
@@ -69,3 +69,4 @@ app.include_router(dashboard.router,   prefix="/api/v1/dashboard",    tags=["Das
 app.include_router(assets.router,      prefix="/api/v1/assets",       tags=["Assets"])
 app.include_router(cbom.router,        prefix="/api/v1/cbom",         tags=["CBOM"])
 app.include_router(certificate.router, prefix="/api/v1/certificates", tags=["Certificates"])
+app.include_router(chat.router,        prefix="/api/v1/chat",         tags=["Chat"])
