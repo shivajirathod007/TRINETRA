@@ -1,21 +1,61 @@
 /**
  * TRINETRA Frontend API Client
- * All API calls go through the Vite proxy to /api/v1/...
+ * All API calls go through Vite dev proxy (/api → http://localhost:8000) with JWT authentication
  */
 
-// Use relative paths so Vite's dev proxy forwards /api → http://api:8000
-const BASE = '/api/v1';
+import axios from 'axios';
+
+// Create axios instance using Vite dev proxy (baseURL: /api/v1)
+const apiClient = axios.create({
+  baseURL: '/api/v1',
+  timeout: 30000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor to include auth token on ALL requests
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('trinetra_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Add response interceptor for error handling
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Clear auth data on 401
+      localStorage.removeItem('trinetra_token');
+      localStorage.removeItem('trinetra_user');
+      localStorage.removeItem('trinetra_auth');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 async function request(path, options = {}) {
-    const resp = await fetch(`${BASE}${path}`, {
-        headers: { 'Content-Type': 'application/json', ...options.headers },
-        ...options,
-    });
-    if (!resp.ok) {
-        const msg = await resp.text().catch(() => resp.statusText);
-        throw new Error(`API ${resp.status}: ${msg}`);
+    try {
+        const config = {
+            ...options,
+            method: options.method || 'GET',
+        };
+        if (options.body) {
+            config.data = typeof options.body === 'string' ? JSON.parse(options.body) : options.body;
+        }
+        const resp = await apiClient(path, config);
+        return resp.data;
+    } catch (error) {
+        const msg = error.response?.data?.detail || error.message;
+        throw new Error(`API ${error.response?.status || 'error'}: ${msg}`);
     }
-    return resp.json();
 }
 
 // ── Scans ─────────────────────────────────────────────────────────────────────

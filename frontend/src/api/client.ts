@@ -10,6 +10,35 @@ const api = axios.create({
   timeout: 30_000,
 })
 
+// Request interceptor: Add auth token to headers
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('trinetra_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response interceptor: Handle 401 Unauthorized
+let isRedirecting = false
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && !isRedirecting) {
+      isRedirecting = true
+      localStorage.removeItem('trinetra_token')
+      localStorage.removeItem('trinetra_user')
+      localStorage.removeItem('trinetra_auth')
+      window.location.href = '/login'
+      setTimeout(() => { isRedirecting = false }, 2000)
+    }
+    return Promise.reject(error)
+  }
+)
+
 // ── Scan API ──────────────────────────────────────────────────────────────────
 
 export const scanApi = {

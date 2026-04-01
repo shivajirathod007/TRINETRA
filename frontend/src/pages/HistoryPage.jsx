@@ -5,9 +5,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { scanApi, setActiveScan } from '../api/index';
 
-const BASE = '/api/v1';
+// Use Vite proxy for API calls through dev server
+const API_BASE = '/api/v1';
+
 async function fetchQueueHealth() {
-    const r = await fetch(`${BASE}/health/queue`);
+    const token = localStorage.getItem('trinetra_token');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` })
+    };
+    const r = await fetch(`${API_BASE}/health/queue`, { headers });
+    if (!r.ok) throw new Error(`API ${r.status}`);
     return r.json();
 }
 

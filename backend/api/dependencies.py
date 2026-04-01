@@ -4,10 +4,10 @@ All protected routes require valid JWT token.
 """
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthCredentials
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime, timedelta
 from typing import Optional
-import jwt
+from jose import JWTError, jwt
 
 from core.config import settings
 from core.logging import get_logger
@@ -35,7 +35,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-async def get_current_user(credentials: HTTPAuthCredentials = Depends(security)) -> str:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> str:
     """
     Verify JWT token and return authenticated user email.
     Raises HTTPException 401 if token is invalid or missing.
@@ -55,15 +55,7 @@ async def get_current_user(credentials: HTTPAuthCredentials = Depends(security))
         
         return user_email
     
-    except jwt.ExpiredSignatureError:
-        log.warning("Token expired")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token expired. Please login again.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    except jwt.InvalidTokenError as e:
+    except JWTError as e:
         log.warning(f"Invalid token: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
