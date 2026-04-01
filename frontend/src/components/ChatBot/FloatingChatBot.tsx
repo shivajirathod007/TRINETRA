@@ -11,7 +11,7 @@ interface Message {
 
 export function FloatingChatBot() {
   useEffect(() => {
-    console.log('✅ JARVIS ChatBot Component Mounted')
+    console.log('✅ JARSH ChatBot Component Mounted')
   }, [])
 
   const [isOpen, setIsOpen] = useState(false)
@@ -19,7 +19,7 @@ export function FloatingChatBot() {
     {
       id: '1',
       sender: 'bot',
-      text: 'Namaste! I\'m JARVIS, your quantum cryptography intelligence assistant. Ask me anything about your security posture, mitigation strategies, or scan analysis. 🔐',
+      text: 'Namaste! I\'m JARSH, your quantum cryptography intelligence assistant. Ask me anything about your security posture, mitigation strategies, or scan analysis. 🔐',
       timestamp: new Date()
     }
   ])
@@ -108,12 +108,12 @@ export function FloatingChatBot() {
             fontSize: '11px',
             fontWeight: 'bold',
             transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-            animation: 'jarvis-pulse 2.5s ease-in-out infinite',
+            animation: 'jarsh-pulse 2.5s ease-in-out infinite',
             backdropFilter: 'blur(10px)',
             outline: '2px solid rgba(255,255,255,0.1)',
             outlineOffset: '-2px',
           }}
-          title="Chat with JARVIS - Ask about your security posture"
+          title="Chat with JARSH - Ask about your security posture"
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.1)'
             e.currentTarget.style.boxShadow = '0 12px 32px rgba(239, 68, 68, 0.6), 0 0 30px rgba(239, 68, 68, 0.5)'
@@ -124,12 +124,12 @@ export function FloatingChatBot() {
           }}
         >
           <MessageCircle size={28} strokeWidth={1.5} />
-          <span>JARVIS</span>
+          <span>JARSH</span>
         </button>
         
         {/* Pulsing animation keyframes */}
         <style>{`
-          @keyframes jarvis-pulse {
+          @keyframes jarsh-pulse {
             0%, 100% {
               box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4), 0 0 20px rgba(239, 68, 68, 0.3);
             }
@@ -158,7 +158,7 @@ export function FloatingChatBot() {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          animation: 'jarvis-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          animation: 'jarsh-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
         }}>
           {/* Header */}
           <div style={{
@@ -187,7 +187,7 @@ export function FloatingChatBot() {
                 ⚡
               </div>
               <div>
-                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', letterSpacing: '0.5px' }}>JARVIS</div>
+                <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', letterSpacing: '0.5px' }}>JARSH</div>
                 <div style={{ fontSize: '12px', color: '#94a3b8' }}>Quantum Security AI</div>
               </div>
             </div>
@@ -210,7 +210,7 @@ export function FloatingChatBot() {
             background: '#020617',
           }}>
             {messages.map((msg) => (
-              <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', animation: 'jarvis-fadeIn 0.3s ease-out' }}>
+              <div key={msg.id} style={{ display: 'flex', justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start', animation: 'jarsh-fadeIn 0.3s ease-out' }}>
                 <div style={{
                   maxWidth: '85%',
                   padding: '10px 14px',
@@ -234,9 +234,9 @@ export function FloatingChatBot() {
             {isLoading && (
               <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                 <div style={{ background: '#1e293b', padding: '10px 14px', borderRadius: '12px', display: 'flex', gap: '6px', border: '1px solid #334155' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarvis-bounce 1.4s infinite' }} />
-                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarvis-bounce 1.4s infinite 0.2s' }} />
-                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarvis-bounce 1.4s infinite 0.4s' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarsh-bounce 1.4s infinite' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarsh-bounce 1.4s infinite 0.2s' }} />
+                  <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', opacity: 0.7, animation: 'jarsh-bounce 1.4s infinite 0.4s' }} />
                 </div>
               </div>
             )}
@@ -308,7 +308,7 @@ export function FloatingChatBot() {
         
         {/* Additional animation styles */}
         <style>{`
-          @keyframes jarvis-slide {
+          @keyframes jarsh-slide {
             from {
               opacity: 0;
               transform: translateY(20px) scale(0.95);
@@ -318,7 +318,7 @@ export function FloatingChatBot() {
               transform: translateY(0) scale(1);
             }
           }
-          @keyframes jarvis-fadeIn {
+          @keyframes jarsh-fadeIn {
             from {
               opacity: 0;
               transform: translateY(10px);
@@ -328,7 +328,7 @@ export function FloatingChatBot() {
               transform: translateY(0);
             }
           }
-          @keyframes jarvis-bounce {
+          @keyframes jarsh-bounce {
             0%, 100% {
               opacity: 0.3;
               transform: translateY(0);

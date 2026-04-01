@@ -99,7 +99,7 @@ services:
       dockerfile: infra/Dockerfile.backend
     container_name: trinetra_flower
     restart: unless-stopped
-    command: celery -A workers.celery_app flower --port=5555 --broker=redis://redis:6379/0
+    command: celery -A workers.celery_app --broker=redis://redis:6379/0 flower --port=5555
     environment:
       - PYTHONPATH=/app/backend
       - DATABASE_URL=postgresql+asyncpg://trinetra:trinetra_pass@postgres:5432/trinetra
