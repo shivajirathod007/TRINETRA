@@ -1,5 +1,5 @@
 """
-Chat endpoint for JARVIS — Quantum Security AI Assistant
+Chat endpoint for JARSH — Quantum Security AI Assistant
 """
 
 from fastapi import APIRouter, HTTPException, status
@@ -15,7 +15,7 @@ router = APIRouter()
 
 def generate_bot_response(user_message: str, context: str, scan_id: str = None) -> ChatMessageResponse:
     """
-    Generate response from JARVIS.
+    Generate response from JARSH.
     Currently returns templated responses. Will integrate with LLM (Ollama/HuggingFace) later.
     """
     
@@ -25,7 +25,7 @@ def generate_bot_response(user_message: str, context: str, scan_id: str = None) 
     # Greeting & Help
     if any(word in message_lower for word in ["hello", "hi", "hey", "help"]):
         return ChatMessageResponse(
-            response="Namaste! I'm JARVIS, your Quantum Security Intelligence Assistant. I can help you with:\n\n"
+            response="Namaste! I'm JARSH, your Quantum Security Intelligence Assistant. I can help you with:\n\n"
                     "1. **Scan Analysis** — Explain cryptographic weaknesses found\n"
                     "2. **Mitigation Planning** — Step-by-step remediation guides\n"
                     "3. **PQC Readiness** — Migration timelines and strategies\n"
@@ -159,7 +159,7 @@ def generate_bot_response(user_message: str, context: str, scan_id: str = None) 
 @router.post("/message", response_model=ChatMessageResponse)
 async def send_chat_message(request: ChatMessageRequest):
     """
-    Send a message to JARVIS and get an AI-powered response.
+    Send a message to JARSH and get an AI-powered response.
     
     - **message**: User query
     - **context**: Type of query (general, scan-specific, mitigation, analysis)
@@ -199,10 +199,10 @@ async def send_chat_message(request: ChatMessageRequest):
 
 @router.get("/health", tags=["Health"])
 async def chat_health():
-    """Check if JARVIS is online"""
+    """Check if JARSH is online"""
     return {
         "status": "healthy",
-        "service": "JARVIS Chatbot",
+        "service": "JARSH Chatbot",
         "model": "template-engine (LLM coming soon)",
         "version": "1.0.0"
     }

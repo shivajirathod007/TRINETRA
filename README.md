@@ -14,6 +14,7 @@ Built for the **PNB Hackathon** by **Team ZeroHour**.
 - [Architecture](#architecture)
 - [Unique Selling Points (USPs)](#unique-selling-points)
 - [System Components](#system-components)
+- [JARSH — AI Assistant](#JARSH--ai-security-assistant)
 - [Scan Pipeline](#scan-pipeline)
 - [Scoring Formula](#scoring-formula)
 - [Classification Schema](#classification-schema)
@@ -242,6 +243,76 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 | `worker` | Custom (Celery) | Scan pipeline execution (2 replicas) |
 | `flower` | Custom (Celery Flower) | Task queue monitoring at :5555 |
 | `frontend` | Custom (Vite/React) | UI at :3000 |
+
+---
+
+## JARSH — AI Security Assistant
+
+**JARSH** is an intelligent floating chatbot integrated into the TRINETRA dashboard that helps users understand their security posture, analyze scan results, and plan mitigation strategies.
+
+### Features
+
+- **Real-time Security Analysis** — Ask JARSH about any scanned asset, detected vulnerabilities, or cryptographic weaknesses
+- **Contextual Guidance** — Get tailored mitigation steps based on your specific scan results and risk tier (CRITICAL/HIGH/MEDIUM/LOW/SAFE)
+- **Quantum Threat Intelligence** — Understand quantum computing threats, PQC migration timelines, and NIST compliance paths
+- **Scan Interpretation** — JARSH explains what each algorithm means, why it's vulnerable, and what to migrate to
+- **Migration Planning** — Receive step-by-step hybrid adoption strategies (e.g., X25519Kyber768 transition planning)
+- **PQC Readiness Assessment** — Get personalized quantum-safe readiness scores and compliance checkpoints
+
+### Capabilities
+
+| Capability | Description |
+|---|---|
+| General Queries | Questions about TRINETRA, PQC, quantum threats, and cryptography |
+| Scan Context | Ask about specific scan results, detected algorithms, exposure levels |
+| Mitigation Advice | Step-by-step guidance on moving from RSA/ECDSA to ML-KEM/ML-DSA |
+| Quantum Timeline | When your organization will be quantum-vulnerable based on Mosca's theorem |
+| PQC Readiness | Compliance status with NIST FIPS 203/204/205 and hybrid adoption strategies |
+| Asset Insights | Intelligence on shadow assets, high-risk endpoints, and remediation priorities |
+
+### Technology Stack
+
+**Phase 1 (Current):** Template-based responses with context awareness
+- Intelligent routing based on user queries and scan context
+- Confidence scoring for response quality
+- Fallback to detailed templates for high-risk queries
+
+**Phase 2 (Refining):** On-Premises LLM Integration
+- Local **Ollama** deployment with **Mistral 7B** model (or available variant)
+- **Fine-tuned for quantum cryptography domain** — trained on PQC standards, NIST documentation, and cryptographic attack vectors
+- Zero data exfiltration — all responses generated locally
+- Sub-100ms latency on inference
+
+**Phase 3 (Roadmap):** RAG + Memory
+- Vector database (ChromaDB) indexing all CBOM reports
+- Session memory for multi-turn conversations
+- Persistent chat history per organization
+
+### How to Use
+
+1. Open the TRINETRA dashboard at `http://localhost:3000`
+2. Click the **⚡ JARSH** button in the **bottom-right corner**
+3. Ask questions about your security posture:
+   - *"What algorithms did you detect in my latest scan?"*
+   - *"Is my organization quantum-vulnerable?"*
+   - *"What's the safest migration path from RSA-2048?"*
+   - *"How do I achieve PQC_READY status?"*
+   - *"What's trending in post-quantum cryptography?"*
+
+### Ollama Model Refinement
+
+We are actively **refining the Ollama Mistral 7B model** (or latest available version) for better on-premises responses:
+
+- **Fine-tuning Dataset:** NIST PQC standards (FIPS 203, 204, 205), quantum computing attack papers (Shor's, Grover's algorithms), migration guides, and TRINETRA scan patterns
+- **Quantization:** Q5_K_M format for optimal performance on 8GB VRAM systems with sub-1s response times
+- **Prompt Engineering:** Specialized system prompts for cryptographic reasoning and risk assessment
+- **Knowledge Integration:** All CBOM patterns, scoring formulas, and classification schemas embedded in model context
+
+**Expected Improvements:**
+- ✅ Better understanding of hybrid cipher suites (X25519Kyber768, P256-ML-KEM-768)
+- ✅ Accurate NIST compliance recommendations
+- ✅ Penetration-testing-aware mitigation strategies
+- ✅ Zero dependency on external LLM APIs — fully air-gapped capable
 
 ---
 
