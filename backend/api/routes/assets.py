@@ -8,6 +8,7 @@ from db.session import get_db
 from db.repository import ScanRepository
 from db.models import ScanJob, ScannedAsset
 from schemas.asset import SensitivityTierOverride, SensitivityTierOverrideResponse
+from api.dependencies import get_current_user
 
 router = APIRouter()
 

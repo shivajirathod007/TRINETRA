@@ -3,31 +3,48 @@ import { useNavigate } from 'react-router-dom';
 import { Fingerprint, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import GlowButton from '../components/GlowButton';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 const LoginPage = () => {
     const [email, setEmail] = useState('shiva@gmail.com');
     const [password, setPassword] = useState('shiva@124');
     const [isAuthenticating, setIsAuthenticating] = useState(false);
+    const [error, setError] = useState('');
     const navigate = useNavigate();
     const { isDarkMode } = useTheme();
+    const { isAuthenticated, login } = useAuth();
 
     useEffect(() => {
-        if (localStorage.getItem('trinetra_auth') === 'true') {
-            navigate('/dashboard');
+        if (isAuthenticated) {
+            navigate('/home');
         }
-    }, [navigate]);
+    }, [isAuthenticated, navigate]);
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
         setIsAuthenticating(true);
+        setError('');
 
-        // Mock authentication process
-        setTimeout(() => {
-            localStorage.setItem('trinetra_auth', 'true');
-            localStorage.setItem('trinetra_user', email);
-            setIsAuthenticating(false);
+        try {
+            // Call backend login endpoint
+            const response = await axios.post('/api/v1/auth/login', {
+                email,
+                password
+            });
+
+            const { access_token, user } = response.data;
+            
+            // Store token and user in auth context
+            login(access_token, user);
+            
+            // Redirect to home
             navigate('/home');
-        }, 800);
+        } catch (err) {
+            console.error('Login error:', err);
+            setError(err.response?.data?.detail || 'Login failed. Please try again.');
+            setIsAuthenticating(false);
+        }
     };
 
     return (
@@ -62,19 +79,27 @@ const LoginPage = () => {
                     </p>
                 </div>
 
+                {error && (
+                    <div className="mb-4 p-3 bg-red-500 bg-opacity-10 border border-red-500 border-opacity-30 rounded-lg text-red-400 text-sm">
+                        {error}
+                    </div>
+                )}
+
                 <form onSubmit={handleLogin} className="space-y-5">
                     
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-secondary uppercase tracking-wider">Email Address</label>
                         <div className="relative flex items-center">
-                            <Mail size={18} className="absolute left-3 text-secondary" />
+                            <Mail size={18} className="absolute left-3 text-secondary pointer-events-none" />
                             <input 
                                 type="email" 
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-input text-primary border border-glass-border rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-primary-indigo focus:ring-1 focus:ring-primary-indigo transition-all text-sm"
-                                placeholder="analyst@trinetra.io"
+                                disabled={isAuthenticating}
+                                className="w-full bg-input text-primary border border-glass-border rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-primary-indigo focus:ring-1 focus:ring-primary-indigo transition-all text-sm disabled:opacity-50 placeholder:text-secondary placeholder:opacity-40"
+                                placeholder="shiva@gmail.com"
                                 required
+                                autoComplete="email"
                             />
                         </div>
                     </div>
@@ -85,20 +110,22 @@ const LoginPage = () => {
                             <a href="#" className="text-xs text-primary-indigo hover:text-primary-indigo-hover transition-colors font-medium">Forgot Password?</a>
                         </div>
                         <div className="relative flex items-center">
-                            <Lock size={18} className="absolute left-3 text-secondary" />
+                            <Lock size={18} className="absolute left-3 text-secondary pointer-events-none" />
                             <input 
                                 type="password" 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-input text-primary border border-glass-border rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-primary-indigo focus:ring-1 focus:ring-primary-indigo transition-all text-sm"
+                                disabled={isAuthenticating}
+                                className="w-full bg-input text-primary border border-glass-border rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-primary-indigo focus:ring-1 focus:ring-primary-indigo transition-all text-sm disabled:opacity-50 placeholder:text-secondary placeholder:opacity-40"
                                 placeholder="••••••••"
                                 required
+                                autoComplete="current-password"
                             />
                         </div>
                     </div>
 
                     <div className="pt-4">
-                        <GlowButton type="submit" className="w-full py-3.5 bg-primary-indigo text-white font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary-indigo-hover transition-colors">
+                        <GlowButton type="submit" disabled={isAuthenticating} className="w-full py-3.5 bg-primary-indigo text-white font-semibold rounded-lg flex items-center justify-center gap-2 hover:bg-primary-indigo-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
                             {isAuthenticating ? (
                                 <span className="animate-pulse">Authenticating...</span>
                             ) : (

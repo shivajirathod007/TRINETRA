@@ -5,6 +5,7 @@ import {
   Home, Search, Star, BarChart2, LogOut, Database, History
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 
@@ -39,13 +40,11 @@ const NAV_GROUPS = [
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
   const location = useLocation();
-  const user = localStorage.getItem('trinetra_user') || 'shiva@gmail.com';
 
   const handleLogout = () => {
-    localStorage.removeItem('trinetra_auth');
-    localStorage.removeItem('trinetra_user');
-    window.location.href = '/';
+    logout();
   };
 
   return (

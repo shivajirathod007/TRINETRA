@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
 
-from api.routes import scan, dashboard, cbom, certificate, assets, chat
+from api.routes import scan, dashboard, cbom, certificate, assets, chat, auth
 
 
 @asynccontextmanager
@@ -64,6 +64,7 @@ async def health_queue():
         return {"status": "degraded", "redis": "disconnected", "error": str(e), "message": "Start Redis and the Celery worker so scans can run."}
 
 # Include routers
+app.include_router(auth.router,        prefix="/api/v1/auth",         tags=["Auth"])
 app.include_router(scan.router,        prefix="/api/v1/scans",        tags=["Scans"])
 app.include_router(dashboard.router,   prefix="/api/v1/dashboard",    tags=["Dashboard"])
 app.include_router(assets.router,      prefix="/api/v1/assets",       tags=["Assets"])

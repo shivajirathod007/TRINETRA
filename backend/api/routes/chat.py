@@ -2,9 +2,10 @@
 Chat endpoint for JARSH — Quantum Security AI Assistant
 """
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from core.logging import get_logger
 from schemas.chat import ChatMessageRequest, ChatMessageResponse, ChatHistoryRequest, ChatHistory
+from api.dependencies import get_current_user
 from typing import List
 from datetime import datetime
 
@@ -157,7 +158,7 @@ def generate_bot_response(user_message: str, context: str, scan_id: str = None) 
 
 
 @router.post("/message", response_model=ChatMessageResponse)
-async def send_chat_message(request: ChatMessageRequest):
+async def send_chat_message(request: ChatMessageRequest, current_user: str = Depends(get_current_user)):
     """
     Send a message to JARSH and get an AI-powered response.
     

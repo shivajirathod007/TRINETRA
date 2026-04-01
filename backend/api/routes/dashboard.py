@@ -6,6 +6,7 @@ import uuid
 from db.session import get_db
 from db.repository import ScanRepository
 from db.models import ScanJob, ScannedAsset
+from api.dependencies import get_current_user
 
 router = APIRouter()
 
@@ -32,7 +33,7 @@ def _asset_to_response(a):
 
 
 @router.get("/aggregate")
-async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db)):
+async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """
     Returns aggregate stats across ALL completed scans.
     Used for the 'All Scans' view in the dashboard.
@@ -135,7 +136,7 @@ async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/")
-async def get_dashboard_global(db: AsyncSession = Depends(get_db)):
+async def get_dashboard_global(db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """Return empty dashboard when no domain (e.g. no scan yet)."""
     return {
         "domain": "",
@@ -155,7 +156,7 @@ async def get_dashboard_global(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{domain:path}")
-async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db)):
+async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """Return aggregate cryptographic exposure metrics for a domain."""
     # Normalize domain — strip protocol, trailing slash, www prefix
     domain = domain.lower().strip()

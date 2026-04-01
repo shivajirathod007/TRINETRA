@@ -45,8 +45,8 @@ transformers
 torch
 # anthropic
 
-# ─── Utilities ────────────────────────────────────────────────────────────────
-python-dateutil
+# ─── Authentication & Security ────────────────────────────────────────────────
+PyJWT
 python-jose[cryptography]
 passlib[bcrypt]
 python-dotenv

@@ -8,6 +8,7 @@ from db.session import get_db
 from db.repository import ScanRepository
 from core.config import settings
 from core.logging import get_logger
+from api.dependencies import get_current_user
 
 router = APIRouter()
 log = get_logger(__name__)
@@ -64,7 +65,7 @@ def _is_stale(scan) -> bool:
 
 
 @router.post("/")
-async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db)):
+async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """Initiate a new cryptographic exposure scan. Returns 202 with scan_id for polling."""
     domain = request.domain.strip().lower()
     if domain.startswith("http://"):
@@ -106,7 +107,7 @@ async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/")
-async def list_scans(domain: Optional[str] = None, limit: int = 20, db: AsyncSession = Depends(get_db)):
+async def list_scans(domain: Optional[str] = None, limit: int = 20, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """List recent scans, optionally filtered by domain."""
     try:
         repo = ScanRepository(db)
