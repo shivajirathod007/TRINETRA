@@ -4,6 +4,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 // Layout
 import DashboardLayout from './layouts/DashboardLayout';
 
+// ChatBot
+import { FloatingChatBot } from './components/ChatBot/FloatingChatBot';
+
 // Public Pages
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
@@ -48,6 +51,7 @@ function App() {
           <Route path="/asset/:id"      element={<AssetDetailPage />} />
         </Route>
       </Routes>
+      <FloatingChatBot />
     </Router>
   );
 }

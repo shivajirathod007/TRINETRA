@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
+import { FloatingChatBot } from '@/components/ChatBot/FloatingChatBot'
 import Home from '@/pages/Home'
 import Dashboard from '@/pages/Dashboard'
 import { AssetDetailPage } from '@/pages/AssetDetail'
@@ -21,6 +22,7 @@ export default function App() {
                     <Route path="/posture" element={<PosturePage />} />
                 </Routes>
             </Layout>
+            <FloatingChatBot />
         </BrowserRouter>
     )
 }

@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { useScanStore } from '@/store'
-import { FloatingChatBot } from '@/components/ChatBot/FloatingChatBot'
 
 const NAV_ITEMS = [
   { to: '/',            label: 'Home',            icon: '⌂' },
@@ -84,7 +83,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
-      <FloatingChatBot />
     </div>
   )
 }
