@@ -261,3 +261,18 @@ def create_certificate_sync(cert_data: dict) -> str:
     except Exception as e:
         log.error("sync_db_create_cert_failed", error=str(e))
         raise
+
+
+def get_active_scan_rules_sync() -> list[dict]:
+    try:
+        with get_sync_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT match_type, pattern, override_status FROM custom_scan_rules WHERE is_active = true"
+                )
+                rows = cur.fetchall()
+                return [{"match_type": r[0], "pattern": r[1], "override_status": r[2]} for r in rows]
+    except Exception as e:
+        log.error("sync_db_get_scan_rules_failed", error=str(e))
+        return []
+

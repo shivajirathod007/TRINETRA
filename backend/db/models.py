@@ -286,3 +286,33 @@ class PQCCertificate(Base):
 
     def __repr__(self) -> str:
         return f"<PQCCertificate id={self.certificate_id} status={self.status}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CustomScanRule — Manual Rules for Scan Overrides
+# ─────────────────────────────────────────────────────────────────────────────
+
+class CustomScanRule(Base):
+    __tablename__ = "custom_scan_rules"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    
+    match_type: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Values: HOSTNAME | CIPHER_SUITE | PROTOCOL
+    
+    pattern: Mapped[str] = mapped_column(String(255), nullable=False)
+    # e.g., "TLS_RSA_*", "*.example.com"
+    
+    override_status: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Values: PQC_READY | VULNERABLE | SAFE | CRITICAL
+    
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    def __repr__(self) -> str:
+        return f"<CustomScanRule match={self.match_type} pattern={self.pattern} status={self.override_status}>"

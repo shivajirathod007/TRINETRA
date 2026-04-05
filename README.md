@@ -96,8 +96,7 @@ TRINETRA answers all four questions in a single scan.
 │  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
 │  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
 │  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
-│  └────────────────┘  └────────────────┘  │  LLM fallback (conf < 0.60)   │ │
-│                                           └────────────────────────────────┘ │
+│  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
 │                                                                               │
 │              Per-asset raw result aggregator — PostgreSQL scan store          │
 └─────────────────────────┬───────────────────────────────────────────────────┘
@@ -152,9 +151,7 @@ The deterministic TLS scanner checks what it knows about. The **DistilBERT NLP c
 - `"x-signing-algorithm": "rsa-sha256"` in custom proprietary headers
 - RSA public key material accidentally exposed in debug endpoints
 
-When DistilBERT confidence < 0.60, it escalates to Claude (Anthropic) for LLM-based analysis.
-
-> *Sanh et al. 2019 (DistilBERT): 40% smaller than BERT with 97% accuracy. Desai & Durrett ACL 2020: confidence threshold calibration.*
+> *Sanh et al. 2019 (DistilBERT): 40% smaller than BERT with 97% accuracy.*
 
 ### USP 3 — HNDL Engine with Mosca's Theorem
 Every asset gets a concrete migration deadline, not just a score. The **HNDL (Harvest Now, Decrypt Later) Engine** implements Mosca's inequality:
@@ -214,7 +211,7 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 | `api/` | FastAPI REST layer — 202 Accepted async pattern |
 | `engine/discovery/` | CT log mining, DNS resolution, port scanning, asset classification |
 | `engine/scanners/` | TLS (SSLyze), certificate (pyca), VPN, API (httpx), SSH (paramiko), SMTP |
-| `engine/ai/` | DistilBERT classifier + LLM fallback (Claude) |
+| `engine/ai/` | DistilBERT classifier |
 | `engine/analysis/` | CBOM generator, HNDL engine, exposure scorer, migration planner |
 | `engine/output/` | Certificate issuer, report generator |
 | `workers/` | Celery tasks — orchestrator, scan tasks, AI tasks, analysis tasks |
@@ -340,7 +337,7 @@ POST /api/v1/scans/  →  scan_id returned immediately (202 Accepted)
                   ├── VPN Detector (banner fingerprinting)
                   ├── SSH Probe (paramiko — host key, KEX methods)
                   ├── SMTP TLS Scanner (STARTTLS negotiation)
-                  └── AI Classifier (DistilBERT → LLM fallback)
+                  └── AI Classifier (DistilBERT)
                            │
                            ▼
                   Exposure Scorer (QARS formula)
@@ -459,7 +456,7 @@ cd trinetra
 cp .env.example .env
 ```
 
-Edit `.env` — at minimum set `ANTHROPIC_API_KEY` for LLM fallback (optional but recommended).
+Edit `.env` to configure your environment variables.
 
 ### 2. Start all services
 
@@ -557,7 +554,6 @@ npm run dev
 | `DATABASE_URL` | `postgresql+asyncpg://...` | Async PostgreSQL URL |
 | `DATABASE_URL_SYNC` | `postgresql://...` | Sync PostgreSQL URL (Celery) |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis broker URL |
-| `ANTHROPIC_API_KEY` | — | Claude API key for LLM fallback |
 | `APP_ENV` | `development` | `development` or `production` |
 | `CRQC_PESSIMISTIC_YEAR` | `2028` | Pessimistic CRQC arrival estimate |
 | `CRQC_MODERATE_YEAR` | `2032` | Moderate CRQC arrival estimate |
@@ -593,7 +589,7 @@ docker compose restart worker
 
 ### AI Classifier not working
 
-The DistilBERT model weights are loaded from `backend/engine/ai/loaded_model/`. If the model files are missing, the classifier falls back to LLM (requires `ANTHROPIC_API_KEY`). If neither is available, the AI step is skipped and only deterministic scanners run.
+The DistilBERT model weights are loaded from `backend/engine/ai/loaded_model/`. If the model files are missing, the AI step is skipped and only deterministic scanners run.
 
 ### Database connection errors
 
@@ -619,7 +615,6 @@ docker compose exec api alembic upgrade head
 | QARS paper — MDPI Electronics (August 2025) | Multi-factor weighted scoring formula |
 | CARAF — Oxford Cybersecurity (2021) | Crypto agility risk framework |
 | Sanh et al. (2019) — DistilBERT | AI classifier model selection |
-| Desai & Durrett — ACL 2020 | Confidence threshold (0.60) for LLM fallback |
 | Scheitle et al. — ACM IMC 2018 | CT log mining methodology |
 | Böck et al. — USENIX Security 2018 | ROBOT vulnerability detection |
 | IBM Research CBOM spec (Vassilev et al., 2022) | CBOM schema design |

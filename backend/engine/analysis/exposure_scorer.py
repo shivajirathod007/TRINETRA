@@ -88,6 +88,7 @@ class ExposureScorer:
         key_exchange: Optional[str] = None,
         jwt_algorithm: Optional[str] = None,
         data_sensitivity_tier: str = "static",
+        custom_override_status: Optional[str] = None,
     ) -> ExposureScoreResult:
         """
         Main scoring function.
@@ -162,7 +163,10 @@ class ExposureScorer:
         risk_level       = get_risk_tier(int(final_score))
         hndl_deadline    = get_hndl_deadline_label(cert_expiry_days, crqc_year, data_sensitivity_tier)
         hndl_urgency     = get_hndl_urgency_label(int(hndl_score))
-        quantum_status   = self._quantum_status(effective_algorithm, key_exchange)
+        if custom_override_status:
+            quantum_status   = custom_override_status
+        else:
+            quantum_status   = self._quantum_status(effective_algorithm, key_exchange)
         nist_rec         = self._nist_recommendation(effective_algorithm, key_exchange)
 
         log.info(

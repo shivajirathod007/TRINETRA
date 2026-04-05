@@ -286,6 +286,55 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     except Exception as exc:
         log.warning("ai_classifier_error", url=asset_url, error=str(exc))
 
+    # ── Evaluate custom rules ─────────────────────────────────────────────────
+    import fnmatch
+    import db.sync_db as sync_db
+    custom_override_status = None
+    try:
+        active_rules = sync_db.get_active_scan_rules_sync()
+        for rule in active_rules:
+            m_type = rule["match_type"].upper()
+            pat = rule["pattern"]
+            
+            if m_type == "HOSTNAME":
+                if fnmatch.fnmatch(hostname, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "CIPHER_SUITE":
+                if tls_result and tls_result.active_cipher_suite and fnmatch.fnmatch(tls_result.active_cipher_suite, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "PROTOCOL":
+                if tls_result and tls_result.highest_version and fnmatch.fnmatch(tls_result.highest_version, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "IP_ADDRESS":
+                ip_addr = asset_data.get("ip_address")
+                if ip_addr and fnmatch.fnmatch(ip_addr, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "PORT":
+                if str(port) == pat:
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "ALGORITHM":
+                algo = cert_info.signature_algorithm if cert_info else primary_algorithm
+                if algo and fnmatch.fnmatch(algo, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "VPN_PROTOCOL":
+                vpn = vpn_result.vpn_type if vpn_result else vpn_type
+                if vpn and fnmatch.fnmatch(vpn, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+            elif m_type == "SSH_PROTOCOL":
+                ssh = ssh_result.server_version if ssh_result else None
+                if ssh and fnmatch.fnmatch(ssh, pat):
+                    custom_override_status = rule["override_status"]
+                    break
+    except Exception as exc:
+        log.warning("custom_rules_evaluation_failed", url=asset_url, error=str(exc))
+
     # ── Scoring (always runs — never returns None) ────────────────────────────
     scorer = ExposureScorer()
     score_result = scorer.score(
@@ -298,6 +347,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
         key_exchange=key_exchange,
         jwt_algorithm=jwt_algorithm,
         data_sensitivity_tier=data_sensitivity_tier,
+        custom_override_status=custom_override_status,
     )
 
     hndl_result = HNDLEngine().calculate(

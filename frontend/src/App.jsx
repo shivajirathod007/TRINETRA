@@ -30,6 +30,7 @@ import RatingPage      from './pages/RatingPage';
 import ReportingPage   from './pages/ReportingPage';
 import HistoryPage     from './pages/HistoryPage';
 import ScanHistoryPage from './pages/ScanHistoryPage';
+import RulesPage       from './pages/RulesPage';
 
 function AppRoutes() {
   return (
@@ -55,6 +56,7 @@ function AppRoutes() {
         <Route path="/reporting"      element={<ReportingPage />} />
         <Route path="/history"        element={<ScanHistoryPage />} />
         <Route path="/history-old"    element={<HistoryPage />} />
+        <Route path="/rules"          element={<RulesPage />} />
         <Route path="/scan/:domain"   element={<LiveScanPage />} />
         <Route path="/asset/:id"      element={<AssetDetailPage />} />
       </Route>

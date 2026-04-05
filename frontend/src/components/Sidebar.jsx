@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileJson, ShieldCheck, Moon, Sun,
-  Home, Search, Star, BarChart2, LogOut, Database, History
+  Home, Search, Star, BarChart2, LogOut, Database, History, Settings
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -23,6 +23,7 @@ const NAV_GROUPS = [
       { name: 'Asset Inventory', path: '/inventory',  icon: Database },
       { name: 'Asset Discovery', path: '/discovery',  icon: Search },
       { name: 'CBOM',            path: '/cbom',        icon: FileJson },
+      { name: 'Manual Rules',    path: '/rules',       icon: Settings },
     ],
   },
   {
