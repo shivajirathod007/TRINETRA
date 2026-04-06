@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test JARSH Chatbot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+        }
+        h1 {
+            color: #ef4444;
+            text-align: center;
+        }
+        .test-section {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px solid #334155;
+        }
+        button {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            transform: scale(1.05);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .response {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 15px;
+            border-left: 4px solid #ef4444;
+            white-space: pre-wrap;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .loading {
+            color: #f59e0b;
+        }
+        input {
+            width: 100%;
+            padding: 12px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.healthy {
+            background: #10b981;
+            color: white;
+        }
+        .status.degraded {
+            background: #f59e0b;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔐 JARSH Chatbot Test Page</h1>
+    
+    <div class="test-section">
+        <h2>1. Health Check</h2>
+        <button onclick="checkHealth()">Check Backend Health</button>
+        <button onclick="checkChatHealth()">Check Chat Health</button>
+        <div id="health-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Chat API</h2>
+        <input type="text" id="question" placeholder="Ask a question (e.g., What is PQC?)" value="What is quantum computing?">
+        <button onclick="sendMessage()">Send Message</button>
+        <div id="chat-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Frontend Integration Test</h2>
+        <p>To test the actual frontend chatbot:</p>
+        <ol>
+            <li>Open <a href="http://localhost:3000" target="_blank" style="color: #ef4444;">http://localhost:3000</a></li>
+            <li>Look for the red JARSH button in the bottom-right corner</li>
+            <li>Click it to open the chat window</li>
+            <li>Type a question and press Enter or click Send</li>
+        </ol>
+        <button onclick="window.open('http://localhost:3000', '_blank')">Open Frontend</button>
+    </div>
+
+    <script>
+        async function checkHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.innerHTML = '<p class="loading">⏳ Checking backend health...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                const data = await response.json();
+                resultDiv.innerHTML = `
+                    <div class="response success">
+                        ✅ Backend is healthy!
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="response error">
+                        ❌ Backend is not responding!
+                        <p>Error: ${error.message}</p>
+                        <p>Make sure Docker containers are running: <code>docker-compose up -d</code></p>
+                    </div>
+                `;
+            }
+        }
+
+        async function checkChatHealth() {
+            const resultDiv = document.getElementById('health-result');
+            resultDiv.innerHTML = '<p class="loading">⏳ Checking chat service...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8000/api/v1/chat/health');
+                const data = await response.json();
+                
+                const statusClass = data.status === 'healthy' ? 'healthy' : 'degraded';
+                const ollamaIcon = data.ollama_status === 'connected' ? '✅' : '❌';
+                
+                resultDiv.innerHTML = `
+                    <div class="response success">
+                        <h3>Chat Service Status: <span class="status ${statusClass}">${data.status.toUpperCase()}</span></h3>
+                        <ul>
+                            <li>${ollamaIcon} Ollama: ${data.ollama_status}</li>
+                            <li>✅ Database: ${data.database}</li>
+                            <li>📍 Ollama Host: ${data.ollama_host}</li>
+                            <li>🤖 Model: ${data.model}</li>
+                            <li>📦 Version: ${data.version}</li>
+                        </ul>
+                        <details>
+                            <summary>Full Response</summary>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </details>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="response error">
+                        ❌ Chat service is not responding!
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        async function sendMessage() {
+            const question = document.getElementById('question').value;
+            const resultDiv = document.getElementById('chat-result');
+            
+            if (!question.trim()) {
+                resultDiv.innerHTML = '<p class="error">Please enter a question!</p>';
+                return;
+            }
+            
+            resultDiv.innerHTML = '<p class="loading">⏳ Sending message to JARSH...</p>';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch('http://localhost:8000/api/v1/chat/message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: question,
+                        context: 'general'
+                    })
+                });
+                
+                const data = await response.json();
+                const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="response success">
+                            <h3>✅ JARSH Response (${elapsed}s)</h3>
+                            <p><strong>Question:</strong> ${question}</p>
+                            <p><strong>Answer:</strong></p>
+                            <p>${data.response}</p>
+                            <p><strong>Confidence:</strong> ${(data.confidence * 100).toFixed(0)}%</p>
+                            ${data.suggestions ? `<p><strong>Suggestions:</strong> ${data.suggestions.join(', ')}</p>` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="response error">
+                            ❌ Error: ${data.detail || 'Unknown error'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="response error">
+                        ❌ Failed to send message!
+                        <p>Error: ${error.message}</p>
+                        <p>Make sure the backend is running and accessible.</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-check health on page load
+        window.addEventListener('load', () => {
+            checkChatHealth();
+        });
+    </script>
+</body>
+</html>

@@ -52,6 +52,8 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - APP_ENV=development
       - DEBUG=true
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_MODEL=jarsh-phi3
     env_file:
       - .env
     ports:
