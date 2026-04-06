@@ -283,6 +283,7 @@ class CBOMGenerator:
             "security_headers_missing": a.security_headers_missing,
             "cors_policy": a.cors_policy,
             "graphql_introspection": a.graphql_introspection,
+            "endpoints_scanned": a.endpoints_scanned,
             "findings": a.findings,
         }
 

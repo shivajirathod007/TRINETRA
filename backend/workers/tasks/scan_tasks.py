@@ -421,6 +421,13 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     except Exception as exc:
         log.warning("cbom_generation_failed", url=asset_url, error=str(exc))
 
+    # ── Merge Vulnerabilities & Findings ──────────────────────────────────────
+    vulns = []
+    if tls_result and tls_result.vulnerabilities:
+        vulns.extend(tls_result.vulnerabilities)
+    if api_result and api_result.findings:
+        vulns.extend(api_result.findings)
+
     # ── Build complete DB record ──────────────────────────────────────────────
     return {
         # TLS
@@ -429,7 +436,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
         "cipher_suite_active": tls_result.active_cipher_suite if tls_result else None,
         "cipher_suites_all": tls_result.cipher_suites if tls_result else {},
         "key_exchange": key_exchange,
-        "vulnerabilities": tls_result.vulnerabilities if tls_result else [],
+        "vulnerabilities": vulns,
         # Certificate
         "cert_algorithm": (
             cert_info.signature_algorithm if cert_info
@@ -475,6 +482,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
             "data_shelf_life_years": score_result.breakdown.data_shelf_life_years,
             "sensitivity_tier_impact": score_result.breakdown.sensitivity_tier_impact,
             "formula": "Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)",
+            "endpoints_scanned": api_result.endpoints_scanned if api_result else [],
         },
         "hndl_deadline": hndl_result.primary_deadline,
         "hndl_urgency": hndl_result.urgency_level,

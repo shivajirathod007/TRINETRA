@@ -1,6 +1,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
+import GlobalScanPopup from '../components/GlobalScanPopup';
 
 const DashboardLayout = () => {
     return (
@@ -11,6 +12,7 @@ const DashboardLayout = () => {
                 <div className="max-w-7xl mx-auto w-full">
                     <Outlet />
                 </div>
+                <GlobalScanPopup />
             </main>
         </div>
     );

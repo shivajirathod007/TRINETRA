@@ -63,6 +63,7 @@ const LiveScanPage = () => {
     const [aiProgress, setAiProgress] = useState(0);
     const [assetsFound, setAssetsFound] = useState(0);
     const [shadowAssets, setShadowAssets] = useState(0);
+    const [startedAt, setStartedAt] = useState(null);
     const [error, setError] = useState(null);
     const [scanResult, setScanResult] = useState(null);
     const [scanSummary, setScanSummary] = useState(null);
@@ -104,6 +105,7 @@ const LiveScanPage = () => {
                 setAssetsFound(data.assets_found ?? 0);
                 setShadowAssets(data.shadow_assets ?? 0);
                 setStatus(data.status);
+                setStartedAt(data.started_at);
                 if (data.error_message) {
                     setError(data.error_message);
                 }
@@ -190,6 +192,28 @@ const LiveScanPage = () => {
                     <div className={`badge ${status === 'completed' ? 'badge-safe' : status === 'failed' ? 'badge-critical' : 'badge-high animate-pulse-subtle'}`}>
                         {status === 'completed' ? 'SCAN COMPLETE' : status === 'failed' ? 'FAILED' : 'SCAN IN PROGRESS'}
                     </div>
+                </div>
+            </div>
+
+            {/* Scan Metadata Row */}
+            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-4 items-center mb-[-0.5rem]">
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase text-secondary tracking-widest">Target Domain</span>
+                    <span className="text-sm font-bold font-mono text-white">{domain}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase text-secondary tracking-widest">Scan UUID</span>
+                    <span className="text-sm font-mono text-primary-indigo truncate max-w-[200px]">{scanId || "Initializing..."}</span>
+                </div>
+                <div className="flex flex-col">
+                    <span className="text-[10px] uppercase text-secondary tracking-widest">Started At</span>
+                    <span className="text-sm text-status-safe font-mono">{startedAt ? new Date(startedAt).toLocaleString() : '—'}</span>
+                </div>
+                <div className="flex flex-col ml-auto">
+                    <span className="text-[10px] uppercase text-secondary tracking-widest text-right">Status</span>
+                    <span className={`text-sm font-bold uppercase tracking-wider ${status === 'completed' ? 'text-status-safe' : status === 'failed' ? 'text-status-critical' : 'text-primary-indigo'}`}>
+                        {status}
+                    </span>
                 </div>
             </div>
 
