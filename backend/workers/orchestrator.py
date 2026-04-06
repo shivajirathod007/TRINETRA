@@ -171,27 +171,65 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
             port_results = []
 
         # If port scan returned no open ports (firewall blocking), synthesize
-        # HTTPS results for all live assets so the classifier can still run
+        # ports for all live assets so the classifier can still run.
+        # Use FQDN heuristics to infer the most likely service type per asset.
         if not any(pr.open_ports for pr in port_results):
             log.warning(
                 "port_scan_no_open_ports",
                 scan_id=scan_id,
-                msg="All ports appear blocked — synthesizing HTTPS port for live assets",
+                msg="All ports appear blocked — synthesizing ports via FQDN heuristics",
             )
             from engine.discovery.port_scanner import PortScanResult
-            port_results = [
-                PortScanResult(
+
+            # Keywords that strongly imply non-HTTPS services
+            SSH_KW   = {"ssh", "bastion", "jump", "jumphost", "mgmt", "management"}
+            VPN_KW   = {"vpn", "vpn-gw", "vpngw", "ssl-vpn", "sslvpn", "remote", "ras", "nac", "forticlient", "anyconnect"}
+            SMTP_KW  = {"mail", "smtp", "mx", "relay", "email"}
+
+            def _infer_ports(fqdn: str) -> tuple[list[int], dict[int, str], bool, bool, bool, bool]:
+                """Returns (open_ports, services, has_https, has_ssh, has_smtp, has_vpn)."""
+                parts = set(fqdn.lower().replace("-", ".").split("."))
+                open_ports: list[int] = []
+                services: dict[int, str] = {}
+
+                has_ssh   = bool(parts & SSH_KW)
+                has_smtp  = bool(parts & SMTP_KW)
+                has_vpn   = bool(parts & VPN_KW)
+
+                if has_ssh:
+                    open_ports.append(22)
+                    services[22] = "ssh"
+                if has_smtp:
+                    for p in (25, 587):
+                        open_ports.append(p)
+                        services[p] = "smtp"
+                if has_vpn:
+                    open_ports.extend([443, 4443])
+                    services[443]  = "https"
+                    services[4443] = "https-vpn"
+
+                # Default: always add HTTPS so TLS scanner can run
+                if 443 not in open_ports:
+                    open_ports.append(443)
+                    services[443] = "https"
+
+                has_https = 443 in open_ports
+                return open_ports, services, has_https, has_ssh, has_smtp, has_vpn
+
+            synthesized = []
+            for a in live_assets:
+                op, sv, hh, hs, hm, hv = _infer_ports(a.fqdn)
+                synthesized.append(PortScanResult(
                     ip_address=a.ip_address or a.fqdn,
                     fqdn=a.fqdn,
-                    open_ports=[443],
-                    services={443: "https"},
-                    has_https=True,
-                    has_ssh=False,
-                    has_smtp=False,
-                    has_vpn_ports=False,
-                )
-                for a in live_assets
-            ]
+                    open_ports=op,
+                    services=sv,
+                    has_https=hh,
+                    has_ssh=hs,
+                    has_smtp=hm,
+                    has_vpn_ports=hv,
+                ))
+            port_results = synthesized
 
         # ── Step 4: Asset Classification ──────────────────────────────────────
         classifier = AssetClassifier()

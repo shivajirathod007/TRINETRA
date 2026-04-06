@@ -22,25 +22,27 @@ const RISK_COLORS = {
     LOW: '#3B82F6',
 };
 
-// Backend asset_type enum → human label mappings
+// Backend asset_type enum → human label mappings (must match AssetClassifier output)
 const ASSET_TYPE_LABELS = {
-    web_portal: 'Web Portal',
-    web_application: 'Web App',
-    api_public: 'API',
-    api_authenticated: 'API (Auth)',
-    mobile_backend: 'Mobile',
-    vpn_gateway: 'VPN',
-    ssh_endpoint: 'SSH',
-    smtp_mta: 'SMTP',
-    staging: 'Staging',
-    shadow_asset: 'Shadow',
-    server: 'Server',
+    web_portal:     '🌐 Web Portal',
+    api_endpoint:   '⚡ API Endpoint',
+    vpn_gateway:    '🔒 VPN Gateway',
+    ssh_endpoint:   '💻 SSH',
+    smtp_mta:       '📧 Email (SMTP)',
+    staging:        '🧪 Staging',
+    shadow_asset:   '👻 Shadow',
+    mobile_backend: '📱 Mobile',
+    // legacy aliases (kept for backward compat)
+    web_application:    '🌐 Web App',
+    api_public:         '⚡ API',
+    api_authenticated:  '⚡ API (Auth)',
+    server:             '🖥 Server',
 };
 
-// Asset type categories for KPI counting
+// Asset type categories for KPI counting — uses actual backend constants
 const WEB_APP_TYPES = new Set(['web_portal', 'web_application', 'staging']);
-const API_TYPES = new Set(['api_public', 'api_authenticated', 'mobile_backend']);
-const SERVER_TYPES = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway']);
+const API_TYPES     = new Set(['api_endpoint', 'api_public', 'api_authenticated', 'mobile_backend']);
+const SERVER_TYPES  = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway']);
 
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');

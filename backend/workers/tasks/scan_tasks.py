@@ -13,7 +13,7 @@ Design principles:
 """
 
 import asyncio
-from typing import Optional
+
 
 from workers.celery_app import celery_app
 from core.config import settings
@@ -380,7 +380,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
 
     # ── PQC Certificate ───────────────────────────────────────────────────────
     certificate = None
-    pqc_cert_id = None
+
     try:
         certificate = CertificateIssuer().issue(
             asset_url=asset_url,

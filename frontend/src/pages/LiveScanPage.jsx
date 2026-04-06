@@ -328,9 +328,10 @@ const LiveScanPage = () => {
                 </div>
             </div>
 
-            {/* Live Simulated JSON Stream during scan  */}
+            {/* Live Asset Discovery Brief — shown during active scan */}
             {isPending && liveTelemetry && (
                 <div className="flex flex-col gap-3">
+                    {/* Overall progress bar */}
                     <div className="glass-card border p-4 flex flex-col gap-2">
                         <div className="flex justify-between items-center">
                             <div className="flex items-center gap-2">
@@ -343,9 +344,58 @@ const LiveScanPage = () => {
                             <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: `${overallProgress}%`, transition: 'width 0.5s' }} />
                         </div>
                     </div>
-                    <JsonViewer data={liveTelemetry} title={`Streaming Telemetry — ${domain}`} />
+
+                    {/* Live scan summary — asset type breakdown */}
+                    <div className="glass-card border p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Shield size={14} className="text-primary-indigo" />
+                            <span className="text-xs font-bold uppercase tracking-wider text-secondary">Live Discovery Brief</span>
+                            <span className="ml-auto text-xs text-secondary font-mono animate-pulse">● STREAMING</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                            {[
+                                { label: 'Total Found',   value: liveTelemetry.assets_found ?? 0,    color: 'text-primary' },
+                                { label: 'Shadow Assets', value: liveTelemetry.shadow_assets ?? 0,   color: 'text-status-high' },
+                                { label: 'TLS Scan',      value: `${liveTelemetry.tls_progress ?? 0}%`, color: 'text-primary-indigo' },
+                                { label: 'AI Classifier', value: `${liveTelemetry.ai_progress ?? 0}%`,  color: 'text-status-safe' },
+                            ].map(({ label, value, color }) => (
+                                <div key={label} className="p-3 bg-surface-card-hover rounded border text-center">
+                                    <div className="text-xs text-secondary uppercase tracking-widest mb-1">{label}</div>
+                                    <div className={`text-xl font-bold font-mono ${color}`}>{value}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Phase status row */}
+                        <div className="flex flex-col gap-2 text-xs">
+                            {[
+                                { label: '🌐  CT Log Mining & DNS',   done: (liveTelemetry.assets_found ?? 0) > 0 },
+                                { label: '🔌  Port Scanning',         done: (liveTelemetry.tls_progress ?? 0) > 0 },
+                                { label: '🔒  TLS / Certificate Scan',done: (liveTelemetry.tls_progress ?? 0) >= 100 },
+                                { label: '⚡  API & SSH Inspection',   done: (liveTelemetry.ai_progress ?? 0) > 0 },
+                                { label: '🧠  AI Risk Classification', done: (liveTelemetry.ai_progress ?? 0) >= 100 },
+                            ].map(({ label, done }) => (
+                                <div key={label} className="flex items-center gap-2">
+                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${done ? 'bg-status-safe' : 'bg-surface-card-hover border border-glass-border'}`} />
+                                    <span className={done ? 'text-primary' : 'text-secondary'}>{label}</span>
+                                    {done && <span className="ml-auto text-status-safe font-mono">✓ Done</span>}
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Live log tail */}
+                        {liveTelemetry.logs && liveTelemetry.logs.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-glass-border">
+                                <div className="text-[10px] uppercase text-secondary tracking-widest mb-2">Latest Log Entry</div>
+                                <div className="font-mono text-xs text-status-pqc bg-surface-card rounded p-2">
+                                    {liveTelemetry.logs[liveTelemetry.logs.length - 1]}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
+
 
             {/* Scan Result JSON — shown after completion */}
             {status === 'completed' && scanResult && (

@@ -173,13 +173,14 @@ class APIInspector:
             pass
 
         try:
-            # 3. Simple root page crawl for href and src
+            # 3. Simple root page crawl for href and src (ignoring static files)
             root_resp = await client.get(base_url, timeout=3.0)
             if root_resp.status_code == 200:
                 hrefs = re.findall(r'href=["\'](/[^"\']+)["\']', root_resp.text)
                 srcs = re.findall(r'src=["\'](/[^"\']+)["\']', root_resp.text)
                 for h in hrefs + srcs:
-                    endpoints.add(h)
+                    if not re.search(r'\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$', h, re.IGNORECASE):
+                        endpoints.add(h)
         except Exception:
             pass
 
