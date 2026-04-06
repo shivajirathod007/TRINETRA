@@ -20,6 +20,7 @@ STALE_TIMEOUT_MINUTES = 15  # Reduced from 90 — most scans complete in < 5 min
 class ScanRequest(BaseModel):
     domain: str
     crqc_scenario: Optional[str] = "moderate"
+    scan_scope: Optional[str] = "full"  # "full" (default - discover subdomains) | "root_only" (single domain)
 
 
 def _crqc_year(scenario: str) -> int:
@@ -68,11 +69,19 @@ def _is_stale(scan) -> bool:
 async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """Initiate a new cryptographic exposure scan. Returns 202 with scan_id for polling."""
     domain = request.domain.strip().lower()
-    if domain.startswith("http://"):
-        domain = domain[7:]
+    # Strip scheme
     if domain.startswith("https://"):
         domain = domain[8:]
-    domain = domain.rstrip("/").removeprefix("www.")
+    elif domain.startswith("http://"):
+        domain = domain[7:]
+    # Strip path, query string, and fragment
+    domain = domain.split("/")[0].split("?")[0].split("#")[0]
+    # Strip port (e.g. pnb.bank.in:443 → pnb.bank.in)
+    domain = domain.split(":")[0]
+    # Strip www. prefix
+    if domain.startswith("www."):
+        domain = domain[4:]
+    domain = domain.strip()
     if not domain:
         raise HTTPException(status_code=400, detail="domain is required")
     crqc_year = _crqc_year(request.crqc_scenario or "moderate")
@@ -90,7 +99,7 @@ async def create_scan(request: ScanRequest, db: AsyncSession = Depends(get_db), 
     queue_ok = True
     try:
         from workers.orchestrator import run_full_scan
-        run_full_scan.delay(scan_id, domain)
+        run_full_scan.delay(scan_id, domain, request.scan_scope or "full")
     except Exception as e:
         queue_ok = False
         log.warning("create_scan_queue_error", scan_id=scan_id, domain=domain, error=str(e))
