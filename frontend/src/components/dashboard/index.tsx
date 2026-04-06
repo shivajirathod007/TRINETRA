@@ -82,7 +82,7 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-surface-700">
+            <tr className="bg-surface-card-hover border-b border-surface-700">
               {['Asset', 'Type', 'Score', 'Risk', 'Status', 'HNDL Deadline', 'Algorithm', 'Cert Expiry'].map(h => (
                 <th key={h} className="text-left text-xs text-gray-500 uppercase tracking-wide px-4 py-3 font-medium">
                   {h}

@@ -14,6 +14,11 @@
     -webkit-font-smoothing: antialiased;
   }
 
+  h1, h2, h3, h4 {
+    font-family: 'Outfit', sans-serif;
+    margin-top: 0;
+  }
+
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;

@@ -8,60 +8,19 @@ import {
   Globe, Shield, Network, Code2, Download, Filter, Search,
   ChevronRight, RefreshCw, AlertTriangle, Server, ExternalLink
 } from 'lucide-react';
-import { SectionHeader, LoadingSpinner } from '../components/shared';
+import { SectionHeader, LoadingSpinner, RiskBadge, CertBadge } from '../components/shared';
 import { SensitivityBadge } from '../components/shared/SensitivityBadge';
 import { useQuery } from '@tanstack/react-query';
 import { useScanStore } from '../store';
 import { assetsApi } from '../api/index';
+import { RISK_COLORS } from '../utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Tab = 'Domains' | 'SSL' | 'IP / Subnets' | 'APIs';
 type RiskFilter = 'ALL' | 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE';
 
-const RISK_COLORS: Record<string, string> = {
-  CRITICAL: '#EF4444',
-  HIGH:     '#F97316',
-  MEDIUM:   '#EAB308',
-  LOW:      '#3B82F6',
-  SAFE:     '#22C55E',
-  UNKNOWN:  '#6B7280',
-};
-
-const PQC_COLORS: Record<string, string> = {
-  QUANTUM_VULNERABLE: '#EF4444',
-  PQC_READY:          '#F59E0B',
-  FULLY_QUANTUM_SAFE: '#22C55E',
-  UNKNOWN:            '#6B7280',
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function RiskBadge({ level }: { level?: string }) {
-  const l = level?.toUpperCase() ?? 'UNKNOWN';
-  const color = RISK_COLORS[l] ?? '#6B7280';
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
-      style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>
-      {l}
-    </span>
-  );
-}
-
-function PQCBadge({ status }: { status?: string }) {
-  const s = status?.toUpperCase() ?? 'UNKNOWN';
-  const color = PQC_COLORS[s] ?? '#6B7280';
-  const label = s === 'QUANTUM_VULNERABLE' ? 'VULNERABLE'
-    : s === 'FULLY_QUANTUM_SAFE' ? 'SAFE'
-    : s === 'PQC_READY' ? 'PQC READY'
-    : s;
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold"
-      style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}>
-      {label}
-    </span>
-  );
-}
 
 function ScoreBar({ score }: { score?: number }) {
   const s = score ?? 0;
@@ -128,7 +87,7 @@ function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: a
             </td>
             <td className="px-4 py-3"><RiskBadge level={a.risk_level} /></td>
             <td className="px-4 py-3"><ScoreBar score={a.score} /></td>
-            <td className="px-4 py-3"><PQCBadge status={a.quantum_safe_status} /></td>
+            <td className="px-4 py-3"><CertBadge tier={a.quantum_safe_status ?? 'UNKNOWN'} /></td>
             <td className="px-4 py-3">
               {a.discovery === 'Shadow'
                 ? <span className="text-xs font-bold text-status-high">Shadow</span>
@@ -368,7 +327,7 @@ export default function AssetInventoryPage() {
           { label: 'Critical Risk',  value: criticalCount,  color: '#EF4444' },
           { label: 'Shadow Assets',  value: shadowCount,    color: '#F97316' },
         ].map(k => (
-          <div key={k.label} className="glass-card border rounded-xl p-4 text-center"
+          <div key={k.label} className="card-sm text-center"
             style={{ borderColor: `${k.color}33`, background: `${k.color}0d` }}>
             <div className="text-2xl font-black font-mono" style={{ color: k.color }}>
               {isLoading ? '—' : k.value}

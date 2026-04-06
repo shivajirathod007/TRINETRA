@@ -1,4 +1,3 @@
-import React from 'react';
 import { clsx } from 'clsx';
 import { ShieldCheck, ShieldAlert, Shield, ExternalLink } from 'lucide-react';
 import { PQCCertificate } from '@/types';

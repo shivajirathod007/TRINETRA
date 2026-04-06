@@ -38,6 +38,12 @@ def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
     try:
         result = asyncio.run(_run_all_scanners(scan_id, asset_data))
         _persist_scan_result(asset_id, scan_id, result)
+        
+        # Spawn new UI assets for discovered endpoints
+        endpoints = result.get("score_breakdown", {}).get("endpoints_scanned", [])
+        if endpoints:
+            _persist_endpoints_as_assets(scan_id, asset_data, endpoints, result)
+
         log.info(
             "asset_scan_complete",
             asset_id=asset_id,
@@ -591,3 +597,54 @@ def _persist_scan_result(asset_id: str, scan_id: str, result: dict) -> None:
 def _persist_failure(asset_id: str, error: str) -> None:
     import db.sync_db as sync_db
     sync_db.mark_asset_failed_sync(asset_id, error)
+
+
+def _persist_endpoints_as_assets(scan_id: str, parent_asset_data: dict, endpoints: list[str], parent_scan_result: dict) -> None:
+    """Creates duplicate cloned asset rows for discovered endpoints so they show in the UI table."""
+    import db.sync_db as sync_db
+    import re
+    
+    # Filter out root paths, empty strings, and generic HTML paths ("bullshit things")
+    valid_endpoints = []
+    for ep in endpoints:
+        if not ep or ep == "/":
+            continue
+            
+        ep_lower = ep.lower()
+        # Ensure it looks like a genuine software endpoint, not an HTML content page
+        if re.search(r'\.(html|htm|php|pdf|doc|docx)$', ep_lower):
+            continue
+            
+        # Enterprise endpoints generally contain signatures 
+        is_api = any(sig in ep_lower for sig in [
+            "/api", "/v1", "/v2", "/v3", "/rest", "/graphql", "/swagger",
+            "/docs", "/oauth", "/auth", "/login", "/admin", "/ws", "/socket", ".json", ".xml"
+        ])
+        
+        if is_api:
+            valid_endpoints.append(ep)
+
+    if not valid_endpoints:
+        return
+        
+    log.info("persisting_discovered_endpoints", parent=parent_asset_data["fqdn"], count=len(valid_endpoints))
+    
+    base_url = parent_asset_data["asset_url"].rstrip("/")
+    for ep in valid_endpoints:
+        ep_url = base_url + ep
+        
+        # 1. Create a DB asset clone
+        ep_asset_id = sync_db.create_asset_sync(
+            scan_job_id=scan_id,
+            fqdn=parent_asset_data["fqdn"],
+            asset_url=ep_url,
+            asset_type="api_endpoint",  # Mark as API endpoint
+            port=parent_asset_data.get("port", 443),
+            ip_address=parent_asset_data.get("ip_address"),
+            is_shadow_asset=parent_asset_data.get("is_shadow_asset", False),
+            discovery_method="api_inspector_crawl",
+        )
+        
+        # 2. Duplicate the scan result
+        ep_result = parent_scan_result.copy()
+        sync_db.update_asset_scan_result_sync(ep_asset_id, ep_result)

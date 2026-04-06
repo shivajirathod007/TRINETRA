@@ -45,22 +45,22 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'Domain Name', 'Asset Type', 'Risk Level', 'Discovery', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.domain}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className={`px-5 py-3.5 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
-            <td className="px-5 py-3.5 text-xs">
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
+            <td className="px-4 py-3 font-mono text-primary font-medium">{row.domain}</td>
+            <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
+            <td className={`px-4 py-3 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
+            <td className="px-4 py-3 text-xs">
               <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${row.discovery === 'Shadow' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
                 {row.discovery}
               </span>
             </td>
-            <td className="px-5 py-3.5 font-bold text-primary tracking-wide flex items-center justify-between">
+            <td className="px-4 py-3 font-bold text-primary tracking-wide flex items-center justify-between">
               {company} <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
             </td>
           </tr>
@@ -75,18 +75,18 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'SSL SHA256 Fingerprint', 'Expires', 'Common Name', 'Certificate Authority', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 font-mono text-primary text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.expiry}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs">{row.commonName}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs">{row.ca}</td>
-            <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
+            <td className="px-4 py-3 font-mono text-primary text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.expiry}</td>
+            <td className="px-4 py-3 text-secondary text-xs">{row.commonName}</td>
+            <td className="px-4 py-3 text-secondary text-xs">{row.ca}</td>
+            <td className="px-4 py-3 font-bold text-primary">{company}</td>
           </tr>
         ))}
       </tbody>
@@ -99,18 +99,18 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'IP Address', 'Port', 'TLS Version', 'Asset Type', 'Company'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.ip}</td>
-            <td className="px-5 py-3.5 font-mono text-primary">{row.port ?? '—'}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
-            <td className="px-5 py-3.5 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
+            <td className="px-4 py-3 font-mono text-primary font-medium">{row.ip}</td>
+            <td className="px-4 py-3 font-mono text-primary">{row.port ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
+            <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
+            <td className="px-4 py-3 font-bold text-primary">{company}</td>
           </tr>
         ))}
       </tbody>
@@ -123,19 +123,19 @@ function SoftwareTable({ company, data }: { company: string; data: any[] }) {
     <table className="data-table w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'Asset Type', 'TLS Version', 'Cipher Suite', 'Port', 'Host', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-5 py-4 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={7} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-5 py-3.5 text-primary font-semibold capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs truncate max-w-xs" title={row.cipherSuite}>{row.cipherSuite ?? '—'}</td>
-            <td className="px-5 py-3.5 font-mono text-primary font-medium">{row.port ?? '—'}</td>
-            <td className="px-5 py-3.5 font-mono text-secondary text-xs">{row.host ?? '—'}</td>
-            <td className="px-5 py-3.5 font-bold text-primary">{company}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
+            <td className="px-4 py-3 text-primary font-semibold capitalize">{row.type?.replace(/_/g, ' ')}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs truncate max-w-xs" title={row.cipherSuite}>{row.cipherSuite ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-primary font-medium">{row.port ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.host ?? '—'}</td>
+            <td className="px-4 py-3 font-bold text-primary">{company}</td>
           </tr>
         ))}
       </tbody>
@@ -391,7 +391,7 @@ export default function DiscoveryPage() {
               <span className="text-primary font-bold font-mono">{activeDomain}</span>
               {isRunning && (
                 <span className="flex items-center gap-1.5 text-yellow-400">
-                  <RefreshCw size={11} className="animate-spin" />
+                  <RefreshCw size={12} className="animate-spin" />
                   Scanning… {(scanStatus as any)?.progress ?? 0}%
                 </span>
               )}

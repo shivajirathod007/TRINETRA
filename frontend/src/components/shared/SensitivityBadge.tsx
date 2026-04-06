@@ -20,21 +20,18 @@ interface SensitivityBadgeProps {
   className?: string;
 }
 
-const TIER_CONFIG: Record<Tier, { label: string; bg: string; text: string }> = {
+const TIER_CONFIG: Record<Tier, { label: string; classes: string }> = {
   transaction: {
     label: "Transaction",
-    bg: "#E24B4A",
-    text: "#ffffff",
+    classes: "bg-risk-critical/20 text-risk-critical border border-risk-critical/30",
   },
   authentication: {
     label: "Auth",
-    bg: "#EF9F27",
-    text: "#ffffff",
+    classes: "bg-risk-high/20 text-risk-high border border-risk-high/30",
   },
   static: {
     label: "Static",
-    bg: "#6B7280",
-    text: "#ffffff",
+    classes: "bg-gray-700/40 text-gray-400 border border-gray-600/30",
   },
 };
 
@@ -50,8 +47,7 @@ export const SensitivityBadge: React.FC<SensitivityBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${className}`}
-      style={{ backgroundColor: config.bg, color: config.text }}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${config.classes} ${className}`}
       title={
         isManualOverride
           ? `${config.label} (manually overridden)`

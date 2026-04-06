@@ -12,16 +12,15 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   Download, Shield, AlertTriangle, CheckCircle2, ChevronDown,
   RefreshCw, X, Globe, Lock, Key, Clock, TrendingUp, Award,
-  Info, ExternalLink, FileText, Cpu, Wifi
+  Info, FileText, Wifi
 } from 'lucide-react';
 import { useScanStore } from '../store';
 import { useCBOM, useScanHistory, useCertificates } from '../hooks';
-import { SectionHeader } from '../components/shared';
-import { cbomApi, certApi } from '../api/client';
+import { RiskBadge } from '../components/shared';
+import { certApi } from '../api/client';
 import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 import {
   PieChart, Pie, Cell, Tooltip as RechartsTooltip, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 
 // ─── Constants: impact explanations ──────────────────────────────────────────
@@ -77,39 +76,13 @@ function getCertInfo(cert?: any) {
   return CERT_ALGO_IMPACT[s] || null;
 }
 
-// ─── Risk color helpers ───────────────────────────────────────────────────────
-
-const RISK_PALETTE: Record<string, { bg: string; text: string; border: string }> = {
-  CRITICAL:  { bg: 'rgba(239,68,68,0.12)',   text: '#ef4444', border: 'rgba(239,68,68,0.3)' },
-  HIGH:      { bg: 'rgba(249,115,22,0.12)',  text: '#f97316', border: 'rgba(249,115,22,0.3)' },
-  MEDIUM:    { bg: 'rgba(234,179,8,0.12)',   text: '#eab308', border: 'rgba(234,179,8,0.3)' },
-  LOW:       { bg: 'rgba(59,130,246,0.12)',  text: '#3b82f6', border: 'rgba(59,130,246,0.3)' },
-  SAFE:      { bg: 'rgba(34,197,94,0.12)',   text: '#22c55e', border: 'rgba(34,197,94,0.3)' },
-  UNKNOWN:   { bg: 'rgba(148,163,184,0.1)',  text: '#94a3b8', border: 'rgba(148,163,184,0.2)' },
-  PQC_READY: { bg: 'rgba(249,115,22,0.12)',  text: '#f97316', border: 'rgba(249,115,22,0.3)' },
-};
-
-function riskPalette(status: string) {
-  return RISK_PALETTE[status?.toUpperCase()] || RISK_PALETTE.UNKNOWN;
-}
-
-function RiskChip({ status, small }: { status: string; small?: boolean }) {
-  const p = riskPalette(status);
-  return (
-    <span className={`inline-flex items-center font-black tracking-wider rounded-full border ${small ? 'text-[9px] px-2 py-0.5' : 'text-[10px] px-3 py-1'}`}
-      style={{ background: p.bg, color: p.text, borderColor: p.border }}>
-      {status}
-    </span>
-  );
-}
-
 // ─── Tooltip helper ───────────────────────────────────────────────────────────
 
 function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
   return (
     <span className="relative inline-flex items-center" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <Info size={11} className="text-secondary/50 hover:text-primary-indigo cursor-help ml-1" />
+      <Info size={12} className="text-secondary/50 hover:text-primary-indigo cursor-help ml-1" />
       {show && (
         <span className="absolute z-50 bottom-5 left-0 w-64 text-xs text-secondary bg-surface-card border border-glass-border rounded-lg p-3 shadow-xl leading-relaxed pointer-events-none">
           {text}
@@ -206,8 +179,8 @@ function ComponentModal({ comp, onClose }: { comp: any; onClose: () => void }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+      style={{ background: 'rgba(0,0,0,0.75)' }}
       onClick={onClose}>
       <div className="glass-card border rounded-2xl w-full max-w-2xl overflow-hidden"
         style={{ borderColor: 'rgba(99,102,241,0.3)', boxShadow: '0 0 60px rgba(99,102,241,0.15)' }}
@@ -219,7 +192,7 @@ function ComponentModal({ comp, onClose }: { comp: any; onClose: () => void }) {
           <div>
             <div className="font-bold text-primary font-mono text-sm max-w-[420px] truncate">{comp.url || comp.name}</div>
             <div className="mt-2 flex gap-2 flex-wrap">
-              <RiskChip status={comp.status || comp.risk_level || 'UNKNOWN'} />
+              <RiskBadge level={comp.status || comp.risk_level || 'UNKNOWN'} />
               {comp.is_shadow && (
                 <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-400 px-2 py-0.5 rounded-full border border-orange-400/30 bg-orange-400/10">
                   <AlertTriangle size={10} /> SHADOW ASSET
@@ -500,7 +473,7 @@ export default function CBOMPage() {
           </button>
           {allComponents.length > 0 && (
             <button onClick={handleDownload} className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border border-glass-border text-secondary hover:text-primary hover:border-primary-indigo/50 transition-all">
-              <Download size={13} /> Export JSON
+              <Download size={14} /> Export JSON
             </button>
           )}
         </div>
@@ -667,7 +640,7 @@ export default function CBOMPage() {
                           ) : <span className="text-secondary text-xs">—</span>}
                         </td>
                         <td className="py-3 px-2 text-[10px] font-mono text-secondary max-w-[120px] truncate" title={row.cert}>{row.cert || '—'}</td>
-                        <td className="py-3 px-2"><RiskChip status={row.status} small /></td>
+                        <td className="py-3 px-2"><RiskBadge level={row.status} size="sm" /></td>
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
                             <span className="font-black font-mono text-xs w-6">{row.score}</span>
