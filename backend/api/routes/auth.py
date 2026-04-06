@@ -23,6 +23,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: str
+    role: str
 
 
 # Simple in-memory credentials (in production, use database with hashed passwords)
@@ -30,6 +31,13 @@ VALID_CREDENTIALS = {
     "shiva@gmail.com": "shiva@124",
     "analyst@trinetra.io": "password123",
     "admin@trinetra.io": "admin123",
+}
+
+# Role mapping per user
+USER_ROLES = {
+    "admin@trinetra.io": "Admin",
+    "analyst@trinetra.io": "Analyst",
+    "shiva@gmail.com": "Analyst",
 }
 
 
@@ -56,9 +64,12 @@ async def login(request: LoginRequest):
     # Create access token
     access_token = create_access_token(data={"sub": request.email})
     
+    role = USER_ROLES.get(request.email, "Analyst")
+
     return LoginResponse(
         access_token=access_token,
-        user=request.email
+        user=request.email,
+        role=role,
     )
 
 

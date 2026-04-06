@@ -62,6 +62,7 @@ async def list_assets(
         {
             "id": str(a.id),
             "url": a.asset_url,
+            "fqdn": a.fqdn,
             "domain": domain or a.fqdn,
             "type": a.asset_type,
             "risk_level": a.risk_level or "UNKNOWN",
@@ -76,6 +77,8 @@ async def list_assets(
             "cert_sha256": a.cert_sha256,
             "cert_expiry": a.cert_expiry.strftime("%d %b %Y") if a.cert_expiry else None,
             "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
+            # PQC status — used by Posture of PQC page
+            "quantum_safe_status": a.quantum_safe_status or "UNKNOWN",
             # Sensitivity tier fields
             "data_sensitivity_tier": a.data_sensitivity_tier or "static",
             "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",

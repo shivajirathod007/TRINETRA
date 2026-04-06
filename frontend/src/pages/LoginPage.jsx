@@ -32,10 +32,10 @@ const LoginPage = () => {
                 password
             });
 
-            const { access_token, user } = response.data;
+            const { access_token, user, role } = response.data;
             
-            // Store token and user in auth context
-            login(access_token, user);
+            // Store token, user, and role in auth context
+            login(access_token, user, role);
             
             // Redirect to home
             navigate('/home');

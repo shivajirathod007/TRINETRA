@@ -41,7 +41,7 @@ const NAV_GROUPS = [
 
 const Sidebar = () => {
   const { isDarkMode, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user, role, logout } = useAuth();
   const location = useLocation();
 
   const handleLogout = () => {
@@ -147,7 +147,7 @@ const Sidebar = () => {
               <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Analyst</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{role || 'Analyst'}</div>
             </div>
             <button onClick={handleLogout} title="Logout" style={{ marginLeft: 'auto', color: 'var(--text-secondary)', cursor: 'pointer', background: 'none', border: 'none', padding: '2px', flexShrink: 0 }}>
               <LogOut size={14} />
