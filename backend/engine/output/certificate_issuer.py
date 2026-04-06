@@ -130,7 +130,7 @@ class CertificateIssuer:
     def _tier_to_label(self, tier: str) -> str:
         labels = {
             CERT_TIER_VULNERABLE: "Quantum Vulnerable",
-            CERT_TIER_READY:      "Post Quantum Cryptography (PQC) Ready",
+            CERT_TIER_READY:      "PQC Ready",
             CERT_TIER_SAFE:       "Fully Quantum Safe",
         }
         return labels.get(tier, "Unknown")

@@ -19,7 +19,7 @@ const TIER_MAPPING = {
     bgColor: 'bg-emerald-500/5',
   },
   PQC_READY: {
-    label: 'Post Quantum Cryptography (PQC) Ready',
+    label: 'PQC Ready',
     icon: Shield,
     color: 'text-orange-400',
     borderColor: 'border-orange-500/30',

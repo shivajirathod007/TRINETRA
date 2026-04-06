@@ -59,30 +59,6 @@ def _is_retryable(exc: BaseException) -> bool:
     return False
 
 
-def _clean_domain(raw: str) -> str:
-    """
-    Normalise any user-supplied string to a bare FQDN.
-    Handles:  https://pnb.bank.in/  →  pnb.bank.in
-              http://www.example.com/path?q=1  →  example.com
-              pnb.bank.in:443  →  pnb.bank.in
-              HTTPS://PNB.BANK.IN  →  pnb.bank.in
-    """
-    d = raw.strip().lower()
-    # Strip scheme
-    if d.startswith("https://"):
-        d = d[8:]
-    elif d.startswith("http://"):
-        d = d[7:]
-    # Strip path and query string (keep only hostname[:port])
-    d = d.split("/")[0].split("?")[0]
-    # Strip port
-    d = d.split(":")[0]
-    # Strip www. prefix
-    if d.startswith("www."):
-        d = d[4:]
-    return d
-
-
 class CTLogMiner:
     """
     Queries Certificate Transparency logs for all subdomains of a domain.
@@ -238,29 +214,21 @@ class CTLogMiner:
 
     # ── Public entry point ────────────────────────────────────────────────────
 
-    async def mine(self, domain: str, root_only: bool = False) -> list[CTLogEntry]:
+    async def mine(self, domain: str) -> list[CTLogEntry]:
         """
         Main entry point. Returns all unique subdomains found in CT logs.
-        By default discovers all subdomains; can be restricted to root domain only.
         Tries crt.sh first; falls back through certspotter → hackertarget →
         root-only rather than raising an exception.
 
         Args:
-            domain: Root domain e.g. "pnb.bank.in" or "https://pnb.bank.in/"
-            root_only: If True, return only the root domain without discovering subdomains.
-                      If False (default), discover all subdomains from CT logs.
+            domain: Root domain e.g. "pnb.in"
 
         Returns:
             List of CTLogEntry — deduplicated, validated FQDNs only.
             Never empty (root-domain fallback guarantees ≥ 1 entry).
         """
-        domain = _clean_domain(domain)
-        log.info("ct_mining_started", domain=domain, root_only=root_only)
-
-        # ── If root_only mode, skip CT logs and return just the root domain ────
-        if root_only:
-            log.info("ct_mining_root_only_mode", domain=domain)
-            return self._root_domain_entry(domain)
+        domain = domain.lower().strip().removeprefix("www.")
+        log.info("ct_mining_started", domain=domain)
 
         # ── 1. crt.sh (primary) ───────────────────────────────────────────────
         try:
