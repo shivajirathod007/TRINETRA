@@ -5,7 +5,7 @@ import Home from '@/pages/Home'
 import Dashboard from '@/pages/Dashboard'
 import { AssetDetailPage } from '@/pages/AssetDetail'
 import { CBOMPage, DiscoveryPage, HistoryPage, PosturePage } from '@/pages/OtherPages'
-import { CertificatesPage } from '@/pages/Certificates'
+import CertificatesPage from '@/pages/CertificatesPage'
 
 export default function App() {
     return (

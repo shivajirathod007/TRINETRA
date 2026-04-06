@@ -9,11 +9,11 @@ import { clsx } from 'clsx'
 
 export function StatCards({ stats }: { stats: DashboardStats }) {
   const items = [
-    { label: 'Org Score',     value: <ScoreBadge score={stats.organization_score} size="lg" />,     sub: 'quantum exposure' },
-    { label: 'Critical',      value: <span className="text-2xl font-bold text-red-400">{stats.critical_count}</span>,    sub: 'assets' },
-    { label: 'High',          value: <span className="text-2xl font-bold text-orange-400">{stats.high_count}</span>,     sub: 'assets' },
-    { label: 'Shadow Assets', value: <span className="text-2xl font-bold text-yellow-400">{stats.shadow_assets_found}</span>, sub: 'discovered via CT logs' },
-    { label: 'Scanned',       value: <span className="text-2xl font-bold text-white">{stats.assets_scanned}</span>,     sub: 'total assets' },
+    { label: 'Org Score',     value: <ScoreBadge score={stats.exposure_score} size="lg" />,     sub: 'quantum exposure' },
+    { label: 'Critical Risk', value: <span className="text-2xl font-bold text-status-critical">{stats.critical_count}</span>, sub: 'high priority' },
+    { label: 'PQC Ready',     value: <span className="text-2xl font-bold text-emerald-400">{stats.pqc_ready}</span>,        sub: 'crypto-agile' },
+    { label: 'Shadow Assets', value: <span className="text-2xl font-bold text-yellow-500">{stats.shadow_count}</span>,     sub: 'unmanaged' },
+    { label: 'Scanned',       value: <span className="text-2xl font-bold text-white">{stats.total_assets}</span>,     sub: 'total assets' },
   ]
   return (
     <div className="grid grid-cols-5 gap-4 mb-6">

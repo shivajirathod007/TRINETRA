@@ -2,7 +2,7 @@
 import { useParams, Link } from 'react-router-dom'
 import { useAssetDetail, useCertificateDetail } from '@/hooks'
 import { ScoreBadge, RiskBadge, CertBadge, AlgorithmTag, HNDLDeadline, LoadingSpinner, EmptyState } from '@/components/shared'
-import { CertDetailView } from '@/components/certificate'
+import { CertCard } from '@/components/certificate'
 import { formatAlgorithm } from '@/utils'
 import { clsx } from 'clsx'
 import type { MigrationStep } from '@/types'
@@ -144,7 +144,7 @@ export function AssetDetailPage() {
       {cert && (
         <div className="mb-4">
           <div className="section-title text-xs font-medium text-gray-500 uppercase tracking-widest mb-3">PQC Readiness Certificate</div>
-          <CertDetailView cert={cert} />
+          <CertCard cert={cert} />
         </div>
       )}
     </div>

@@ -67,6 +67,7 @@ const LiveScanPage = () => {
     const [error, setError] = useState(null);
     const [scanResult, setScanResult] = useState(null);
     const [scanSummary, setScanSummary] = useState(null);
+    const [liveTelemetry, setLiveTelemetry] = useState(null);
     const [cancelling, setCancelling] = useState(false);
     const bottomRef = useRef(null);
     const pollRef = useRef(null);
@@ -106,6 +107,7 @@ const LiveScanPage = () => {
                 setShadowAssets(data.shadow_assets ?? 0);
                 setStatus(data.status);
                 setStartedAt(data.started_at);
+                setLiveTelemetry(data);
                 if (data.error_message) {
                     setError(data.error_message);
                 }
@@ -325,6 +327,25 @@ const LiveScanPage = () => {
                     ))}
                 </div>
             </div>
+
+            {/* Live Simulated JSON Stream during scan  */}
+            {isPending && liveTelemetry && (
+                <div className="flex flex-col gap-3">
+                    <div className="glass-card border p-4 flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2">
+                                <Cpu size={14} className="text-primary-indigo" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-secondary">Global Progress</span>
+                            </div>
+                            <span className="text-xs font-mono font-bold text-primary">{overallProgress}%</span>
+                        </div>
+                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden shadow-inner">
+                            <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: `${overallProgress}%`, transition: 'width 0.5s' }} />
+                        </div>
+                    </div>
+                    <JsonViewer data={liveTelemetry} title={`Streaming Telemetry — ${domain}`} />
+                </div>
+            )}
 
             {/* Scan Result JSON — shown after completion */}
             {status === 'completed' && scanResult && (

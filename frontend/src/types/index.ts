@@ -154,9 +154,12 @@ export interface DashboardStats {
   critical_count: number
   high_count: number
   medium_count: number
+  low_count: number
+  safe_count: number
   pqc_ready: number
   safe: number
   shadow_count: number
+  shadow_assets_found: number
   live_sync: boolean
   risk_distribution: { name: string, value: number, color: string }[]
   algorithm_breakdown: { name: string, count: number }[]

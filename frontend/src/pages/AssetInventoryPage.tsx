@@ -84,7 +84,7 @@ function exportCSV(assets: any[], tab: Tab) {
     'APIs':       ['URL', 'Type', 'Risk Level', 'Score', 'Sensitivity Tier', 'Discovery'],
   };
   const rows: Record<Tab, (a: any) => string[]> = {
-    'Domains':    a => [a.url, a.type, a.risk_level, a.score, a.pqc_status ?? '', a.discovery, a.data_sensitivity_tier ?? '', a.scan_timestamp ?? ''],
+    'Domains':    a => [a.url, a.type, a.risk_level, a.score, a.quantum_safe_status ?? '', a.discovery, a.data_sensitivity_tier ?? '', a.scan_timestamp ?? ''],
     'SSL':        a => [a.url, a.tls_version ?? '', a.cert_algorithm ?? '', a.cert_issuer ?? '', a.cert_expiry ?? '', a.risk_level, a.score],
     'IP / Subnets': a => [a.url, a.ip_address ?? '', a.port ?? '', a.type, a.risk_level, a.score],
     'APIs':       a => [a.url, a.type, a.risk_level, a.score, a.data_sensitivity_tier ?? '', a.discovery],
@@ -128,7 +128,7 @@ function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: a
             </td>
             <td className="px-4 py-3"><RiskBadge level={a.risk_level} /></td>
             <td className="px-4 py-3"><ScoreBar score={a.score} /></td>
-            <td className="px-4 py-3"><PQCBadge status={a.pqc_status} /></td>
+            <td className="px-4 py-3"><PQCBadge status={a.quantum_safe_status} /></td>
             <td className="px-4 py-3">
               {a.discovery === 'Shadow'
                 ? <span className="text-xs font-bold text-status-high">Shadow</span>
@@ -267,7 +267,27 @@ export default function AssetInventoryPage() {
   // ── Derived tab datasets ──────────────────────────────────────────────────
   const sslAssets  = useMemo(() => assets.filter(a => a.tls_version || a.cert_algorithm), [assets]);
   const ipAssets   = useMemo(() => assets.filter(a => a.ip_address), [assets]);
-  const apiAssets  = useMemo(() => assets.filter(a => API_TYPES.has(a.type)), [assets]);
+  const apiAssets = useMemo(() => {
+    const result: any[] = [];
+    for (const a of assets) {
+      if (API_TYPES.has(a.type)) {
+        result.push(a);
+      }
+      const endpoints = a.score_breakdown?.endpoints_scanned;
+      if (Array.isArray(endpoints) && endpoints.length > 0) {
+        for (const ep of endpoints) {
+          result.push({
+            ...a,
+            id: `${a.id}-${ep}`,
+            url: `${a.url}${ep}`,
+            type: 'api_route',
+            discovery: 'API Inspector',
+          });
+        }
+      }
+    }
+    return result;
+  }, [assets]);
 
   const tabData: Record<Tab, any[]> = {
     'Domains':      assets,
