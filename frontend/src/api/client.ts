@@ -64,7 +64,7 @@ export const assetsApi = {
     api.get<AssetDetail>(`/assets/${assetId}`).then(r => r.data),
 
   getByScan: (scanId: string) =>
-    api.get<any[]>(`/assets/`, { params: { scan_id: scanId } }).then(r => r.data),
+    api.get<any[]>(`/assets/`, { params: { scan_id: scanId, limit: 500 } }).then(r => r.data),
 
   /**
    * Manually override the data sensitivity tier for an asset.
@@ -100,8 +100,10 @@ export const assetsApi = {
 // ── Dashboard API ─────────────────────────────────────────────────────────────
 
 export const dashboardApi = {
-  getStats: (domain: string) =>
-    api.get<DashboardStats>(`/dashboard/${domain}`).then(r => r.data),
+  getStats: (domain: string, scanId?: string | null) =>
+    api.get<DashboardStats>(`/dashboard/${domain}`, {
+      params: scanId ? { scan_id: scanId } : undefined,
+    }).then(r => r.data),
 }
 
 // ── CBOM API ──────────────────────────────────────────────────────────────────

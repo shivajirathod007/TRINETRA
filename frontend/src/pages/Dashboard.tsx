@@ -10,7 +10,7 @@ export default function DashboardPage() {
   const { activeScanId, activeDomain } = useScanStore()
   const { filterRisk, filterType, filterShadow, sortBy, sortDir, setFilterRisk, resetFilters } = useDashboardStore()
 
-  const { data: stats, isLoading: statsLoading } = useDashboard(activeDomain)
+  const { data: stats, isLoading: statsLoading } = useDashboard(activeDomain, activeScanId)
   const { data: assets = [], isLoading: assetsLoading } = useAssets(activeScanId)
 
   if (!activeScanId) {

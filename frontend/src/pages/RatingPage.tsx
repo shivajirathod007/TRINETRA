@@ -109,8 +109,8 @@ const TOOLTIP = {
 
 export default function RatingPage() {
   useAutoLoadScan();
-  const { activeDomain } = useScanStore();
-  const { data: stats } = useDashboard(activeDomain || null);
+  const { activeScanId, activeDomain } = useScanStore();
+  const { data: stats } = useDashboard(activeDomain || null, activeScanId);
   const { data: scansData } = useScanHistory(null);
 
   const scans: any[] = scansData || [];

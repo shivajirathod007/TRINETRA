@@ -37,16 +37,16 @@ function ScoreBar({ score }: { score?: number }) {
 
 function exportCSV(assets: any[], tab: Tab) {
   const headers: Record<Tab, string[]> = {
-    'Domains':    ['URL', 'Type', 'Risk Level', 'Score', 'PQC Status', 'Discovery', 'Sensitivity Tier', 'Scan Date'],
-    'SSL':        ['URL', 'TLS Version', 'Cert Algorithm', 'Cert Issuer', 'Cert Expiry', 'Risk Level', 'Score'],
+    'Domains': ['URL', 'Type', 'Risk Level', 'Score', 'PQC Status', 'Discovery', 'Sensitivity Tier', 'Scan Date'],
+    'SSL': ['URL', 'TLS Version', 'Cert Algorithm', 'Cert Issuer', 'Cert Expiry', 'Risk Level', 'Score'],
     'IP / Subnets': ['URL', 'IP Address', 'Port', 'Type', 'Risk Level', 'Score'],
-    'APIs':       ['URL', 'Type', 'Risk Level', 'Score', 'Sensitivity Tier', 'Discovery'],
+    'APIs': ['URL', 'Type', 'Risk Level', 'Score', 'Sensitivity Tier', 'Discovery'],
   };
   const rows: Record<Tab, (a: any) => string[]> = {
-    'Domains':    a => [a.url, a.type, a.risk_level, a.score, a.quantum_safe_status ?? '', a.discovery, a.data_sensitivity_tier ?? '', a.scan_timestamp ?? ''],
-    'SSL':        a => [a.url, a.tls_version ?? '', a.cert_algorithm ?? '', a.cert_issuer ?? '', a.cert_expiry ?? '', a.risk_level, a.score],
+    'Domains': a => [a.url, a.type, a.risk_level, a.score, a.quantum_safe_status ?? '', a.discovery, a.data_sensitivity_tier ?? '', a.scan_timestamp ?? ''],
+    'SSL': a => [a.url, a.tls_version ?? '', a.cert_algorithm ?? '', a.cert_issuer ?? '', a.cert_expiry ?? '', a.risk_level, a.score],
     'IP / Subnets': a => [a.url, a.ip_address ?? '', a.port ?? '', a.type, a.risk_level, a.score],
-    'APIs':       a => [a.url, a.type, a.risk_level, a.score, a.data_sensitivity_tier ?? '', a.discovery],
+    'APIs': a => [a.url, a.type, a.risk_level, a.score, a.data_sensitivity_tier ?? '', a.discovery],
   };
   const h = headers[tab];
   const r = rows[tab];
@@ -224,8 +224,8 @@ export default function AssetInventoryPage() {
   const assets: any[] = rawAssets as any[];
 
   // ── Derived tab datasets ──────────────────────────────────────────────────
-  const sslAssets  = useMemo(() => assets.filter(a => a.tls_version || a.cert_algorithm), [assets]);
-  const ipAssets   = useMemo(() => assets.filter(a => a.ip_address), [assets]);
+  const sslAssets = useMemo(() => assets.filter(a => a.tls_version || a.cert_algorithm), [assets]);
+  const ipAssets = useMemo(() => assets.filter(a => a.ip_address), [assets]);
   const apiAssets = useMemo(() => {
     const result: any[] = [];
     for (const a of assets) {
@@ -249,24 +249,24 @@ export default function AssetInventoryPage() {
   }, [assets]);
 
   const tabData: Record<Tab, any[]> = {
-    'Domains':      assets,
-    'SSL':          sslAssets,
+    'Domains': assets,
+    'SSL': sslAssets,
     'IP / Subnets': ipAssets,
-    'APIs':         apiAssets,
+    'APIs': apiAssets,
   };
 
   const tabCounts: Record<Tab, number> = {
-    'Domains':      assets.length,
-    'SSL':          sslAssets.length,
+    'Domains': assets.length,
+    'SSL': sslAssets.length,
     'IP / Subnets': ipAssets.length,
-    'APIs':         apiAssets.length,
+    'APIs': apiAssets.length,
   };
 
   const tabIcons: Record<Tab, React.ReactNode> = {
-    'Domains':      <Globe size={14} />,
-    'SSL':          <Shield size={14} />,
+    'Domains': <Globe size={14} />,
+    'SSL': <Shield size={14} />,
     'IP / Subnets': <Network size={14} />,
-    'APIs':         <Code2 size={14} />,
+    'APIs': <Code2 size={14} />,
   };
 
   // ── Filter + search ───────────────────────────────────────────────────────
@@ -293,7 +293,7 @@ export default function AssetInventoryPage() {
 
   // ── KPI counts ────────────────────────────────────────────────────────────
   const criticalCount = assets.filter(a => (a.risk_level ?? '').toUpperCase() === 'CRITICAL').length;
-  const shadowCount   = assets.filter(a => a.discovery === 'Shadow').length;
+  const shadowCount = assets.filter(a => a.discovery === 'Shadow').length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -322,10 +322,10 @@ export default function AssetInventoryPage() {
       {/* ── Summary KPIs ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Assets',   value: assets.length,  color: '#6366f1' },
-          { label: 'SSL / TLS',      value: sslAssets.length, color: '#06b6d4' },
-          { label: 'Critical Risk',  value: criticalCount,  color: '#EF4444' },
-          { label: 'Shadow Assets',  value: shadowCount,    color: '#F97316' },
+          { label: 'Total Assets', value: assets.length, color: '#6366f1' },
+          { label: 'SSL / TLS', value: sslAssets.length, color: '#06b6d4' },
+          { label: 'Critical Risk', value: criticalCount, color: '#EF4444' },
+          { label: 'Shadow Assets', value: shadowCount, color: '#F97316' },
         ].map(k => (
           <div key={k.label} className="card-sm text-center"
             style={{ borderColor: `${k.color}33`, background: `${k.color}0d` }}>
@@ -352,11 +352,10 @@ export default function AssetInventoryPage() {
         <div className="flex items-center gap-1.5 flex-wrap">
           {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE'] as RiskFilter[]).map(r => (
             <button key={r} onClick={() => setRiskFilter(r)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                riskFilter === r
+              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${riskFilter === r
                   ? 'text-white border-transparent'
                   : 'bg-surface-card text-secondary border-glass-border hover:text-primary'
-              }`}
+                }`}
               style={riskFilter === r ? { background: RISK_COLORS[r] ?? '#6366f1', borderColor: RISK_COLORS[r] ?? '#6366f1' } : {}}>
               {r}
             </button>
@@ -368,11 +367,10 @@ export default function AssetInventoryPage() {
       <div className="flex flex-wrap gap-2">
         {(Object.keys(tabCounts) as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${
-              tab === t
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${tab === t
                 ? 'bg-primary-indigo text-white border-primary-indigo shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
                 : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
-            }`}>
+              }`}>
             {tabIcons[t]} {t} ({tabCounts[t]})
           </button>
         ))}
@@ -398,10 +396,10 @@ export default function AssetInventoryPage() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            {tab === 'Domains'      && <DomainsTable assets={filtered} onRowClick={handleRowClick} />}
-            {tab === 'SSL'          && <SSLTable     assets={filtered} onRowClick={handleRowClick} />}
-            {tab === 'IP / Subnets' && <IPTable      assets={filtered} onRowClick={handleRowClick} />}
-            {tab === 'APIs'         && <APIsTable    assets={filtered} onRowClick={handleRowClick} />}
+            {tab === 'Domains' && <DomainsTable assets={filtered} onRowClick={handleRowClick} />}
+            {tab === 'SSL' && <SSLTable assets={filtered} onRowClick={handleRowClick} />}
+            {tab === 'IP / Subnets' && <IPTable assets={filtered} onRowClick={handleRowClick} />}
+            {tab === 'APIs' && <APIsTable assets={filtered} onRowClick={handleRowClick} />}
           </div>
         )}
         <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">

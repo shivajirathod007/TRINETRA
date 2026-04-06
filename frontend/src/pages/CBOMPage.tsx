@@ -379,7 +379,10 @@ export default function CBOMPage() {
     return cbomData.components.map((c: any) => ({
       url:          c.url ?? c.name ?? '—',
       type:         c.type ?? 'web_service',
-      status:       (c.status ?? c.risk_level ?? 'UNKNOWN').toUpperCase(),
+      // status = PQC classification: QUANTUM_VULNERABLE / PQC_READY / FULLY_QUANTUM_SAFE / UNKNOWN
+      status:       (c.status ?? 'UNKNOWN').toUpperCase(),
+      // risk_level = CRITICAL / HIGH / MEDIUM / LOW / SAFE
+      risk_level:   (c.risk_level ?? 'UNKNOWN').toUpperCase(),
       score:        c.score ?? c.quantum_exposure_score ?? 0,
       is_shadow:    !!c.is_shadow,
       tls:          toStr(c.tls ?? c.tls_version ?? null) || null,
@@ -392,34 +395,38 @@ export default function CBOMPage() {
   }, [cbomData]);
 
   // ── Filter + sort ──────────────────────────────────────────────────────────
-  const RISK_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, SAFE: 4, UNKNOWN: 5, PQC_READY: 6 };
+  const RISK_ORDER: Record<string, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3, SAFE: 4, UNKNOWN: 5 };
+  const PQC_ORDER: Record<string, number>  = { QUANTUM_VULNERABLE: 0, PQC_READY: 1, FULLY_QUANTUM_SAFE: 2, UNKNOWN: 3 };
   const TLS_ORDER: Record<string, number>  = { TLS_1_0: 0, TLS_1_1: 1, TLS_1_2: 2, TLS_1_3: 3 };
 
   const filteredComponents = useMemo(() => {
-    let list = filterStatus === 'ALL' ? allComponents : allComponents.filter(c => c.status === filterStatus);
-    if (sortBy === 'risk')  list = [...list].sort((a, b) => (RISK_ORDER[a.status] ?? 9) - (RISK_ORDER[b.status] ?? 9));
+    let list = filterStatus === 'ALL'
+      ? allComponents
+      : allComponents.filter(c => c.status === filterStatus || c.risk_level === filterStatus);
+    if (sortBy === 'risk')  list = [...list].sort((a, b) => (RISK_ORDER[a.risk_level] ?? 9) - (RISK_ORDER[b.risk_level] ?? 9));
     if (sortBy === 'tls')   list = [...list].sort((a, b) => (TLS_ORDER[a.tls] ?? 9) - (TLS_ORDER[b.tls] ?? 9));
     if (sortBy === 'cert')  list = [...list].sort((a, b) => (a.cert ?? '').localeCompare(b.cert ?? ''));
     return list;
   }, [allComponents, filterStatus, sortBy]);
 
-  // ── Stats ──────────────────────────────────────────────────────────────────
+  // ── Stats — use PQC status for PQC counts, risk_level for risk counts ──────
   const stats = useMemo(() => {
-    const critCount  = allComponents.filter(c => c.status === 'CRITICAL').length;
-    const highCount  = allComponents.filter(c => c.status === 'HIGH').length;
+    const vulnCount  = allComponents.filter(c => c.status === 'QUANTUM_VULNERABLE').length;
     const readyCount = allComponents.filter(c => c.status === 'PQC_READY').length;
-    const safeCount  = allComponents.filter(c => c.status === 'SAFE').length;
+    const safeCount  = allComponents.filter(c => c.status === 'FULLY_QUANTUM_SAFE').length;
+    const critCount  = allComponents.filter(c => c.risk_level === 'CRITICAL').length;
+    const highCount  = allComponents.filter(c => c.risk_level === 'HIGH').length;
     const shadowCount = allComponents.filter(c => c.is_shadow).length;
     const orgScore = cbomData?.organization_summary?.organization_quantum_exposure_score
       ?? (allComponents.length ? Math.round(allComponents.reduce((s, c) => s + (c.score || 0), 0) / allComponents.length) : 0);
-    return { critCount, highCount, readyCount, safeCount, shadowCount, total: allComponents.length, orgScore };
+    return { vulnCount, readyCount, safeCount, critCount, highCount, shadowCount, total: allComponents.length, orgScore };
   }, [allComponents, cbomData]);
 
   // ── Chart data ─────────────────────────────────────────────────────────────
   const riskChartData = useMemo(() => {
     const counts: Record<string, number> = {};
-    allComponents.forEach(c => { counts[c.status] = (counts[c.status] || 0) + 1; });
-    const colorMap: Record<string, string> = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#3b82f6', SAFE: '#22c55e', PQC_READY: '#8b5cf6', UNKNOWN: '#475569' };
+    allComponents.forEach(c => { counts[c.risk_level] = (counts[c.risk_level] || 0) + 1; });
+    const colorMap: Record<string, string> = { CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#eab308', LOW: '#3b82f6', SAFE: '#22c55e', UNKNOWN: '#475569' };
     return Object.entries(counts).map(([name, value]) => ({ name, value, color: colorMap[name] || '#475569' }));
   }, [allComponents]);
 
@@ -437,7 +444,14 @@ export default function CBOMPage() {
     a.click(); URL.revokeObjectURL(url);
   };
 
-  const statusFilters = ['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE'];
+  const statusFilters = ['ALL', 'QUANTUM_VULNERABLE', 'PQC_READY', 'FULLY_QUANTUM_SAFE', 'UNKNOWN'];
+  const statusFilterLabels: Record<string, string> = {
+    'ALL': 'ALL',
+    'QUANTUM_VULNERABLE': 'VULNERABLE',
+    'PQC_READY': 'PQC READY',
+    'FULLY_QUANTUM_SAFE': 'SAFE',
+    'UNKNOWN': 'UNKNOWN',
+  };
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto w-full">
@@ -510,12 +524,12 @@ export default function CBOMPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
             {
-              key: 'CRITICAL',
+              key: 'QUANTUM_VULNERABLE',
               label: 'Quantum Vulnerable',
               sublabel: 'RSA/ECDSA/ECDHE — broken by CRQC via Shor\'s algorithm',
               color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)',
               icon: <AlertTriangle size={20} className="text-red-400" />,
-              count: stats.critCount,
+              count: stats.vulnCount,
             },
             {
               key: 'PQC_READY',
@@ -526,7 +540,7 @@ export default function CBOMPage() {
               count: stats.readyCount,
             },
             {
-              key: 'SAFE',
+              key: 'FULLY_QUANTUM_SAFE',
               label: 'Quantum Safe',
               sublabel: 'NIST FIPS 203/204/205 — fully post-quantum protected',
               color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)',
@@ -565,9 +579,9 @@ export default function CBOMPage() {
         {[
           { label: 'ORG RISK SCORE', value: stats.orgScore, unit: '/100', color: stats.orgScore > 70 ? '#ef4444' : stats.orgScore > 40 ? '#f97316' : '#22c55e', icon: <TrendingUp size={40} className="absolute right-0 bottom-0 opacity-10" /> },
           { label: 'TOTAL ASSETS',   value: stats.total,    unit: '',     color: '#e2e8f0', icon: <Globe size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'CRITICAL',       value: stats.critCount, unit: '',    color: '#ef4444', icon: <AlertTriangle size={40} className="absolute right-0 bottom-0 opacity-10 text-red-400" /> },
-          { label: 'PQC READY',      value: stats.readyCount, unit: '',   color: '#8b5cf6', icon: <Shield size={40} className="absolute right-0 bottom-0 opacity-10 text-purple-400" /> },
-          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',    color: '#22c55e', icon: <CheckCircle2 size={40} className="absolute right-0 bottom-0 opacity-10 text-green-400" /> },
+          { label: 'VULNERABLE',     value: stats.vulnCount, unit: '',   color: '#ef4444', icon: <AlertTriangle size={40} className="absolute right-0 bottom-0 opacity-10 text-red-400" /> },
+          { label: 'PQC READY',      value: stats.readyCount, unit: '',  color: '#8b5cf6', icon: <Shield size={40} className="absolute right-0 bottom-0 opacity-10 text-purple-400" /> },
+          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',   color: '#22c55e', icon: <CheckCircle2 size={40} className="absolute right-0 bottom-0 opacity-10 text-green-400" /> },
         ].map(t => (
           <div key={t.label} className="glass-card border rounded-xl p-5 relative overflow-hidden flex flex-col justify-center">
             <div className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">{t.label}</div>
@@ -593,7 +607,7 @@ export default function CBOMPage() {
                 {statusFilters.map(f => (
                   <button key={f} onClick={() => setFilterStatus(f)}
                     className={`px-2.5 py-1 text-[10px] font-bold rounded-md border transition-all ${filterStatus === f ? 'bg-primary-indigo text-white border-primary-indigo' : 'border-glass-border text-secondary hover:text-primary'}`}>
-                    {f}
+                    {statusFilterLabels[f] ?? f}
                   </button>
                 ))}
               </div>
@@ -640,7 +654,7 @@ export default function CBOMPage() {
                           ) : <span className="text-secondary text-xs">—</span>}
                         </td>
                         <td className="py-3 px-2 text-[10px] font-mono text-secondary max-w-[120px] truncate" title={row.cert}>{row.cert || '—'}</td>
-                        <td className="py-3 px-2"><RiskBadge level={row.status} size="sm" /></td>
+                        <td className="py-3 px-2"><RiskBadge level={row.risk_level} size="sm" /></td>
                         <td className="py-3 px-2">
                           <div className="flex items-center gap-2">
                             <span className="font-black font-mono text-xs w-6">{row.score}</span>

@@ -65,8 +65,13 @@ async def list_cbom(
                 "cert_expiry": a.cert_expiry.isoformat()[:10] if a.cert_expiry else None,
                 "issuer": a.cert_issuer or comp.get("cert_issuer", "—"),
                 "cert_issuer": a.cert_issuer,
-                "status": a.risk_level or comp.get("status", "UNKNOWN"),
-                "risk_level": a.risk_level,
+                # status = PQC classification (QUANTUM_VULNERABLE / PQC_READY / FULLY_QUANTUM_SAFE)
+                "status": a.quantum_safe_status or "UNKNOWN",
+                "risk_level": a.risk_level or "UNKNOWN",
+                "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+                "quantum_exposure_score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+                "is_shadow": a.is_shadow_asset,
+                "type": a.asset_type,
             })
         else:
             components.append({
@@ -82,8 +87,13 @@ async def list_cbom(
                 "cert_expiry": a.cert_expiry.isoformat()[:10] if a.cert_expiry else None,
                 "issuer": a.cert_issuer or "—",
                 "cert_issuer": a.cert_issuer,
-                "status": a.risk_level or "UNKNOWN",
-                "risk_level": a.risk_level,
+                # status = PQC classification (QUANTUM_VULNERABLE / PQC_READY / FULLY_QUANTUM_SAFE)
+                "status": a.quantum_safe_status or "UNKNOWN",
+                "risk_level": a.risk_level or "UNKNOWN",
+                "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+                "quantum_exposure_score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+                "is_shadow": a.is_shadow_asset,
+                "type": a.asset_type,
             })
         if a.cert_algorithm:
             algo_counter[a.cert_algorithm] += 1
@@ -91,10 +101,29 @@ async def list_cbom(
             tls_counter[a.tls_version_active] += 1
         if a.cert_issuer:
             issuer_counter[a.cert_issuer] += 1
+    # Count PQC status distribution from actual quantum_safe_status
+    pqc_counts = {"QUANTUM_VULNERABLE": 0, "PQC_READY": 0, "FULLY_QUANTUM_SAFE": 0, "UNKNOWN": 0}
+    risk_counts = {"CRITICAL": 0, "HIGH": 0, "MEDIUM": 0, "LOW": 0, "SAFE": 0}
+    for a in assets:
+        pqc_key = a.quantum_safe_status or "UNKNOWN"
+        if pqc_key in pqc_counts:
+            pqc_counts[pqc_key] += 1
+        else:
+            pqc_counts["UNKNOWN"] += 1
+        risk_key = a.risk_level or "UNKNOWN"
+        if risk_key in risk_counts:
+            risk_counts[risk_key] += 1
+
     colors = ["#6366F1", "#22C55E", "#F97316", "#EAB308", "#EF4444"]
     algorithm_distribution = [{"name": k, "count": v} for k, v in algo_counter.most_common(10)]
     tls_distribution = [{"name": k, "value": v, "color": colors[i % len(colors)]} for i, (k, v) in enumerate(tls_counter.most_common())]
     issuer_breakdown = dict(issuer_counter)
+
+    org_score = 0.0
+    scores = [a.quantum_exposure_score for a in assets if a.quantum_exposure_score is not None]
+    if scores:
+        org_score = round(sum(scores) / len(scores), 1)
+
     return {
         "domain": domain or "",
         "scan_id": sid,
@@ -104,6 +133,14 @@ async def list_cbom(
         "metadata": {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "component": {"type": "application", "name": domain or sid},
+        },
+        "organization_summary": {
+            "domain": domain or "",
+            "organization_quantum_exposure_score": org_score,
+            "total_assets_scanned": len(assets),
+            "pqc_distribution": pqc_counts,
+            "risk_distribution": risk_counts,
+            "shadow_assets_found": sum(1 for a in assets if a.is_shadow_asset),
         },
         "components": components,
         "algorithm_distribution": algorithm_distribution,

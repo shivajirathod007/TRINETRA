@@ -419,3 +419,243 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
     </div>
   );
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function cleanDomain(input: string): string {
+  let d = input.trim().toLowerCase();
+  if (d.startsWith('https://')) d = d.slice(8);
+  if (d.startsWith('http://'))  d = d.slice(7);
+  d = d.split('/')[0].split(':')[0];
+  if (d.startsWith('www.')) d = d.slice(4);
+  return d;
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function DiscoveryPage() {
+  useAutoLoadScan();
+  const { activeScanId, activeDomain, setActiveScan } = useScanStore();
+  const { data: assets = [], isLoading } = useAssets(activeScanId);
+  const { data: scanStatus } = useScanStatus(activeScanId);
+
+  const [search, setSearch] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [category, setCategory] = useState<Category>('Domains');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  const navigate = useNavigate();
+
+  const company = activeDomain ? activeDomain.split('.')[0].toUpperCase() : '—';
+
+  const filteredAssets = useMemo(() => {
+    if (statusFilter === 'All') return assets;
+    return assets.filter((a: any) =>
+      statusFilter === 'Shadow' ? a.discovery === 'Shadow' : a.discovery === 'Known'
+    );
+  }, [assets, statusFilter]);
+
+  const domainsData = useMemo(() =>
+    filteredAssets.map((a: any) => ({
+      date: a.scan_timestamp ?? '—',
+      domain: a.url ?? '—',
+      type: a.type ?? '—',
+      risk: a.risk_level ?? 'UNKNOWN',
+      discovery: a.discovery ?? 'Known',
+    })), [filteredAssets]);
+
+  const sslData = useMemo(() =>
+    filteredAssets
+      .filter((a: any) => a.cert_issuer || a.cert_sha256 || a.cert_subject)
+      .map((a: any) => ({
+        date: a.scan_timestamp ?? '—',
+        fingerprint: a.cert_sha256 ?? '—',
+        expiry: a.cert_expiry ?? '—',
+        commonName: a.cert_subject ?? '—',
+        ca: a.cert_issuer ?? '—',
+      })), [filteredAssets]);
+
+  const ipData = useMemo(() =>
+    filteredAssets
+      .filter((a: any) => a.ip_address)
+      .map((a: any) => ({
+        date: a.scan_timestamp ?? '—',
+        ip: a.ip_address,
+        port: a.port ?? '—',
+        tlsVersion: a.tls_version ?? '—',
+        type: a.type ?? '—',
+      })), [filteredAssets]);
+
+  const softwareData = useMemo(() =>
+    filteredAssets.map((a: any) => ({
+      date: a.scan_timestamp ?? '—',
+      type: a.type ?? '—',
+      tlsVersion: a.tls_version ?? '—',
+      cipherSuite: a.cipher_suite ?? '—',
+      port: a.port ?? '—',
+      host: a.ip_address ?? '—',
+    })), [filteredAssets]);
+
+  const CATEGORY_COUNTS: Record<Category, number> = {
+    'Domains':            domainsData.length,
+    'SSL':                sslData.length,
+    'IP Address/Subnets': ipData.length,
+    'Software':           softwareData.length,
+  };
+
+  const STATUS_COUNTS: Record<StatusFilter, number> = {
+    'All':    assets.length,
+    'Shadow': assets.filter((a: any) => a.discovery === 'Shadow').length,
+    'Known':  assets.filter((a: any) => a.discovery === 'Known').length,
+  };
+
+  const handleInitiate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!search.trim() || isScanning) return;
+    const domain = cleanDomain(search);
+    if (!domain) return;
+    setIsScanning(true);
+    try {
+      const result = await scanApi.initiate(domain);
+      setActiveScan(result.scan_id, domain);
+      navigate(`/scan/${encodeURIComponent(domain)}`, { state: { scanId: result.scan_id } });
+    } catch (err) {
+      console.error(err);
+      setIsScanning(false);
+    }
+  };
+
+  const isRunning = scanStatus?.status?.toLowerCase() === 'running' || scanStatus?.status?.toLowerCase() === 'pending';
+  const critCount  = assets.filter((a: any) => a.risk_level === 'CRITICAL').length;
+  const shadowCount = assets.filter((a: any) => a.discovery === 'Shadow' || a.is_shadow_asset).length;
+
+  return (
+    <div className="flex flex-col gap-5 max-w-7xl mx-auto w-full">
+      <SectionHeader
+        title="Asset Discovery"
+        subtitle="Deep network exposure intelligence & CT log mining"
+      />
+
+      {/* ── KPI strip ─────────────────────────────────────────────── */}
+      {assets.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Assets',   value: assets.length,  color: '#6366f1', icon: <Globe size={16} /> },
+            { label: 'SSL / TLS',      value: sslData.length, color: '#06b6d4', icon: <Lock size={16} /> },
+            { label: 'Critical Risk',  value: critCount,      color: '#ef4444', icon: <AlertTriangle size={16} /> },
+            { label: 'Shadow Assets',  value: shadowCount,    color: '#f97316', icon: <Wifi size={16} /> },
+          ].map(k => (
+            <div key={k.label} className="glass-card border rounded-xl px-4 py-3 flex items-center gap-3"
+              style={{ borderColor: `${k.color}28`, background: `${k.color}08` }}>
+              <div className="opacity-60" style={{ color: k.color }}>{k.icon}</div>
+              <div>
+                <div className="text-xl font-black font-mono" style={{ color: k.color }}>{k.value}</div>
+                <div className="text-[10px] text-secondary uppercase tracking-wider font-semibold">{k.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Live Topology ─────────────────────────────────────────── */}
+      <LiveTopologyGraph assets={assets} domain={activeDomain ?? ''} />
+
+      {/* ── Scan input ────────────────────────────────────────────── */}
+      <form onSubmit={handleInitiate} className="w-full">
+        <div className="glass-card border rounded-xl overflow-hidden"
+          style={{ borderColor: 'rgba(99,102,241,0.25)', boxShadow: '0 0 30px rgba(99,102,241,0.08)' }}>
+          <div className="flex items-center p-2 border-b border-glass-border">
+            <Search size={20} className="text-indigo-400 ml-4 mr-3 shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full bg-transparent text-primary placeholder-secondary focus:outline-none py-3 text-base font-mono font-medium"
+              placeholder="Search domain, URL, contact, IoC or other..."
+            />
+            <button
+              type="submit"
+              disabled={isScanning || !search.trim()}
+              className="px-6 py-2.5 bg-indigo-500 text-white font-bold uppercase tracking-widest text-xs rounded-lg hover:bg-indigo-600 transition-all whitespace-nowrap ml-2 mr-1 disabled:opacity-50 flex items-center gap-2"
+            >
+              {isScanning ? <RefreshCw size={13} className="animate-spin" /> : null}
+              {isScanning ? 'Scanning…' : 'Scan Now'}
+            </button>
+          </div>
+          {activeDomain && (
+            <div className="bg-surface-card-hover px-5 py-2.5 flex items-center gap-4 text-xs flex-wrap">
+              <span className="text-secondary font-mono">Active domain:</span>
+              <span className="text-primary font-bold font-mono">{activeDomain}</span>
+              {isRunning && (
+                <span className="flex items-center gap-1.5 text-amber-400">
+                  <RefreshCw size={11} className="animate-spin" />
+                  Scanning… {(scanStatus as any)?.progress ?? 0}%
+                </span>
+              )}
+              {scanStatus?.status?.toLowerCase() === 'completed' && (
+                <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                  ✓ Scan complete — {(scanStatus as any)?.assets_found ?? assets.length} assets found
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </form>
+
+      {/* ── Category tabs ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(CATEGORY_COUNTS) as Category[]).map(cat => (
+          <button key={cat} onClick={() => setCategory(cat)}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${
+              category === cat
+                ? 'bg-indigo-500 text-white border-indigo-500 shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
+                : 'bg-surface-card text-secondary hover:text-primary hover:bg-surface-card-hover border-glass-border'
+            }`}>
+            {CATEGORY_ICONS[cat]} {cat} ({CATEGORY_COUNTS[cat]})
+          </button>
+        ))}
+      </div>
+
+      {/* ── Status filter ─────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-bold text-secondary uppercase tracking-widest">Status:</span>
+        {(Object.keys(STATUS_COUNTS) as StatusFilter[]).map(s => (
+          <button key={s} onClick={() => setStatusFilter(s)}
+            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all border ${
+              statusFilter === s
+                ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]'
+                : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
+            }`}>
+            {s} ({STATUS_COUNTS[s]})
+          </button>
+        ))}
+      </div>
+
+      {/* ── Data table ────────────────────────────────────────────── */}
+      <div className="glass-card border rounded-xl overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16 text-secondary gap-3">
+            <LoadingSpinner size={22} /> Loading assets…
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            {category === 'Domains'            && <DomainsTable  company={company} data={domainsData} />}
+            {category === 'SSL'                && <SSLTable      company={company} data={sslData} />}
+            {category === 'IP Address/Subnets' && <IPTable       company={company} data={ipData} />}
+            {category === 'Software'           && <SoftwareTable company={company} data={softwareData} />}
+          </div>
+        )}
+        {!isLoading && (
+          <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">
+            <span>Showing {
+              category === 'Domains' ? domainsData.length :
+              category === 'SSL' ? sslData.length :
+              category === 'IP Address/Subnets' ? ipData.length :
+              softwareData.length
+            } assets</span>
+            <span>TRINETRA — Quantum Exposure Intelligence Platform</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

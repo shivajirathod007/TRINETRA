@@ -39,7 +39,7 @@ async def _latest_scan_id_for_domain(db: AsyncSession, domain: str):
 async def list_assets(
     scan_id: Optional[str] = None,
     domain: Optional[str] = None,
-    limit: int = 100,
+    limit: int = 500,
     db: AsyncSession = Depends(get_db),
 ):
     """List scanned assets, optionally filtered by scan_id or domain."""

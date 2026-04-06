@@ -240,11 +240,18 @@ class ScanRepository:
         if not latest_scan:
             return {}
 
+        # Count actual asset rows in DB (includes API-crawled sub-endpoints)
+        count_result = await self.db.execute(
+            select(func.count(ScannedAsset.id))
+            .where(ScannedAsset.scan_job_id == latest_scan.id)
+        )
+        actual_asset_count = count_result.scalar() or latest_scan.assets_scanned or 0
+
         return {
             "scan_id": str(latest_scan.id),
             "domain": latest_scan.domain,
             "organization_score": latest_scan.organization_score,
-            "assets_scanned": latest_scan.assets_scanned,
+            "assets_scanned": actual_asset_count,
             "critical_count": latest_scan.critical_count,
             "high_count": latest_scan.high_count,
             "medium_count": latest_scan.medium_count,

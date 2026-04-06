@@ -66,10 +66,10 @@ export function useAssetDetail(assetId: string | null) {
 
 // ── Dashboard hooks ───────────────────────────────────────────────────────────
 
-export function useDashboard(domain: string | null) {
+export function useDashboard(domain: string | null, scanId?: string | null) {
   return useQuery({
-    queryKey: ['dashboard', domain],
-    queryFn: () => dashboardApi.getStats(domain!),
+    queryKey: ['dashboard', domain, scanId],
+    queryFn: () => dashboardApi.getStats(domain!, scanId),
     enabled: !!domain,
   })
 }

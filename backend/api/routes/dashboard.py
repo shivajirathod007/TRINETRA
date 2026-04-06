@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 import uuid
@@ -156,7 +157,7 @@ async def get_dashboard_global(db: AsyncSession = Depends(get_db), current_user:
 
 
 @router.get("/{domain:path}")
-async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
+async def get_dashboard_summary(domain: str, scan_id: Optional[str] = None, db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """Return aggregate cryptographic exposure metrics for a domain."""
     # Normalize domain — strip protocol, trailing slash, www prefix
     domain = domain.lower().strip()
@@ -165,7 +166,41 @@ async def get_dashboard_summary(domain: str, db: AsyncSession = Depends(get_db),
             domain = domain[len(prefix):]
     domain = domain.rstrip("/").removeprefix("www.")
     repo = ScanRepository(db)
-    stats = await repo.get_dashboard_stats(domain)
+
+    # If a specific scan_id is provided, use it directly instead of domain lookup
+    if scan_id:
+        try:
+            uid = uuid.UUID(scan_id)
+        except ValueError:
+            uid = None
+        if uid:
+            result = await db.execute(select(ScanJob).where(ScanJob.id == uid))
+            scan_job = result.scalar_one_or_none()
+            if scan_job:
+                # Count actual asset rows in DB (includes API-crawled sub-endpoints)
+                count_result = await db.execute(
+                    select(func.count(ScannedAsset.id))
+                    .where(ScannedAsset.scan_job_id == uid)
+                )
+                actual_asset_count = count_result.scalar() or 0
+                stats = {
+                    "scan_id": str(scan_job.id),
+                    "domain": scan_job.domain,
+                    "organization_score": scan_job.organization_score,
+                    "assets_scanned": actual_asset_count,
+                    "critical_count": scan_job.critical_count or 0,
+                    "high_count": scan_job.high_count or 0,
+                    "medium_count": scan_job.medium_count or 0,
+                    "low_count": scan_job.low_count or 0,
+                    "safe_count": scan_job.safe_count or 0,
+                    "shadow_assets_found": scan_job.shadow_assets_found or 0,
+                }
+            else:
+                stats = None
+        else:
+            stats = None
+    else:
+        stats = await repo.get_dashboard_stats(domain)
     if not stats:
         return {
             "domain": domain,

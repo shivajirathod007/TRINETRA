@@ -419,8 +419,8 @@ type Tab = 'overview' | 'schedule' | 'ondemand';
 
 export default function ReportingPage() {
   useAutoLoadScan();
-  const { activeDomain } = useScanStore();
-  const { data: stats } = useDashboard(activeDomain || null);
+  const { activeScanId, activeDomain } = useScanStore();
+  const { data: stats } = useDashboard(activeDomain || null, activeScanId);
   
   const [tab, setTab] = useState<Tab>('overview');
 
