@@ -25,10 +25,16 @@ log = get_logger(__name__)
 
 
 @celery_app.task(name="orchestrator.run_full_scan", bind=True)
-def run_full_scan(self, scan_id: str, domain: str) -> dict:
+def run_full_scan(self, scan_id: str, domain: str, scan_scope: str = "full") -> dict:
     """
     Entry point for a complete domain scan.
     Called by the FastAPI route handler immediately after scan creation.
+    
+    Args:
+        scan_id: Unique scan identifier
+        domain: Root domain to scan
+        scan_scope: "full" (default) discovers and scans all subdomains from CT logs,
+                   "root_only" scans only the provided domain
 
     This task itself is lightweight — it just wires up the pipeline.
     """
@@ -43,7 +49,7 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
 
         # Run discovery synchronously within this task
         # (discovery is fast — CT log + DNS + ports takes ~30s total)
-        assets_data = _run_discovery_sync(scan_id, domain)
+        assets_data = _run_discovery_sync(scan_id, domain, scan_scope)
 
         if not assets_data:
             log.warning("no_assets_discovered", scan_id=scan_id, domain=domain)
@@ -82,10 +88,16 @@ def run_full_scan(self, scan_id: str, domain: str) -> dict:
         raise
 
 
-def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
+def _run_discovery_sync(scan_id: str, domain: str, scan_scope: str = "root_only") -> list[dict]:
     """
     Runs discovery phase synchronously within the orchestrator task.
     Returns list of asset dicts ready for per-asset scan dispatch.
+    
+    Args:
+        scan_id: Unique scan identifier
+        domain: Root domain to scan
+        scan_scope: "root_only" scans only the provided domain,
+                   "full" discovers and scans all subdomains from CT logs
 
     Resilience contract:
     - CT log mining never raises — CTLogMiner falls back internally.
@@ -107,7 +119,7 @@ def _run_discovery_sync(scan_id: str, domain: str) -> list[dict]:
 
         # ── Step 1: CT Log Mining (always succeeds — internal fallbacks) ───────
         miner = CTLogMiner()
-        ct_entries = await miner.mine(domain)
+        ct_entries = await miner.mine(domain, root_only=(scan_scope == "root_only"))
 
         # Track which sources were actually used for progress display
         sources_used = list({e.source for e in ct_entries})

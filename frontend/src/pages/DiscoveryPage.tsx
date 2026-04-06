@@ -247,6 +247,21 @@ function TopologyGraph({ assets, domain }: { assets: any[]; domain: string }) {
   );
 }
 
+/** Strip scheme, path, port, and www. from any user-inputted URL/domain. */
+function cleanDomain(input: string): string {
+  let d = input.trim().toLowerCase();
+  // Remove scheme
+  if (d.startsWith('https://')) d = d.slice(8);
+  if (d.startsWith('http://'))  d = d.slice(7);
+  // Remove path (everything from first /)
+  d = d.split('/')[0];
+  // Remove port
+  d = d.split(':')[0];
+  // Remove www. prefix
+  if (d.startsWith('www.')) d = d.slice(4);
+  return d;
+}
+
 export default function DiscoveryPage() {
   useAutoLoadScan();
   const { activeScanId, activeDomain, setActiveScan } = useScanStore();
@@ -326,11 +341,13 @@ export default function DiscoveryPage() {
   const handleInitiate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!search.trim() || isScanning) return;
+    const domain = cleanDomain(search);
+    if (!domain) return;
     setIsScanning(true);
     try {
-      const result = await scanApi.initiate(search.trim().toLowerCase());
-      setActiveScan(result.scan_id, search.trim().toLowerCase());
-      navigate(`/scan/${encodeURIComponent(search.trim().toLowerCase())}`, { state: { scanId: result.scan_id } });
+      const result = await scanApi.initiate(domain);
+      setActiveScan(result.scan_id, domain);
+      navigate(`/scan/${encodeURIComponent(domain)}`, { state: { scanId: result.scan_id } });
     } catch (err) {
       console.error(err);
       setIsScanning(false);
