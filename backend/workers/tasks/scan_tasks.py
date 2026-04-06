@@ -218,7 +218,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
                 ssh_result = res if res and not res.error else None
 
     # ── Extract primary algorithm ─────────────────────────────────────────────
-    primary_algorithm = _extract_primary_algorithm(tls_result, cert_info, ssh_result)
+    primary_algorithm = _extract_primary_algorithm(tls_result, cert_info, ssh_result, port)
     key_exchange = tls_result.key_exchange if tls_result else None
     jwt_algorithm = api_result.jwt_algorithm if api_result else None
 
@@ -521,11 +521,13 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     }
 
 
-def _extract_primary_algorithm(tls_result, cert_info, ssh_result) -> str:
+def _extract_primary_algorithm(tls_result, cert_info, ssh_result, port: int) -> str:
     """
     Returns the most quantum-relevant algorithm detected.
     Priority: cert signature > TLS KEX > SSH host key > fallback.
     """
+    if port == 80:
+        return "CLEARTEXT"
     if cert_info and cert_info.signature_algorithm not in ("UNKNOWN", None, ""):
         sig = cert_info.signature_algorithm.upper()
         bits = cert_info.key_length_bits or 2048

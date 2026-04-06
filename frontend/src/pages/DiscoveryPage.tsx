@@ -1,10 +1,13 @@
 /**
  * DiscoveryPage — Asset Discovery & Scan Initiation
- * All data is sourced from the backend — no hardcoded values.
+ * Enhanced with live topology visualization and improved UI.
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Globe, Shield, Network, Code2, ChevronRight, RefreshCw, AlertTriangle } from 'lucide-react';
+import {
+  Search, Globe, Shield, Network, Code2, ChevronRight,
+  RefreshCw, AlertTriangle, Wifi, Lock, Activity
+} from 'lucide-react';
 import { useScanStore } from '../store';
 import { useAssets, useScanStatus } from '../hooks';
 import { SectionHeader, LoadingSpinner } from '../components/shared';
@@ -30,19 +33,30 @@ const RISK_COLORS: Record<string, string> = {
   UNKNOWN:  'text-secondary',
 };
 
+function nodeColor(risk: string): string {
+  if (risk === 'CRITICAL') return '#ef4444';
+  if (risk === 'HIGH')     return '#f97316';
+  if (risk === 'MEDIUM')   return '#eab308';
+  if (risk === 'LOW')      return '#3b82f6';
+  if (risk === 'SAFE')     return '#22c55e';
+  return '#6366f1';
+}
+
 function EmptyRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols} className="px-5 py-10 text-center text-secondary text-sm">
+      <td colSpan={cols} className="px-4 py-10 text-center text-secondary text-sm">
         No data available for this scan yet.
       </td>
     </tr>
   );
 }
 
+// ─── Table components ─────────────────────────────────────────────────────────
+
 function DomainsTable({ company, data }: { company: string; data: any[] }) {
   return (
-    <table className="data-table w-full text-sm">
+    <table className="w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'Domain Name', 'Asset Type', 'Risk Level', 'Discovery', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
@@ -52,16 +66,19 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-primary font-medium">{row.domain}</td>
+            <td className="px-4 py-3 font-mono text-indigo-400 font-medium">{row.domain}</td>
             <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
             <td className={`px-4 py-3 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
             <td className="px-4 py-3 text-xs">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${row.discovery === 'Shadow' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${row.discovery === 'Shadow' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>
                 {row.discovery}
               </span>
             </td>
-            <td className="px-4 py-3 font-bold text-primary tracking-wide flex items-center justify-between">
-              {company} <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+            <td className="px-4 py-3 font-bold text-primary tracking-wide">
+              <div className="flex items-center justify-between">
+                {company}
+                <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
             </td>
           </tr>
         ))}
@@ -72,7 +89,7 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
 
 function SSLTable({ company, data }: { company: string; data: any[] }) {
   return (
-    <table className="data-table w-full text-sm">
+    <table className="w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'SSL SHA256 Fingerprint', 'Expires', 'Common Name', 'Certificate Authority', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
@@ -82,7 +99,7 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-primary text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
+            <td className="px-4 py-3 font-mono text-indigo-400 text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.expiry}</td>
             <td className="px-4 py-3 text-secondary text-xs">{row.commonName}</td>
             <td className="px-4 py-3 text-secondary text-xs">{row.ca}</td>
@@ -96,7 +113,7 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
 
 function IPTable({ company, data }: { company: string; data: any[] }) {
   return (
-    <table className="data-table w-full text-sm">
+    <table className="w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'IP Address', 'Port', 'TLS Version', 'Asset Type', 'Company'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
@@ -106,7 +123,7 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-primary font-medium">{row.ip}</td>
+            <td className="px-4 py-3 font-mono text-indigo-400 font-medium">{row.ip}</td>
             <td className="px-4 py-3 font-mono text-primary">{row.port ?? '—'}</td>
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
             <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
@@ -120,7 +137,7 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
 
 function SoftwareTable({ company, data }: { company: string; data: any[] }) {
   return (
-    <table className="data-table w-full text-sm">
+    <table className="w-full text-sm">
       <thead><tr className="bg-surface-card-hover">
         {['Detection Date', 'Asset Type', 'TLS Version', 'Cipher Suite', 'Port', 'Host', 'Company Name'].map(h => (
           <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
@@ -143,317 +160,262 @@ function SoftwareTable({ company, data }: { company: string; data: any[] }) {
   );
 }
 
-function TopologyGraph({ assets, domain }: { assets: any[]; domain: string }) {
-  const satellites = useMemo(() => {
+// ─── Live Topology Graph ──────────────────────────────────────────────────────
+
+interface TopoNode {
+  id: string;
+  label: string;
+  risk: string;
+  url: string;
+  type: string;
+  isShadow: boolean;
+  x: number;
+  y: number;
+}
+
+function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [hovered, setHovered] = useState<TopoNode | null>(null);
+  const [tooltip, setTooltip] = useState({ x: 0, y: 0 });
+  const [tick, setTick] = useState(0);
+
+  // Animate pulse every 3s
+  useEffect(() => {
+    const id = setInterval(() => setTick(t => t + 1), 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  const W = 900, H = 280;
+  const cx = W / 2, cy = H / 2;
+
+  const nodes: TopoNode[] = useMemo(() => {
     const seen = new Set<string>();
-    return assets
-      .filter(a => a.url)
-      .slice(0, 15)
-      .map(a => {
-        const label = (a.url as string)
-          .replace(/^https?:\/\//, '')
-          .replace(/\/$/, '')
-          .split('/')[0]
-          .slice(0, 12);
-        if (seen.has(label)) return null;
-        seen.add(label);
-        return { label, risk: a.risk_level as string };
-      })
-      .filter(Boolean) as { label: string; risk: string }[];
+    const result: TopoNode[] = [];
+    const unique = assets.filter(a => {
+      const key = (a.url || a.fqdn || '').replace(/^https?:\/\//, '').split('/')[0];
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, 20);
+
+    unique.forEach((a, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(unique.length, 1) - Math.PI / 2;
+      // Vary radius slightly by risk to create depth
+      const riskOffset = a.risk_level === 'CRITICAL' ? 20 : a.risk_level === 'HIGH' ? 10 : 0;
+      const r = 110 + riskOffset;
+      const label = (a.url || a.fqdn || '')
+        .replace(/^https?:\/\//, '')
+        .split('/')[0]
+        .slice(0, 14);
+      result.push({
+        id: a.id || String(i),
+        label,
+        risk: a.risk_level || 'UNKNOWN',
+        url: a.url || a.fqdn || '',
+        type: a.type || 'web_portal',
+        isShadow: !!a.is_shadow_asset || a.discovery === 'Shadow',
+        x: Math.round(cx + r * Math.cos(angle)),
+        y: Math.round(cy + r * Math.sin(angle)),
+      });
+    });
+    return result;
   }, [assets]);
 
-  const cx = 450, cy = 120, radius = 130;
-  const positions = satellites.map((_, i) => {
-    const angle = (2 * Math.PI * i) / Math.max(satellites.length, 1) - Math.PI / 2;
-    return {
-      x: Math.round(cx + radius * Math.cos(angle)),
-      y: Math.round(cy + radius * Math.sin(angle)),
-    };
-  });
-
   const rootLabel = domain ? domain.split('.')[0].toUpperCase().slice(0, 6) : 'ROOT';
-
-  const nodeColor = (risk: string) => {
-    if (risk === 'CRITICAL') return '#EF4444';
-    if (risk === 'HIGH')     return '#F97316';
-    if (risk === 'MEDIUM')   return '#EAB308';
-    if (risk === 'LOW')      return '#3B82F6';
-    if (risk === 'SAFE')     return '#22C55E';
-    return '#6366f1';
-  };
+  const critCount = nodes.filter(n => n.risk === 'CRITICAL').length;
+  const shadowCount = nodes.filter(n => n.isShadow).length;
 
   return (
     <div className="glass-card border rounded-xl overflow-hidden"
-      style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(10,16,36,0.6)' }}>
+      style={{ borderColor: 'rgba(99,102,241,0.25)', background: 'rgba(6,10,24,0.75)' }}>
+      {/* Header */}
       <div className="px-5 py-3 border-b border-glass-border flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-widest text-secondary">Domain Relationship Map</span>
-        <span className="text-xs font-mono text-primary-indigo">Live Topology</span>
-      </div>
-      <div style={{ height: 240, position: 'relative', overflow: 'hidden' }}>
-        {assets.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-secondary text-sm gap-2">
-            <AlertTriangle size={16} /> No scan data — run a scan to populate the topology
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Domain Relationship Map</span>
           </div>
-        ) : (
-          <svg width="100%" height="240" viewBox="0 0 900 240" preserveAspectRatio="xMidYMid meet">
-            <defs>
-              <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
-                <stop offset="100%" stopColor="#d97706" stopOpacity="0.8"/>
-              </radialGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-                <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-            </defs>
-            {positions.map((pos, i) => (
-              <line key={i} x1={cx} y1={cy} x2={pos.x} y2={pos.y}
-                stroke="rgba(99,102,241,0.35)" strokeWidth="1.2" strokeDasharray="4 3">
-                <animate attributeName="stroke-opacity" values="0.2;0.6;0.2"
-                  dur={`${2 + i * 0.3}s`} repeatCount="indefinite"/>
-              </line>
-            ))}
-            {satellites.map((node, i) => (
-              <g key={i}>
-                <circle cx={positions[i].x} cy={positions[i].y} r="11"
-                  fill={nodeColor(node.risk)} filter="url(#glow)" opacity="0.85">
-                  <animate attributeName="r" values="9;12;9"
-                    dur={`${3 + i * 0.4}s`} repeatCount="indefinite"/>
-                </circle>
-                <text x={positions[i].x} y={positions[i].y + 22}
-                  textAnchor="middle" fontSize="8"
-                  fill="rgba(148,163,184,0.8)" fontFamily="monospace">
-                  {node.label}
-                </text>
-              </g>
-            ))}
-            <circle cx={cx} cy={cy} r="22" fill="url(#rootGrad)" filter="url(#glow)">
-              <animate attributeName="r" values="20;25;20" dur="2.5s" repeatCount="indefinite"/>
-            </circle>
-            <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9"
-              fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
-            <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7"
-              fill="rgba(255,255,255,0.7)" fontFamily="monospace">ROOT</text>
-          </svg>
-        )}
-        <div style={{
-          position: 'absolute', bottom: 8, right: 12,
-          fontSize: 10, fontFamily: 'monospace', color: 'rgba(148,163,184,0.5)',
-        }}>
-          {assets.length} nodes discovered
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/** Strip scheme, path, port, and www. from any user-inputted URL/domain. */
-function cleanDomain(input: string): string {
-  let d = input.trim().toLowerCase();
-  // Remove scheme
-  if (d.startsWith('https://')) d = d.slice(8);
-  if (d.startsWith('http://'))  d = d.slice(7);
-  // Remove path (everything from first /)
-  d = d.split('/')[0];
-  // Remove port
-  d = d.split(':')[0];
-  // Remove www. prefix
-  if (d.startsWith('www.')) d = d.slice(4);
-  return d;
-}
-
-export default function DiscoveryPage() {
-  useAutoLoadScan();
-  const { activeScanId, activeDomain, setActiveScan } = useScanStore();
-  const { data: assets = [], isLoading } = useAssets(activeScanId);
-  const { data: scanStatus } = useScanStatus(activeScanId);
-
-  const [search, setSearch] = useState('');
-  const [isScanning, setIsScanning] = useState(false);
-  const [category, setCategory] = useState<Category>('Domains');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
-  const navigate = useNavigate();
-
-  // Company label derived from the active domain, not the UUID scan ID
-  const company = activeDomain ? activeDomain.split('.')[0].toUpperCase() : '—';
-
-  const filteredAssets = useMemo(() => {
-    if (statusFilter === 'All') return assets;
-    return assets.filter((a: any) =>
-      statusFilter === 'Shadow' ? a.discovery === 'Shadow' : a.discovery === 'Known'
-    );
-  }, [assets, statusFilter]);
-
-  const domainsData = useMemo(() =>
-    filteredAssets.map((a: any) => ({
-      date: a.scan_timestamp ?? '—',
-      domain: a.url ?? '—',
-      type: a.type ?? '—',
-      risk: a.risk_level ?? 'UNKNOWN',
-      discovery: a.discovery ?? 'Known',
-    })), [filteredAssets]);
-
-  const sslData = useMemo(() =>
-    filteredAssets
-      .filter((a: any) => a.cert_issuer || a.cert_sha256 || a.cert_subject)
-      .map((a: any) => ({
-        date: a.scan_timestamp ?? '—',
-        fingerprint: a.cert_sha256 ?? '—',
-        expiry: a.cert_expiry ?? '—',
-        commonName: a.cert_subject ?? '—',
-        ca: a.cert_issuer ?? '—',
-      })), [filteredAssets]);
-
-  const ipData = useMemo(() =>
-    filteredAssets
-      .filter((a: any) => a.ip_address)
-      .map((a: any) => ({
-        date: a.scan_timestamp ?? '—',
-        ip: a.ip_address,
-        port: a.port ?? '—',
-        tlsVersion: a.tls_version ?? '—',
-        type: a.type ?? '—',
-      })), [filteredAssets]);
-
-  const softwareData = useMemo(() =>
-    filteredAssets.map((a: any) => ({
-      date: a.scan_timestamp ?? '—',
-      type: a.type ?? '—',
-      tlsVersion: a.tls_version ?? '—',
-      cipherSuite: a.cipher_suite ?? '—',
-      port: a.port ?? '—',
-      host: a.ip_address ?? '—',
-    })), [filteredAssets]);
-
-  const CATEGORY_COUNTS: Record<Category, number> = {
-    'Domains':            domainsData.length,
-    'SSL':                sslData.length,
-    'IP Address/Subnets': ipData.length,
-    'Software':           softwareData.length,
-  };
-
-  const STATUS_COUNTS: Record<StatusFilter, number> = {
-    'All':    assets.length,
-    'Shadow': assets.filter((a: any) => a.discovery === 'Shadow').length,
-    'Known':  assets.filter((a: any) => a.discovery === 'Known').length,
-  };
-
-  const handleInitiate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!search.trim() || isScanning) return;
-    const domain = cleanDomain(search);
-    if (!domain) return;
-    setIsScanning(true);
-    try {
-      const result = await scanApi.initiate(domain);
-      setActiveScan(result.scan_id, domain);
-      navigate(`/scan/${encodeURIComponent(domain)}`, { state: { scanId: result.scan_id } });
-    } catch (err) {
-      console.error(err);
-      setIsScanning(false);
-    }
-  };
-
-  const isRunning = scanStatus?.status?.toLowerCase() === 'running' || scanStatus?.status?.toLowerCase() === 'pending';
-
-  return (
-    <div className="flex flex-col gap-6">
-      <SectionHeader
-        title="Asset Discovery"
-        subtitle="Deep network exposure intelligence & CT log mining"
-      />
-
-      <TopologyGraph assets={assets} domain={activeDomain ?? ''} />
-
-      <form onSubmit={handleInitiate} className="w-full">
-        <div className="glass-card border rounded-xl overflow-hidden"
-          style={{ boxShadow: '0 0 25px rgba(99,102,241,0.1)' }}>
-          <div className="flex items-center p-2 border-b border-glass-border">
-            <Search size={20} className="text-primary-indigo ml-4 mr-3 shrink-0" />
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              className="w-full bg-transparent text-primary placeholder-secondary focus:outline-none py-3 text-lg font-mono font-medium"
-              placeholder="Search domain, URL, contact, IoC or other..."
-            />
-            <button
-              type="submit"
-              disabled={isScanning || !search.trim()}
-              className="px-7 py-3 bg-primary-indigo text-white font-bold font-outfit uppercase tracking-widest text-sm rounded-lg hover:bg-primary-indigo-hover transition-all whitespace-nowrap ml-2 mr-1 disabled:opacity-50"
-            >
-              {isScanning ? <RefreshCw size={14} className="animate-spin" /> : 'Scan Now'}
-            </button>
-          </div>
-          {activeDomain && (
-            <div className="bg-surface-card-hover px-6 py-3 flex items-center gap-4 text-xs">
-              <span className="text-secondary font-mono">Active domain:</span>
-              <span className="text-primary font-bold font-mono">{activeDomain}</span>
-              {isRunning && (
-                <span className="flex items-center gap-1.5 text-yellow-400">
-                  <RefreshCw size={12} className="animate-spin" />
-                  Scanning… {(scanStatus as any)?.progress ?? 0}%
-                </span>
-              )}
-              {scanStatus?.status?.toLowerCase() === 'completed' && (
-                <span className="text-green-400 font-semibold">
-                  ✓ Scan complete — {(scanStatus as any)?.assets_found ?? assets.length} assets found
-                </span>
-              )}
+          {assets.length > 0 && (
+            <div className="flex items-center gap-3 text-[10px] font-mono">
+              <span className="text-secondary">{nodes.length} nodes</span>
+              {critCount > 0 && <span className="text-red-400 font-bold">{critCount} critical</span>}
+              {shadowCount > 0 && <span className="text-orange-400 font-bold">{shadowCount} shadow</span>}
             </div>
           )}
         </div>
-      </form>
-
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(CATEGORY_COUNTS) as Category[]).map(cat => (
-          <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${
-              category === cat
-                ? 'bg-primary-indigo text-white border-primary-indigo shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
-                : 'bg-surface-card text-secondary hover:text-primary hover:bg-surface-card-hover border-glass-border'
-            }`}
-          >
-            {CATEGORY_ICONS[cat]} {cat} ({CATEGORY_COUNTS[cat]})
-          </button>
-        ))}
+        <div className="flex items-center gap-3 text-[10px]">
+          {/* Legend */}
+          <div className="flex items-center gap-2">
+            {[['#ef4444','Critical'],['#f97316','High'],['#eab308','Medium'],['#22c55e','Safe'],['#6366f1','Unknown']].map(([c,l]) => (
+              <span key={l} className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded-full" style={{ background: c as string }} />
+                <span className="text-secondary">{l}</span>
+              </span>
+            ))}
+          </div>
+          <span className="text-indigo-400 font-mono font-bold">Live Topology</span>
+        </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-secondary uppercase tracking-widest">Status:</span>
-        {(Object.keys(STATUS_COUNTS) as StatusFilter[]).map(s => (
-          <button
-            key={s}
-            onClick={() => setStatusFilter(s)}
-            className={`px-5 py-1.5 rounded-full font-bold text-xs transition-all border ${
-              statusFilter === s
-                ? 'bg-brand-gold text-black border-brand-gold shadow-[0_0_10px_rgba(234,179,8,0.35)]'
-                : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
-            }`}
-          >
-            {s} ({STATUS_COUNTS[s]})
-          </button>
-        ))}
-      </div>
-
-      <div className="glass-card border rounded-xl overflow-hidden">
-        {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-secondary gap-3">
-            <LoadingSpinner size={22} /> Loading assets…
+      {/* SVG canvas */}
+      <div className="relative" style={{ height: 280 }}>
+        {assets.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
+            <Activity size={28} className="opacity-20" />
+            <p className="text-sm">No scan data — run a scan to populate the topology</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            {category === 'Domains'            && <DomainsTable  company={company} data={domainsData} />}
-            {category === 'SSL'                && <SSLTable      company={company} data={sslData} />}
-            {category === 'IP Address/Subnets' && <IPTable       company={company} data={ipData} />}
-            {category === 'Software'           && <SoftwareTable company={company} data={softwareData} />}
-          </div>
+          <>
+            <svg ref={svgRef} width="100%" height="280" viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="xMidYMid meet"
+              onMouseLeave={() => setHovered(null)}>
+              <defs>
+                <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
+                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.7"/>
+                </radialGradient>
+                <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="rgba(99,102,241,0.08)" stopOpacity="1"/>
+                  <stop offset="100%" stopColor="transparent" stopOpacity="0"/>
+                </radialGradient>
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3.5" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+                <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="6" result="blur"/>
+                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                </filter>
+              </defs>
+
+              {/* Background radial glow */}
+              <ellipse cx={cx} cy={cy} rx="180" ry="120" fill="url(#bgGrad)" />
+
+              {/* Connection lines */}
+              {nodes.map((node, i) => {
+                const col = nodeColor(node.risk);
+                const isHov = hovered?.id === node.id;
+                return (
+                  <line key={`line-${i}`}
+                    x1={cx} y1={cy} x2={node.x} y2={node.y}
+                    stroke={isHov ? col : 'rgba(99,102,241,0.25)'}
+                    strokeWidth={isHov ? 1.5 : 0.8}
+                    strokeDasharray={node.isShadow ? '5 4' : '3 3'}
+                    opacity={isHov ? 0.9 : 0.5}>
+                    {!isHov && (
+                      <animate attributeName="stroke-opacity"
+                        values="0.2;0.55;0.2"
+                        dur={`${2.5 + i * 0.25}s`}
+                        repeatCount="indefinite"/>
+                    )}
+                  </line>
+                );
+              })}
+
+              {/* Satellite nodes */}
+              {nodes.map((node, i) => {
+                const col = nodeColor(node.risk);
+                const isHov = hovered?.id === node.id;
+                const r = isHov ? 14 : node.risk === 'CRITICAL' ? 12 : 10;
+                return (
+                  <g key={`node-${i}`}
+                    style={{ cursor: 'pointer' }}
+                    onMouseEnter={e => {
+                      setHovered(node);
+                      const rect = svgRef.current?.getBoundingClientRect();
+                      if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                    }}
+                    onMouseMove={e => {
+                      const rect = svgRef.current?.getBoundingClientRect();
+                      if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                    }}>
+                    {/* Outer ring for shadow assets */}
+                    {node.isShadow && (
+                      <circle cx={node.x} cy={node.y} r={r + 5}
+                        fill="none" stroke="#f97316" strokeWidth="1" strokeDasharray="3 2" opacity="0.6">
+                        <animateTransform attributeName="transform" type="rotate"
+                          from={`0 ${node.x} ${node.y}`} to={`360 ${node.x} ${node.y}`}
+                          dur="8s" repeatCount="indefinite"/>
+                      </circle>
+                    )}
+                    {/* Pulse ring for critical */}
+                    {node.risk === 'CRITICAL' && (
+                      <circle cx={node.x} cy={node.y} r={r + 4}
+                        fill="none" stroke={col} strokeWidth="1" opacity="0">
+                        <animate attributeName="r" values={`${r};${r + 12};${r}`} dur="2s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+                      </circle>
+                    )}
+                    {/* Main node */}
+                    <circle cx={node.x} cy={node.y} r={r}
+                      fill={col} filter={isHov ? 'url(#glowStrong)' : 'url(#glow)'}
+                      opacity={isHov ? 1 : 0.88}
+                      style={{ transition: 'r 0.2s ease' }}>
+                      {!isHov && (
+                        <animate attributeName="r"
+                          values={`${r - 1};${r + 1};${r - 1}`}
+                          dur={`${3 + i * 0.35}s`}
+                          repeatCount="indefinite"/>
+                      )}
+                    </circle>
+                    {/* Label */}
+                    <text x={node.x} y={node.y + r + 13}
+                      textAnchor="middle" fontSize="8"
+                      fill={isHov ? '#f8fafc' : 'rgba(148,163,184,0.75)'}
+                      fontFamily="monospace" fontWeight={isHov ? 'bold' : 'normal'}>
+                      {node.label}
+                    </text>
+                  </g>
+                );
+              })}
+
+              {/* Root node */}
+              <circle cx={cx} cy={cy} r="28" fill="url(#rootGrad)" filter="url(#glowStrong)">
+                <animate attributeName="r" values="26;30;26" dur="3s" repeatCount="indefinite"/>
+              </circle>
+              <circle cx={cx} cy={cy} r="36" fill="none" stroke="rgba(245,158,11,0.3)" strokeWidth="1" strokeDasharray="4 3">
+                <animateTransform attributeName="transform" type="rotate"
+                  from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`}
+                  dur="20s" repeatCount="indefinite"/>
+              </circle>
+              <text x={cx} y={cy - 5} textAnchor="middle" fontSize="10"
+                fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
+              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7.5"
+                fill="rgba(255,255,255,0.65)" fontFamily="monospace">ROOT</text>
+            </svg>
+
+            {/* Hover tooltip */}
+            {hovered && (
+              <div className="absolute pointer-events-none z-20 px-3 py-2.5 rounded-xl border text-xs"
+                style={{
+                  left: Math.min(tooltip.x + 12, W - 200),
+                  top: Math.max(tooltip.y - 60, 4),
+                  background: 'rgba(10,16,36,0.97)',
+                  borderColor: `${nodeColor(hovered.risk)}50`,
+                  boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px ${nodeColor(hovered.risk)}30`,
+                  minWidth: 180,
+                }}>
+                <div className="font-mono font-bold text-primary mb-1.5 truncate max-w-[200px]">{hovered.url}</div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="w-2 h-2 rounded-full" style={{ background: nodeColor(hovered.risk) }} />
+                  <span className="font-bold" style={{ color: nodeColor(hovered.risk) }}>{hovered.risk}</span>
+                </div>
+                <div className="text-secondary capitalize">{hovered.type?.replace(/_/g, ' ')}</div>
+                {hovered.isShadow && (
+                  <div className="mt-1 text-orange-400 font-bold flex items-center gap-1">
+                    <AlertTriangle size={10} /> Shadow Asset
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Node count badge */}
+            <div className="absolute bottom-2 right-3 text-[10px] font-mono text-secondary/50">
+              {assets.length} nodes discovered
+            </div>
+          </>
         )}
       </div>
-
-      <style>{`.shrink-0{flex-shrink:0}`}</style>
     </div>
   );
 }

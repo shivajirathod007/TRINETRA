@@ -99,12 +99,13 @@ class AssetClassifier:
         """Classify a single port scan result into 1+ assets."""
         assets: list[ClassifiedAsset] = []
 
-        # ── HTTPS assets (web, API, VPN) ──────────────────────────────────────
-        for port in [443, 8443, 4433, 10443]:
+        # ── HTTPS/HTTP assets (web, API, VPN) ─────────────────────────────────
+        for port in [80, 443, 8443, 4433, 10443]:
             if port not in pr.open_ports:
                 continue
 
-            url = f"https://{pr.fqdn}" if port == 443 else f"https://{pr.fqdn}:{port}"
+            schema = "http" if port == 80 else "https"
+            url = f"{schema}://{pr.fqdn}" if port in (80, 443) else f"{schema}://{pr.fqdn}:{port}"
             fingerprint = await self._http_fingerprint(url)
 
             # Check for VPN first — most specific match

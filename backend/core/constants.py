@@ -30,6 +30,7 @@ ALGORITHM_RISK_WEIGHTS: dict[str, int] = {
     "DES":                  100,
     "3DES":                 100,
     "MD5":                  100,
+    "CLEARTEXT":            100,   # No encryption at all
     "SHA1":                  95,
 
     # ── Quantum-vulnerable (will be broken by CRQC) ──────────────────────────
