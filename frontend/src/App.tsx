@@ -4,8 +4,10 @@ import { FloatingChatBot } from '@/components/ChatBot/FloatingChatBot'
 import Home from '@/pages/Home'
 import Dashboard from '@/pages/Dashboard'
 import { AssetDetailPage } from '@/pages/AssetDetail'
-import { CBOMPage, DiscoveryPage, HistoryPage, PosturePage } from '@/pages/OtherPages'
+import { CBOMPage, DiscoveryPage } from '@/pages/OtherPages'
 import CertificatesPage from '@/pages/CertificatesPage'
+import ScanHistoryPage from '@/pages/ScanHistoryPage'
+import PosturePage from '@/pages/PosturePage'
 
 export default function App() {
     return (
@@ -18,7 +20,7 @@ export default function App() {
                     <Route path="/cbom" element={<CBOMPage />} />
                     <Route path="/certificates" element={<CertificatesPage />} />
                     <Route path="/discovery" element={<DiscoveryPage />} />
-                    <Route path="/history" element={<HistoryPage />} />
+                    <Route path="/history" element={<ScanHistoryPage />} />
                     <Route path="/posture" element={<PosturePage />} />
                 </Routes>
             </Layout>

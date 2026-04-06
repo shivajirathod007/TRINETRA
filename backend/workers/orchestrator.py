@@ -164,9 +164,24 @@ def _run_discovery_sync(scan_id: str, domain: str, scan_scope: str = "root_only"
                 source="root_fallback",
             )
             try:
-                live_assets, _ = await resolver.resolve_all([root_entry])
+                resolved_live, _ = await resolver.resolve_all([root_entry])
+                if resolved_live:
+                    live_assets.extend(resolved_live)
             except Exception:
-                pass  # classifer will still attempt https:// on the domain
+                pass
+
+            # If it still failed to resolve, force inject it so the classifier can try it directly
+            if not live_assets:
+                log.info("forcing_root_domain_target", domain=domain)
+                from engine.discovery.dns_resolver import ResolvedAsset
+                live_assets.append(ResolvedAsset(
+                    fqdn=domain,
+                    ip_address=domain,  # Let httpx/socket try to resolve it directly later
+                    is_live=True,
+                    is_shadow_asset=False,
+                    cert_entry=None,
+                    resolution_error="forced_fallback"
+                ))
 
         # ── Step 3: Port Scanning ─────────────────────────────────────────────
         sync_db.update_scan_progress_sync(
