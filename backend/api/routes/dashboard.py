@@ -30,6 +30,11 @@ def _asset_to_response(a):
         "risk_level": a.risk_level or "UNKNOWN",
         "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
         "discovery": "Shadow" if a.is_shadow_asset else "Known",
+        "data_sensitivity_tier": a.data_sensitivity_tier or "static",
+        "data_sensitivity_tier_source": a.data_sensitivity_tier_source,
+        "cert_expiry_days": a.cert_expiry_days,
+        "cert_algorithm": a.cert_algorithm,
+        "ip_address": a.ip_address,
     }
 
 
@@ -183,17 +188,32 @@ async def get_dashboard_summary(domain: str, scan_id: Optional[str] = None, db: 
                     .where(ScannedAsset.scan_job_id == uid)
                 )
                 actual_asset_count = count_result.scalar() or 0
+
+                # Recompute risk counts from actual asset rows
+                risk_result = await db.execute(
+                    select(ScannedAsset.risk_level, func.count(ScannedAsset.id).label("cnt"))
+                    .where(ScannedAsset.scan_job_id == uid, ScannedAsset.risk_level.isnot(None))
+                    .group_by(ScannedAsset.risk_level)
+                )
+                risk_map = {r.risk_level: r.cnt for r in risk_result.all()}
+
+                shadow_result = await db.execute(
+                    select(func.count(ScannedAsset.id))
+                    .where(ScannedAsset.scan_job_id == uid, ScannedAsset.is_shadow_asset == True)
+                )
+                actual_shadow = shadow_result.scalar() or scan_job.shadow_assets_found or 0
+
                 stats = {
                     "scan_id": str(scan_job.id),
                     "domain": scan_job.domain,
                     "organization_score": scan_job.organization_score,
                     "assets_scanned": actual_asset_count,
-                    "critical_count": scan_job.critical_count or 0,
-                    "high_count": scan_job.high_count or 0,
-                    "medium_count": scan_job.medium_count or 0,
-                    "low_count": scan_job.low_count or 0,
-                    "safe_count": scan_job.safe_count or 0,
-                    "shadow_assets_found": scan_job.shadow_assets_found or 0,
+                    "critical_count": risk_map.get("CRITICAL", scan_job.critical_count or 0),
+                    "high_count": risk_map.get("HIGH", scan_job.high_count or 0),
+                    "medium_count": risk_map.get("MEDIUM", scan_job.medium_count or 0),
+                    "low_count": risk_map.get("LOW", scan_job.low_count or 0),
+                    "safe_count": risk_map.get("SAFE", scan_job.safe_count or 0),
+                    "shadow_assets_found": actual_shadow,
                 }
             else:
                 stats = None
@@ -242,11 +262,41 @@ async def get_dashboard_summary(domain: str, scan_id: Optional[str] = None, db: 
     if not ip_distribution:
         ip_distribution = [{"name": "IPv4", "value": 100, "color": "#3B82F6"}]
 
+    # Geographic distribution — derived from actual asset IP addresses
+    # Groups assets by country using IP prefix heuristics + counts
+    from collections import Counter
+    country_counts: Counter = Counter()
+    for a in assets:
+        ip = a.ip_address or ""
+        if not ip:
+            continue
+        # Simple heuristic: known Indian bank IP ranges and common CDN/cloud ranges
+        # In production this would use a GeoIP database
+        if ip.startswith(("103.", "49.", "117.", "122.", "125.", "182.", "183.", "202.", "203.", "210.", "211.", "220.", "223.")):
+            country_counts["India"] += 1
+        elif ip.startswith(("13.", "18.", "34.", "35.", "52.", "54.", "3.", "44.", "50.", "99.", "100.", "104.", "107.", "108.", "172.", "184.", "205.", "216.")):
+            country_counts["USA"] += 1
+        elif ip.startswith(("185.", "194.", "195.", "212.", "213.", "217.", "46.", "80.", "81.", "82.", "83.", "84.", "85.", "86.", "87.", "88.", "89.", "90.", "91.", "92.", "93.", "94.", "95.")):
+            country_counts["Europe"] += 1
+        elif ip.startswith(("1.", "14.", "27.", "36.", "42.", "58.", "59.", "60.", "61.", "101.", "106.", "111.", "112.", "113.", "114.", "115.", "116.", "118.", "119.", "120.", "121.", "123.", "124.")):
+            country_counts["Asia-Pacific"] += 1
+        else:
+            country_counts["Other"] += 1
+
+    # If no IPs resolved, fall back to showing India (the scanned domain's likely location)
+    if not country_counts:
+        country_counts["India"] = len(assets)
+
+    geo_color_map = {
+        "India": "#6366F1",
+        "USA": "#EF4444",
+        "Europe": "#22C55E",
+        "Asia-Pacific": "#F97316",
+        "Other": "#EAB308",
+    }
     geographic_distribution = [
-        {"country": "USA", "top": "30%", "left": "20%", "color": "bg-status-critical", "pulse": True},
-        {"country": "Germany", "top": "25%", "right": "40%", "color": "bg-status-safe", "pulse": False},
-        {"country": "India", "top": "45%", "right": "25%", "color": "bg-primary-indigo", "pulse": False},
-        {"country": "Singapore", "top": "50%", "right": "15%", "color": "bg-status-high", "pulse": False},
+        {"country": country, "count": count, "color": geo_color_map.get(country, "#6366F1")}
+        for country, count in country_counts.most_common()
     ]
 
     return {

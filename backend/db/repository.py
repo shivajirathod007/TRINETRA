@@ -226,15 +226,19 @@ class ScanRepository:
 
         latest_scan = None
         for candidate in candidates:
-            result = await self.db.execute(
-                select(ScanJob)
-                .where(ScanJob.domain == candidate, ScanJob.status == "COMPLETED")
-                .order_by(ScanJob.completed_at.desc())
-                .limit(1)
-            )
-            scan = result.scalar_one_or_none()
-            if scan:
-                latest_scan = scan
+            # Prefer COMPLETED, then fall back to any scan with assets
+            for status_filter in [("COMPLETED",), ("FAILED", "RUNNING", "PENDING", "COMPLETED")]:
+                result = await self.db.execute(
+                    select(ScanJob)
+                    .where(ScanJob.domain == candidate, ScanJob.status.in_(status_filter))
+                    .order_by(ScanJob.created_at.desc())
+                    .limit(1)
+                )
+                scan = result.scalar_one_or_none()
+                if scan:
+                    latest_scan = scan
+                    break
+            if latest_scan:
                 break
 
         if not latest_scan:
@@ -247,17 +251,32 @@ class ScanRepository:
         )
         actual_asset_count = count_result.scalar() or latest_scan.assets_scanned or 0
 
+        # Recompute risk counts from actual asset rows (more accurate than scan_job counters)
+        risk_result = await self.db.execute(
+            select(ScannedAsset.risk_level, func.count(ScannedAsset.id).label("cnt"))
+            .where(ScannedAsset.scan_job_id == latest_scan.id, ScannedAsset.risk_level.isnot(None))
+            .group_by(ScannedAsset.risk_level)
+        )
+        risk_rows = risk_result.all()
+        risk_map = {r.risk_level: r.cnt for r in risk_rows}
+
+        shadow_result = await self.db.execute(
+            select(func.count(ScannedAsset.id))
+            .where(ScannedAsset.scan_job_id == latest_scan.id, ScannedAsset.is_shadow_asset == True)
+        )
+        actual_shadow_count = shadow_result.scalar() or latest_scan.shadow_assets_found or 0
+
         return {
             "scan_id": str(latest_scan.id),
             "domain": latest_scan.domain,
             "organization_score": latest_scan.organization_score,
             "assets_scanned": actual_asset_count,
-            "critical_count": latest_scan.critical_count,
-            "high_count": latest_scan.high_count,
-            "medium_count": latest_scan.medium_count,
-            "low_count": latest_scan.low_count,
-            "safe_count": latest_scan.safe_count,
-            "shadow_assets_found": latest_scan.shadow_assets_found,
+            "critical_count": risk_map.get("CRITICAL", latest_scan.critical_count or 0),
+            "high_count": risk_map.get("HIGH", latest_scan.high_count or 0),
+            "medium_count": risk_map.get("MEDIUM", latest_scan.medium_count or 0),
+            "low_count": risk_map.get("LOW", latest_scan.low_count or 0),
+            "safe_count": risk_map.get("SAFE", latest_scan.safe_count or 0),
+            "shadow_assets_found": actual_shadow_count,
             "completed_at": latest_scan.completed_at.isoformat() if latest_scan.completed_at else None,
         }
 

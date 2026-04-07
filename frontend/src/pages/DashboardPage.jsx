@@ -122,31 +122,29 @@ const DashboardPage = () => {
     const servers   = activeAssets.filter(a => SERVER_TYPES.has(a.type)).length;
     const shadowAssets = activeAssets.filter(a => a.discovery === 'Shadow');
 
-    // ── Cert expiry timeline from real cert data (no fallbacks) ─────────────
-    const now = new Date();
-    const expiringCertsCount = activeCerts.filter(c => {
-        if (!c.valid_to) return false;
-        const days = (new Date(c.valid_to) - now) / 86400000;
-        return days > 0 && days <= 90;
+    // ── Cert expiry timeline from actual scanned asset cert data ────────────
+    // Uses cert_expiry_days from ScannedAsset (real TLS cert expiry, not PQC certs)
+    const assetsWithCerts = activeAssets.filter(a => a.cert_expiry_days != null);
+    const expiringCertsCount = assetsWithCerts.filter(a => {
+        const d = a.cert_expiry_days ?? 0;
+        return d > 0 && d <= 90;
     }).length;
 
     const expiryBuckets = [
-        { name: '0–30 Days', max: 30,  color: 'bg-status-critical' },
-        { name: '30–60 Days', min: 30, max: 60, color: 'bg-status-high' },
-        { name: '60–90 Days', min: 60, max: 90, color: 'bg-status-medium' },
-        { name: '>90 Days',  min: 90, color: 'bg-status-safe' },
+        { name: '0–30 Days',  min: 0,  max: 30,  color: 'bg-status-critical', hex: '#EF4444' },
+        { name: '30–60 Days', min: 30, max: 60,  color: 'bg-status-high',     hex: '#F97316' },
+        { name: '60–90 Days', min: 60, max: 90,  color: 'bg-status-medium',   hex: '#EAB308' },
+        { name: '>90 Days',   min: 90, max: null, color: 'bg-status-safe',    hex: '#22C55E' },
     ];
 
     const expiryTimelineData = expiryBuckets.map(bucket => ({
         name: bucket.name,
         color: bucket.color,
-        count: activeCerts.filter(c => {
-            if (!c.valid_to) return false;
-            const days = (new Date(c.valid_to) - now) / 86400000;
-            const absDays = Math.abs(days);
-            if (bucket.min !== undefined && bucket.max !== undefined) return absDays > bucket.min && absDays <= bucket.max;
-            if (bucket.max !== undefined) return absDays <= bucket.max;
-            return absDays > bucket.min;
+        hex: bucket.hex,
+        count: assetsWithCerts.filter(a => {
+            const d = a.cert_expiry_days ?? 0;
+            if (bucket.max === null) return d > bucket.min;
+            return d > bucket.min && d <= bucket.max;
         }).length,
     }));
 
@@ -357,13 +355,23 @@ const DashboardPage = () => {
             <div className="grid grid-cols-2 md-grid-cols-3 lg-grid-cols-6 gap-3">
                 {kpis.map((kpi, i) => {
                     const Icon = kpi.icon;
+                    const isCritical = kpi.color === 'text-status-critical' && kpi.value > 0;
+                    const isWarning = kpi.color === 'text-status-high' && kpi.value > 0;
                     return (
-                        <div key={i} className="glass-card p-4 border flex flex-col justify-center relative overflow-hidden">
-                            <div className="absolute -right-4 -bottom-4 opacity-5 text-current"><Icon size={80} /></div>
-                            <div className="text-xs text-secondary uppercase mb-1 z-10">{kpi.label}</div>
-                            <div className={`text-3xl font-bold font-mono z-10 ${kpi.color}`}>
-                                {isLoading ? '—' : <AnimatedCounters value={kpi.value} />}
+                        <div key={i} className="glass-card p-4 border flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:border-primary-indigo/30"
+                            style={isCritical ? { borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.04)' }
+                                : isWarning ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.03)' } : {}}>
+                            <div className="flex items-center justify-between mb-2">
+                                <div className="text-[10px] text-secondary uppercase tracking-widest font-semibold">{kpi.label}</div>
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isCritical ? 'bg-status-critical/15' : isWarning ? 'bg-status-high/15' : 'bg-primary-indigo/10'}`}>
+                                    <Icon size={14} className={kpi.color} />
+                                </div>
                             </div>
+                            <div className={`text-3xl font-bold font-mono z-10 ${kpi.color}`}>
+                                {isLoading ? <span className="text-secondary text-xl">—</span> : <AnimatedCounters value={kpi.value} />}
+                            </div>
+                            {isCritical && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-status-critical/40" />}
+                            {isWarning && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-status-high/40" />}
                         </div>
                     );
                 })}
@@ -406,26 +414,37 @@ const DashboardPage = () => {
 
                     {/* Certificate Expiry Timeline */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Certificate Expiry Timeline</h3>
-                        {certs.length === 0 && !isLoading ? (
-                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No certificates scanned</div>
+                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Certificate Expiry Timeline</h3>
+                        <p className="text-[10px] text-secondary mb-3 opacity-60">Based on TLS cert expiry from scanned assets</p>
+                        {assetsWithCerts.length === 0 && !isLoading ? (
+                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">No cert data in this scan</div>
                         ) : (
-                            <div className="flex-1 flex flex-col justify-end gap-3 px-2">
+                            <div className="flex-1 flex flex-col justify-center gap-2.5 px-1">
                                 {expiryTimelineData.map((d, i) => {
                                     const maxCount = Math.max(...expiryTimelineData.map(e => e.count), 1);
                                     return (
                                         <div key={i} className="flex items-center gap-3 text-xs">
-                                            <span className="w-20 text-secondary text-right">{d.name}</span>
-                                            <div className="flex-1 h-3 bg-surface-card rounded-sm overflow-hidden">
+                                            <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.hex }} />
+                                            <span className="w-20 text-secondary text-right text-[10px]">{d.name}</span>
+                                            <div className="flex-1 h-2.5 bg-surface-card rounded-full overflow-hidden">
                                                 <div
-                                                    className={`h-full ${d.color} transition-all duration-700`}
-                                                    style={{ width: d.count > 0 ? `${Math.max(5, (d.count / maxCount) * 100)}%` : '0%' }}
+                                                    className="h-full rounded-full transition-all duration-700"
+                                                    style={{
+                                                        width: d.count > 0 ? `${Math.max(6, (d.count / maxCount) * 100)}%` : '0%',
+                                                        backgroundColor: d.hex,
+                                                    }}
                                                 />
                                             </div>
-                                            <span className="w-6 font-bold text-right">{d.count}</span>
+                                            <span className="w-6 font-bold font-mono text-right" style={{ color: d.count > 0 ? d.hex : 'var(--text-secondary)' }}>{d.count}</span>
                                         </div>
                                     );
                                 })}
+                                <div className="mt-2 pt-2 border-t border-glass-border text-[10px] text-secondary flex justify-between">
+                                    <span>{assetsWithCerts.length} certs tracked</span>
+                                    <span className={expiringCertsCount > 0 ? 'text-status-high font-bold' : 'text-status-safe'}>
+                                        {expiringCertsCount > 0 ? `⚠ ${expiringCertsCount} expiring soon` : '✓ All certs healthy'}
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
@@ -631,35 +650,36 @@ const DashboardPage = () => {
                 )}
 
                 {/* Geographic Distribution */}
-                <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[220px] relative overflow-hidden bg-gradient-to-br from-surface-card to-transparent">
-                    <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-6 border-b border-glass-border pb-2 inline-flex items-center gap-2">
-                        <Globe size={18} className="text-primary-indigo" /> Geographic Asset Distribution
+                <div className="lg-col-span-4 glass-card border p-4 flex flex-col min-h-[220px]">
+                    <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Globe size={14} className="text-primary-indigo" /> Geographic Asset Distribution
                     </h3>
-                    <div className="flex-1 flex relative">
-                        {(stats.geographic_distribution || []).map((node, i) => (
-                            <React.Fragment key={i}>
-                                {node.pulse && (
-                                    <div
-                                        className={`absolute w-3 h-3 rounded-full animate-ping ${node.color}`}
-                                        style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }}
-                                    />
-                                )}
-                                <div
-                                    className={`absolute w-3 h-3 rounded-full ${node.color}`}
-                                    style={{ top: node.top, left: node.left || undefined, right: node.right || undefined }}
-                                >
-                                    <span className="absolute -bottom-5 text-[10px] font-bold text-primary whitespace-nowrap">
-                                        {node.country}
-                                    </span>
-                                </div>
-                            </React.Fragment>
-                        ))}
-                        {(!stats.geographic_distribution || stats.geographic_distribution.length === 0) && (
-                            <div className="flex-1 flex items-center justify-center text-secondary text-sm">
-                                Geographic data available after scan completes
-                            </div>
-                        )}
-                    </div>
+                    {(!stats.geographic_distribution || stats.geographic_distribution.length === 0) ? (
+                        <div className="flex-1 flex items-center justify-center text-secondary text-sm">
+                            Geographic data available after scan completes
+                        </div>
+                    ) : (
+                        <div className="flex-1 flex flex-col gap-3 justify-center">
+                            {stats.geographic_distribution.map((node, i) => {
+                                const total = stats.geographic_distribution.reduce((s, n) => s + n.count, 0);
+                                const pct = total > 0 ? Math.round((node.count / total) * 100) : 0;
+                                return (
+                                    <div key={i} className="flex items-center gap-3 text-xs">
+                                        <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: node.color }} />
+                                        <span className="w-28 text-secondary font-medium">{node.country}</span>
+                                        <div className="flex-1 h-2.5 bg-surface-card rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-700"
+                                                style={{ width: `${Math.max(4, pct)}%`, backgroundColor: node.color }}
+                                            />
+                                        </div>
+                                        <span className="w-8 text-right font-mono font-bold text-primary">{node.count}</span>
+                                        <span className="w-8 text-right font-mono text-secondary">{pct}%</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             </div>
 

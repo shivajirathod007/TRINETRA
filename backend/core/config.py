@@ -35,16 +35,16 @@ class Settings(BaseSettings):
     rate_limit_scans_per_hour: int = 20
 
     # ── Scanner Timeouts (seconds) ────────────────────────────────────────────
-    port_scan_timeout: float = 3.0          # TCP connect timeout per port probe
+    port_scan_timeout: float = 2.0          # TCP connect timeout per port probe (was 3.0)
     port_scan_concurrency: int = 100        # Max simultaneous port probes
     dns_concurrency: int = 50               # Max simultaneous DNS resolutions
-    dns_resolver_timeout: int = 5           # Per-query DNS timeout
-    dns_resolver_lifetime: int = 10         # Total resolution lifetime
-    http_inspect_timeout: float = 15.0      # API Inspector HTTP request timeout
+    dns_resolver_timeout: int = 3           # Per-query DNS timeout (was 5)
+    dns_resolver_lifetime: int = 6          # Total resolution lifetime (was 10)
+    http_inspect_timeout: float = 8.0       # API Inspector HTTP request timeout (was 15.0)
     api_body_preview_chars: int = 4000      # Response body chars sent to AI classifier
-    ssh_probe_timeout: float = 10.0         # SSH TCP connect + key exchange timeout
-    smtp_scan_timeout: float = 10.0         # SMTP STARTTLS scan timeout
-    cert_fetch_timeout: float = 10.0        # TLS cert chain fetch socket timeout
+    ssh_probe_timeout: float = 5.0          # SSH TCP connect + key exchange timeout (was 10.0)
+    smtp_scan_timeout: float = 5.0          # SMTP STARTTLS scan timeout (was 10.0)
+    cert_fetch_timeout: float = 8.0         # TLS cert chain fetch socket timeout (was 10.0)
 
     # ── CRQC Timeline ─────────────────────────────────────────────────────────
     crqc_pessimistic_year: int = 2028

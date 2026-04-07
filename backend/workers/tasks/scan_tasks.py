@@ -79,7 +79,7 @@ async def _run_all_scanners(scan_id: str, asset_data: dict) -> dict:
     try:
         return await asyncio.wait_for(
             _run_scanners_inner(scan_id, asset_data),
-            timeout=120.0,  # 2 min max per asset — prevents hanging
+            timeout=45.0,  # 45s max per asset — TLS fast mode + 8s HTTP + 5s SSH
         )
     except asyncio.TimeoutError:
         asset_url = asset_data.get("asset_url", "unknown")

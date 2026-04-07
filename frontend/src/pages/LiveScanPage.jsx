@@ -1,5 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, Shield, Cpu, ArrowRight, Code2, ChevronDown, ChevronUp, Copy, Check, StopCircle, LayoutDashboard } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import {
+    Terminal, Shield, Cpu, ArrowRight, Code2, ChevronDown, ChevronUp,
+    Copy, Check, StopCircle, LayoutDashboard, Wifi, Globe, Lock,
+    AlertTriangle, Activity, Zap, Eye, Server, Network
+} from 'lucide-react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { scanApi, assetsApi, setActiveScan, getScanIdForDomain } from '../api/index';
 
@@ -19,14 +23,10 @@ const JsonViewer = ({ data, title }) => {
     };
     return (
         <div className="glass-card border overflow-hidden">
-            <button
-                type="button"
-                onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center justify-between p-4 hover:bg-surface-card-hover transition-colors"
-            >
+            <button type="button" onClick={() => setOpen(v => !v)}
+                className="w-full flex items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
                 <div className="flex items-center gap-2 text-xs font-bold text-secondary uppercase tracking-widest">
-                    <Code2 size={14} className="text-primary-indigo" />
-                    {title}
+                    <Code2 size={14} className="text-primary-indigo" />{title}
                 </div>
                 <div className="flex items-center gap-2">
                     {open ? <ChevronUp size={16} className="text-secondary" /> : <ChevronDown size={16} className="text-secondary" />}
@@ -42,14 +42,59 @@ const JsonViewer = ({ data, title }) => {
                         </button>
                     </div>
                     <pre className="p-4 text-xs font-mono overflow-x-auto overflow-y-auto text-status-pqc leading-relaxed"
-                        style={{ maxHeight: 520, background: 'rgba(0,0,0,0.3)' }}>
-                        {json}
-                    </pre>
+                        style={{ maxHeight: 520, background: 'rgba(0,0,0,0.3)' }}>{json}</pre>
                 </div>
             )}
         </div>
     );
 };
+
+/** Animated stat card */
+const StatCard = ({ label, value, color = 'text-primary', icon: Icon, pulse = false, accent }) => (
+    <div className="p-4 rounded-xl border flex flex-col gap-2 relative overflow-hidden"
+        style={{ background: accent ? `rgba(${accent},0.06)` : 'rgba(255,255,255,0.03)', borderColor: accent ? `rgba(${accent},0.25)` : 'rgba(255,255,255,0.08)' }}>
+        <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-widest text-secondary font-semibold">{label}</span>
+            {Icon && <Icon size={14} className={color} />}
+        </div>
+        <div className={`text-2xl font-bold font-mono ${color} ${pulse ? 'animate-pulse' : ''}`}>{value}</div>
+        {accent && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `rgba(${accent},0.4)` }} />}
+    </div>
+);
+
+/** Animated progress bar */
+const ProgressBar = ({ label, value, icon: Icon, color = '#6366f1' }) => (
+    <div className="space-y-1.5">
+        <div className="flex justify-between items-center text-xs">
+            <span className="text-secondary flex items-center gap-1.5">
+                {Icon && <Icon size={12} />}{label}
+            </span>
+            <span className="font-mono font-bold" style={{ color }}>{value}%</span>
+        </div>
+        <div className="w-full bg-surface-card-hover rounded-full h-2 overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
+                style={{ width: `${value}%`, background: `linear-gradient(90deg, ${color}99, ${color})` }}>
+                {value > 0 && value < 100 && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />
+                )}
+            </div>
+        </div>
+    </div>
+);
+
+/** Phase checklist item */
+const PhaseItem = ({ label, done, active }) => (
+    <div className="flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300"
+        style={{ background: active && !done ? 'rgba(99,102,241,0.08)' : 'transparent' }}>
+        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold transition-all duration-500
+            ${done ? 'bg-status-safe text-black' : active ? 'bg-primary-indigo/30 border border-primary-indigo animate-pulse' : 'border border-glass-border bg-surface-card-hover'}`}>
+            {done ? '✓' : active ? '●' : '○'}
+        </div>
+        <span className={`text-xs transition-colors duration-300 ${done ? 'text-status-safe' : active ? 'text-primary' : 'text-secondary'}`}>{label}</span>
+        {done && <span className="ml-auto text-[10px] text-status-safe font-mono font-bold">DONE</span>}
+        {active && !done && <span className="ml-auto text-[10px] text-primary-indigo font-mono animate-pulse">ACTIVE</span>}
+    </div>
+);
 
 const LiveScanPage = () => {
     const { domain } = useParams();
@@ -69,11 +114,38 @@ const LiveScanPage = () => {
     const [scanSummary, setScanSummary] = useState(null);
     const [liveTelemetry, setLiveTelemetry] = useState(null);
     const [cancelling, setCancelling] = useState(false);
-    const bottomRef = useRef(null);
-    const pollRef = useRef(null);
-    const initStartedRef = useRef(false);
+    const [elapsed, setElapsed] = useState(0);
 
-    /* ──── 1. Use existing scan ID or initiate once per mount ──────────── */
+    const bottomRef = useRef(null);
+    const terminalRef = useRef(null);
+    const pollRef = useRef(null);
+    const timerRef = useRef(null);
+    const initStartedRef = useRef(false);
+    const userScrolledRef = useRef(false);
+
+    /* ── Smart auto-scroll: pause when user scrolls up ── */
+    const handleTerminalScroll = useCallback(() => {
+        const el = terminalRef.current;
+        if (!el) return;
+        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+        userScrolledRef.current = !atBottom;
+    }, []);
+
+    useEffect(() => {
+        if (userScrolledRef.current) return;
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [logs]);
+
+    /* ── Elapsed timer ── */
+    useEffect(() => {
+        if (status !== 'running' && status !== 'pending') return;
+        timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+        return () => clearInterval(timerRef.current);
+    }, [status]);
+
+    const fmtElapsed = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+
+    /* ── Init scan ── */
     useEffect(() => {
         if (!domain) { navigate('/'); return; }
         if (initStartedRef.current) return;
@@ -93,10 +165,9 @@ const LiveScanPage = () => {
             .catch(err => setError(err.message));
     }, [domain, navigate, location.state?.scanId]);
 
-    /* ──── 2. Poll for status/logs ────────────────────────────────── */
+    /* ── Poll ── */
     useEffect(() => {
         if (!scanId || status === 'completed' || status === 'failed') return;
-
         pollRef.current = setInterval(async () => {
             try {
                 const data = await scanApi.getStatus(scanId);
@@ -108,36 +179,22 @@ const LiveScanPage = () => {
                 setStatus(data.status);
                 setStartedAt(data.started_at);
                 setLiveTelemetry(data);
-                if (data.error_message) {
-                    setError(data.error_message);
-                }
-
+                if (data.error_message) setError(data.error_message);
                 if (data.status === 'completed' || data.status === 'failed') {
                     clearInterval(pollRef.current);
+                    clearInterval(timerRef.current);
                     if (data.status === 'completed') {
-                        // Fetch the full scan result JSON to display
                         try {
                             const assets = await assetsApi.list({ scan_id: scanId });
                             setScanResult(assets);
-                        } catch (e) {
-                            console.warn('Could not fetch scan result JSON:', e);
-                        }
+                        } catch (e) { console.warn('Could not fetch scan result:', e); }
                         setScanSummary(data);
-                        // No auto-redirect — user clicks "Go to Dashboard"
                     }
                 }
-            } catch (err) {
-                console.error('Poll error:', err);
-            }
+            } catch (err) { console.error('Poll error:', err); }
         }, POLL_INTERVAL_MS);
-
         return () => clearInterval(pollRef.current);
-    }, [scanId, status, navigate]);
-
-    /* ──── 3. Auto-scroll terminal ────────────────────────────────── */
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [logs]);
+    }, [scanId, status]);
 
     const isPending = status === 'pending' || status === 'running';
     const overallProgress = Math.round((tlsProgress + aiProgress) / 2);
@@ -150,43 +207,44 @@ const LiveScanPage = () => {
             setStatus('failed');
             setError('Scan cancelled by user.');
             clearInterval(pollRef.current);
-        } catch (e) {
-            console.error('Cancel failed:', e);
-        } finally {
-            setCancelling(false);
-        }
+        } catch (e) { console.error('Cancel failed:', e); }
+        finally { setCancelling(false); }
     };
 
     const stages = [
-        { step: 1, name: 'INPUT', active: true, done: true },
-        { step: 2, name: 'ENUMERATION', active: tlsProgress > 0, done: tlsProgress === 100 },
-        { step: 3, name: 'CRYPTO SCAN', active: tlsProgress > 50, done: tlsProgress === 100 },
-        { step: 4, name: 'ANALYSIS', active: aiProgress > 0, done: aiProgress === 100 },
-        { step: 5, name: 'OUTPUT', active: status === 'completed', done: status === 'completed' },
+        { step: 1, name: 'INPUT',       active: true,                  done: true },
+        { step: 2, name: 'ENUMERATION', active: tlsProgress > 0,       done: tlsProgress === 100 },
+        { step: 3, name: 'CRYPTO SCAN', active: tlsProgress > 50,      done: tlsProgress === 100 },
+        { step: 4, name: 'ANALYSIS',    active: aiProgress > 0,        done: aiProgress === 100 },
+        { step: 5, name: 'OUTPUT',      active: status === 'completed', done: status === 'completed' },
+    ];
+
+    const phases = [
+        { label: '🌐  CT Log Mining & DNS',    done: (assetsFound) > 0,       active: isPending && assetsFound === 0 },
+        { label: '🔌  Port Scanning',          done: tlsProgress > 0,         active: isPending && assetsFound > 0 && tlsProgress === 0 },
+        { label: '🔒  TLS / Certificate Scan', done: tlsProgress >= 100,      active: isPending && tlsProgress > 0 && tlsProgress < 100 },
+        { label: '⚡  API & SSH Inspection',   done: aiProgress > 0,          active: isPending && tlsProgress >= 100 && aiProgress === 0 },
+        { label: '🧠  AI Risk Classification', done: aiProgress >= 100,       active: isPending && aiProgress > 0 && aiProgress < 100 },
     ];
 
     return (
-        <div className="flex flex-col h-full gap-6">
+        <div className="flex flex-col gap-5 pb-6">
 
-            {/* Header */}
+            {/* ── Header ── */}
             <div className="page-header">
                 <div className="flex items-center gap-4">
-                    <Terminal className="text-primary-indigo" size={24} />
+                    <div className="w-10 h-10 rounded-xl bg-primary-indigo/20 border border-primary-indigo/40 flex items-center justify-center">
+                        <Terminal className="text-primary-indigo" size={20} />
+                    </div>
                     <div>
                         <h1 className="text-xl font-bold">Active Reconnaissance</h1>
-                        <p className="text-xs text-secondary font-mono">
-                            Target: {domain} | Mode: Deep Inspection
-                        </p>
+                        <p className="text-xs text-secondary font-mono">Target: <span className="text-primary-indigo">{domain}</span> | Mode: Deep Inspection</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* Cancel button — only shown while scan is running */}
                     {isPending && scanId && (
-                        <button
-                            onClick={handleCancel}
-                            disabled={cancelling}
-                            className="flex items-center gap-2 px-4 py-2 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded-lg text-sm font-bold hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50"
-                        >
+                        <button onClick={handleCancel} disabled={cancelling}
+                            className="flex items-center gap-2 px-4 py-2 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded-lg text-sm font-bold hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50">
                             <StopCircle size={14} />
                             {cancelling ? 'Cancelling…' : 'Cancel Scan'}
                         </button>
@@ -197,20 +255,26 @@ const LiveScanPage = () => {
                 </div>
             </div>
 
-            {/* Scan Metadata Row */}
-            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-4 items-center mb-[-0.5rem]">
+            {/* ── Metadata strip ── */}
+            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-3 items-center">
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-secondary tracking-widest">Target Domain</span>
-                    <span className="text-sm font-bold font-mono text-white">{domain}</span>
+                    <span className="text-sm font-bold font-mono text-white flex items-center gap-1.5"><Globe size={12} className="text-primary-indigo" />{domain}</span>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-secondary tracking-widest">Scan UUID</span>
-                    <span className="text-sm font-mono text-primary-indigo truncate max-w-[200px]">{scanId || "Initializing..."}</span>
+                    <span className="text-sm font-mono text-primary-indigo truncate max-w-[200px]">{scanId || 'Initializing...'}</span>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-secondary tracking-widest">Started At</span>
                     <span className="text-sm text-status-safe font-mono">{startedAt ? new Date(startedAt).toLocaleString() : '—'}</span>
                 </div>
+                {isPending && (
+                    <div className="flex flex-col">
+                        <span className="text-[10px] uppercase text-secondary tracking-widest">Elapsed</span>
+                        <span className="text-sm font-mono text-status-medium font-bold">{fmtElapsed(elapsed)}</span>
+                    </div>
+                )}
                 <div className="flex flex-col ml-auto">
                     <span className="text-[10px] uppercase text-secondary tracking-widest text-right">Status</span>
                     <span className={`text-sm font-bold uppercase tracking-wider ${status === 'completed' ? 'text-status-safe' : status === 'failed' ? 'text-status-critical' : 'text-primary-indigo'}`}>
@@ -220,104 +284,101 @@ const LiveScanPage = () => {
             </div>
 
             {error && (
-                <div className="bg-status-critical/10 border border-status-critical/30 rounded-lg p-4 text-status-critical text-sm">
-                    Error: {error}
+                <div className="bg-status-critical/10 border border-status-critical/30 rounded-lg p-4 text-status-critical text-sm flex items-center gap-2">
+                    <AlertTriangle size={16} /> {error}
                 </div>
             )}
 
-            <div className="flex flex-col lg-flex-row gap-6 flex-1 min-h-[500px]">
-                {/* Terminal Log */}
-                <div className="flex-1 glass-card flex flex-col overflow-hidden">
-                    <div className="p-4 border-b bg-surface-card-hover flex items-center gap-2">
-                        <div className="flex gap-1.5">
-                            <div className="w-3 h-3 rounded-full bg-status-critical" />
-                            <div className="w-3 h-3 rounded-full bg-status-medium" />
-                            <div className="w-3 h-3 rounded-full bg-status-safe" />
-                        </div>
-                        <span className="text-xs font-mono text-secondary ml-2">root@trinetra-node:~#</span>
-                    </div>
-                    <div className="p-4 font-mono text-sm overflow-y-auto flex-1" style={{ lineHeight: '1.6' }}>
-                        {logs.map((log, i) => (
-                            <div key={i}
-                                className={`mb-1 ${log.toLowerCase().includes('warning') || log.toLowerCase().includes('critical') || log.includes('⚠')
-                                    ? 'text-status-critical font-medium'
-                                    : 'text-status-pqc'}`}>
-                                <span className="text-secondary mr-2">[{new Date().toLocaleTimeString()}]</span>
-                                <span>{log}</span>
+            {/* ── Main two-column layout ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
+
+                {/* Terminal */}
+                <div className="glass-card flex flex-col overflow-hidden" style={{ minHeight: 420 }}>
+                    <div className="p-3 border-b bg-surface-card-hover flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="flex gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-status-critical" />
+                                <div className="w-3 h-3 rounded-full bg-status-medium" />
+                                <div className="w-3 h-3 rounded-full bg-status-safe" />
                             </div>
-                        ))}
+                            <span className="text-xs font-mono text-secondary">root@trinetra-node:~#</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-secondary font-mono">
+                            {isPending && <span className="flex items-center gap-1 text-status-safe"><span className="w-1.5 h-1.5 rounded-full bg-status-safe animate-pulse inline-block" /> LIVE</span>}
+                            <span>{logs.length} lines</span>
+                            {userScrolledRef.current && (
+                                <button onClick={() => { userScrolledRef.current = false; bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                                    className="text-primary-indigo hover:underline">↓ scroll to bottom</button>
+                            )}
+                        </div>
+                    </div>
+                    <div ref={terminalRef} onScroll={handleTerminalScroll}
+                        className="p-4 font-mono text-xs overflow-y-auto flex-1" style={{ lineHeight: '1.8', maxHeight: 420 }}>
+                        {logs.map((log, i) => {
+                            const isWarn = log.toLowerCase().includes('warning') || log.toLowerCase().includes('critical') || log.includes('⚠');
+                            const isSuccess = log.toLowerCase().includes('complete') || log.toLowerCase().includes('found') || log.toLowerCase().includes('✓');
+                            return (
+                                <div key={i} className="mb-0.5 flex gap-2">
+                                    <span className="text-secondary/60 flex-shrink-0 select-none">[{new Date().toLocaleTimeString()}]</span>
+                                    <span className={isWarn ? 'text-status-critical' : isSuccess ? 'text-status-safe' : 'text-status-pqc'}>{log}</span>
+                                </div>
+                            );
+                        })}
                         {isPending && scanId && (
-                            <div className="text-status-pqc animate-pulse">
-                                <span className="text-secondary mr-2">[{new Date().toLocaleTimeString()}]</span>
-                                Scanning...
+                            <div className="flex gap-2 text-primary-indigo animate-pulse mt-1">
+                                <span className="text-secondary/60 flex-shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                                <span>Scanning<span className="inline-block animate-bounce">.</span><span className="inline-block animate-bounce" style={{ animationDelay: '0.1s' }}>.</span><span className="inline-block animate-bounce" style={{ animationDelay: '0.2s' }}>.</span></span>
                             </div>
                         )}
                         <div ref={bottomRef} />
                     </div>
                 </div>
 
-                {/* Live Counters */}
-                <div className="w-full lg-w-96 glass-card p-6 flex flex-col gap-6 overflow-y-auto">
-                    <h2 className="font-bold border-b pb-2">Real-Time Telemetry</h2>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-4 bg-surface-card-hover rounded border">
-                            <div className="text-xs text-secondary uppercase tracking-widest mb-1">Discovered</div>
-                            <div className="text-2xl font-bold font-mono">{assetsFound}</div>
+                {/* Right panel — telemetry */}
+                <div className="flex flex-col gap-4">
+                    <div className="glass-card p-4 border">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Activity size={14} className="text-primary-indigo" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Real-Time Telemetry</span>
+                            {isPending && <span className="ml-auto text-[10px] text-status-safe font-mono flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-status-safe animate-pulse inline-block" /> STREAMING</span>}
                         </div>
-                        <div className="p-4 bg-surface-card-hover rounded border">
-                            <div className="text-xs text-secondary uppercase tracking-widest mb-1">Live Host</div>
-                            <div className="text-2xl font-bold font-mono text-status-safe">{Math.max(0, assetsFound - shadowAssets)}</div>
+                        <div className="grid grid-cols-2 gap-3 mb-4">
+                            <StatCard label="Discovered" value={assetsFound} icon={Server} color="text-primary" accent="148,163,184" />
+                            <StatCard label="Live Hosts" value={Math.max(0, assetsFound - shadowAssets)} icon={Wifi} color="text-status-safe" accent="34,197,94" />
+                        </div>
+                        <div className="mb-4">
+                            <StatCard label="Shadow Assets Detected" value={shadowAssets} icon={Eye} color="text-status-high" pulse={shadowAssets > 0} accent="249,115,22" />
+                        </div>
+                        <div className="space-y-3">
+                            <ProgressBar label="TLS Scanners" value={tlsProgress} icon={Lock} color="#6366f1" />
+                            <ProgressBar label="AI Classifier" value={aiProgress} icon={Cpu} color="#22c55e" />
+                            <ProgressBar label="Overall Progress" value={overallProgress} icon={Zap} color="#f59e0b" />
                         </div>
                     </div>
 
-                    <div className="p-4 rounded" style={{ borderLeft: '3px solid var(--status-high)', background: 'rgba(249,115,22,0.05)' }}>
-                        <div className="text-xs text-status-high uppercase tracking-widest mb-1 font-bold">Shadow Assets Detected</div>
-                        <div className="text-3xl font-bold font-mono text-status-high animate-pulse-subtle">{shadowAssets}</div>
-                    </div>
-
-                    <div className="space-y-4 mt-2">
-                        <div>
-                            <div className="flex justify-between text-xs mb-1">
-                                <span className="text-secondary flex items-center gap-1"><Shield size={12} /> TLS Scanners</span>
-                                <span className="font-mono">{tlsProgress}%</span>
-                            </div>
-                            <div className="w-full bg-surface-card-hover rounded-full h-1.5 overflow-hidden">
-                                <div className="h-full bg-primary-indigo" style={{ width: `${tlsProgress}%`, transition: 'width 0.5s' }} />
-                            </div>
+                    {/* Phase checklist */}
+                    <div className="glass-card p-4 border">
+                        <div className="flex items-center gap-2 mb-3">
+                            <Network size={14} className="text-primary-indigo" />
+                            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Scan Phases</span>
                         </div>
-                        <div>
-                            <div className="flex justify-between text-xs mb-1">
-                                <span className="text-secondary flex items-center gap-1"><Cpu size={12} /> AI Classifier</span>
-                                <span className="font-mono">{aiProgress}%</span>
-                            </div>
-                            <div className="w-full bg-surface-card-hover rounded-full h-1.5 overflow-hidden">
-                                <div className="h-full bg-primary-indigo" style={{ width: `${aiProgress}%`, transition: 'width 0.5s' }} />
-                            </div>
-                        </div>
-                        <div>
-                            <div className="flex justify-between text-xs mb-1">
-                                <span className="text-secondary flex items-center gap-1"><ArrowRight size={12} /> Overall Progress</span>
-                                <span className="font-mono">{overallProgress}%</span>
-                            </div>
-                            <div className="w-full bg-surface-card-hover rounded-full h-1.5 overflow-hidden">
-                                <div className="h-full bg-status-safe" style={{ width: `${overallProgress}%`, transition: 'width 0.5s' }} />
-                            </div>
+                        <div className="space-y-0.5">
+                            {phases.map(p => <PhaseItem key={p.label} {...p} />)}
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Pipeline Steps */}
-            <div className="glass-card p-6 border">
+            {/* ── Pipeline stages ── */}
+            <div className="glass-card p-5 border">
                 <div className="flex items-center justify-between relative">
-                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border-divider -z-10 -translate-y-1/2" />
-                    {stages.map((stage, idx) => (
-                        <div key={idx} className="flex flex-col items-center gap-2 bg-navy-black px-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs
-                ${stage.done ? 'bg-status-safe text-black'
-                                    : stage.active ? 'bg-primary-indigo text-white animate-pulse-subtle'
-                                        : 'bg-surface-card border text-secondary'}`}>
+                    <div className="absolute top-4 left-8 right-8 h-0.5 bg-glass-border -z-10" />
+                    {stages.map((stage) => (
+                        <div key={stage.step} className="flex flex-col items-center gap-2 z-10">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-500
+                                ${stage.done ? 'bg-status-safe text-black shadow-lg shadow-status-safe/30'
+                                    : stage.active ? 'bg-primary-indigo text-white animate-pulse-subtle shadow-lg shadow-primary-indigo/40'
+                                        : 'bg-surface-card border border-glass-border text-secondary'}`}>
                                 {stage.done ? '✓' : stage.step}
                             </div>
                             <span className={`text-[10px] font-bold tracking-widest ${stage.active || stage.done ? 'text-primary' : 'text-secondary'}`}>
@@ -326,78 +387,24 @@ const LiveScanPage = () => {
                         </div>
                     ))}
                 </div>
-            </div>
-
-            {/* Live Asset Discovery Brief — shown during active scan */}
-            {isPending && liveTelemetry && (
-                <div className="flex flex-col gap-3">
-                    {/* Overall progress bar */}
-                    <div className="glass-card border p-4 flex flex-col gap-2">
-                        <div className="flex justify-between items-center">
-                            <div className="flex items-center gap-2">
-                                <Cpu size={14} className="text-primary-indigo" />
-                                <span className="text-xs font-bold uppercase tracking-wider text-secondary">Global Progress</span>
-                            </div>
-                            <span className="text-xs font-mono font-bold text-primary">{overallProgress}%</span>
-                        </div>
-                        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden shadow-inner">
-                            <div className="h-full bg-gradient-to-r from-blue-500 to-indigo-500" style={{ width: `${overallProgress}%`, transition: 'width 0.5s' }} />
-                        </div>
+                {/* Global progress bar under pipeline */}
+                <div className="mt-5 space-y-1.5">
+                    <div className="flex justify-between text-xs text-secondary">
+                        <span className="flex items-center gap-1.5"><Zap size={11} /> Global Progress</span>
+                        <span className="font-mono font-bold text-primary">{overallProgress}%</span>
                     </div>
-
-                    {/* Live scan summary — asset type breakdown */}
-                    <div className="glass-card border p-5">
-                        <div className="flex items-center gap-2 mb-4">
-                            <Shield size={14} className="text-primary-indigo" />
-                            <span className="text-xs font-bold uppercase tracking-wider text-secondary">Live Discovery Brief</span>
-                            <span className="ml-auto text-xs text-secondary font-mono animate-pulse">● STREAMING</span>
+                    <div className="w-full bg-surface-card-hover rounded-full h-2.5 overflow-hidden">
+                        <div className="h-full rounded-full relative overflow-hidden transition-all duration-700"
+                            style={{ width: `${overallProgress}%`, background: 'linear-gradient(90deg, #6366f1, #22c55e)' }}>
+                            {overallProgress > 0 && overallProgress < 100 && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent animate-shimmer" />
+                            )}
                         </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                            {[
-                                { label: 'Total Found',   value: liveTelemetry.assets_found ?? 0,    color: 'text-primary' },
-                                { label: 'Shadow Assets', value: liveTelemetry.shadow_assets ?? 0,   color: 'text-status-high' },
-                                { label: 'TLS Scan',      value: `${liveTelemetry.tls_progress ?? 0}%`, color: 'text-primary-indigo' },
-                                { label: 'AI Classifier', value: `${liveTelemetry.ai_progress ?? 0}%`,  color: 'text-status-safe' },
-                            ].map(({ label, value, color }) => (
-                                <div key={label} className="p-3 bg-surface-card-hover rounded border text-center">
-                                    <div className="text-xs text-secondary uppercase tracking-widest mb-1">{label}</div>
-                                    <div className={`text-xl font-bold font-mono ${color}`}>{value}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Phase status row */}
-                        <div className="flex flex-col gap-2 text-xs">
-                            {[
-                                { label: '🌐  CT Log Mining & DNS',   done: (liveTelemetry.assets_found ?? 0) > 0 },
-                                { label: '🔌  Port Scanning',         done: (liveTelemetry.tls_progress ?? 0) > 0 },
-                                { label: '🔒  TLS / Certificate Scan',done: (liveTelemetry.tls_progress ?? 0) >= 100 },
-                                { label: '⚡  API & SSH Inspection',   done: (liveTelemetry.ai_progress ?? 0) > 0 },
-                                { label: '🧠  AI Risk Classification', done: (liveTelemetry.ai_progress ?? 0) >= 100 },
-                            ].map(({ label, done }) => (
-                                <div key={label} className="flex items-center gap-2">
-                                    <span className={`w-2 h-2 rounded-full flex-shrink-0 ${done ? 'bg-status-safe' : 'bg-surface-card-hover border border-glass-border'}`} />
-                                    <span className={done ? 'text-primary' : 'text-secondary'}>{label}</span>
-                                    {done && <span className="ml-auto text-status-safe font-mono">✓ Done</span>}
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Live log tail */}
-                        {liveTelemetry.logs && liveTelemetry.logs.length > 0 && (
-                            <div className="mt-4 pt-3 border-t border-glass-border">
-                                <div className="text-[10px] uppercase text-secondary tracking-widest mb-2">Latest Log Entry</div>
-                                <div className="font-mono text-xs text-status-pqc bg-surface-card rounded p-2">
-                                    {liveTelemetry.logs[liveTelemetry.logs.length - 1]}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
-            )}
+            </div>
 
-
-            {/* Scan Result JSON — shown after completion */}
+            {/* ── Completed state ── */}
             {status === 'completed' && scanResult && (
                 <div className="flex flex-col gap-3">
                     {scanSummary && (
@@ -407,17 +414,11 @@ const LiveScanPage = () => {
                                 <span className="w-2 h-2 rounded-full bg-status-safe" />
                                 <span className="text-sm font-bold text-status-safe uppercase tracking-wider">Scan Complete</span>
                             </div>
-                            <div className="text-xs text-secondary">
-                                Assets scanned: <span className="font-mono text-primary">{scanSummary.assets_found ?? assetsFound}</span>
-                            </div>
-                            <div className="text-xs text-secondary">
-                                Org score: <span className="font-mono text-primary">{scanSummary.exposure_score ?? '—'}</span>
-                            </div>
+                            <div className="text-xs text-secondary">Assets scanned: <span className="font-mono text-primary">{scanSummary.assets_found ?? assetsFound}</span></div>
+                            <div className="text-xs text-secondary">Org score: <span className="font-mono text-primary">{scanSummary.exposure_score ?? '—'}</span></div>
                             <div className="ml-auto">
-                                <button
-                                    onClick={() => navigate('/dashboard')}
-                                    className="flex items-center gap-2 px-5 py-2 bg-primary-indigo text-white font-bold text-sm rounded-lg hover:opacity-90 transition-opacity"
-                                >
+                                <button onClick={() => navigate('/dashboard')}
+                                    className="flex items-center gap-2 px-5 py-2 bg-primary-indigo text-white font-bold text-sm rounded-lg hover:opacity-90 transition-opacity">
                                     <LayoutDashboard size={14} /> Go to Dashboard
                                 </button>
                             </div>
@@ -428,14 +429,12 @@ const LiveScanPage = () => {
             )}
 
             <style>{`
-        .bg-status-critical\\/10 { background-color: rgba(239,68,68,0.1); }
-        .border-status-critical\\/30 { border-color: rgba(239,68,68,0.3); }
-        .badge-safe { background: rgba(34,197,94,0.15); color: var(--status-safe); border: 1px solid rgba(34,197,94,0.3); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
-        @media (min-width: 1024px) {
-          .lg-flex-row { flex-direction: row !important; }
-          .lg-w-96 { width: 24rem !important; }
-        }
-      `}</style>
+                @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+                .animate-shimmer { animation: shimmer 1.8s infinite; }
+                .bg-status-critical\\/10 { background-color: rgba(239,68,68,0.1); }
+                .border-status-critical\\/30 { border-color: rgba(239,68,68,0.3); }
+                .badge-safe { background: rgba(34,197,94,0.15); color: var(--status-safe); border: 1px solid rgba(34,197,94,0.3); padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.05em; }
+            `}</style>
         </div>
     );
 };

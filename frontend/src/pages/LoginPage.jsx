@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Fingerprint, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Fingerprint, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
@@ -8,6 +8,7 @@ import axios from 'axios';
 const LoginPage = () => {
     const [email, setEmail] = useState('shiva@gmail.com');
     const [password, setPassword] = useState('shiva@124');
+    const [showPassword, setShowPassword] = useState(false);
     const [isAuthenticating, setIsAuthenticating] = useState(false);
     const [error, setError] = useState('');
     const navigate = useNavigate();
@@ -98,13 +99,13 @@ const LoginPage = () => {
                     <div className="space-y-2.5">
                         <label className="text-xs font-bold text-secondary uppercase tracking-widest opacity-80">Email Address</label>
                         <div className="relative group">
-                            <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-indigo pointer-events-none transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary-indigo" />
+                            <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-indigo pointer-events-none transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary-indigo" />
                             <input 
                                 type="email" 
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 disabled={isAuthenticating}
-                                className="w-full bg-surface-card bg-opacity-40 text-primary border-2 border-glass-border rounded-xl py-3.5 pl-13 pr-5 focus:outline-none focus:border-primary-indigo focus:bg-opacity-60 focus:shadow-2xl focus:shadow-primary-indigo/30 transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed placeholder:text-secondary placeholder:opacity-40 font-medium tracking-wide hover:border-primary-indigo hover:border-opacity-50"
+                                className="w-full bg-surface-card bg-opacity-40 text-primary border-2 border-glass-border rounded-xl py-3.5 pl-11 pr-5 focus:outline-none focus:border-primary-indigo focus:bg-opacity-60 focus:shadow-2xl focus:shadow-primary-indigo/30 transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed placeholder:text-secondary placeholder:opacity-40 font-medium tracking-wide hover:border-primary-indigo hover:border-opacity-50"
                                 placeholder="shiva@gmail.com"
                                 required
                                 autoComplete="email"
@@ -120,17 +121,26 @@ const LoginPage = () => {
                             <a href="#" className="text-xs text-primary-indigo hover:text-primary-indigo-hover transition-all duration-200 font-bold hover:underline hover:underline-offset-2">Forgot?</a>
                         </div>
                         <div className="relative group">
-                            <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-indigo pointer-events-none transition-all duration-200 group-focus-within:scale-110 group-focus-within:text-primary-indigo" />
+                            <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary-indigo pointer-events-none transition-all duration-200 group-focus-within:scale-110" />
                             <input 
-                                type="password" 
+                                type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 disabled={isAuthenticating}
-                                className="w-full bg-surface-card bg-opacity-40 text-primary border-2 border-glass-border rounded-xl py-3.5 pl-13 pr-5 focus:outline-none focus:border-primary-indigo focus:bg-opacity-60 focus:shadow-2xl focus:shadow-primary-indigo/30 transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed placeholder:text-secondary placeholder:opacity-40 font-medium tracking-widest hover:border-primary-indigo hover:border-opacity-50"
+                                className="w-full bg-surface-card bg-opacity-40 text-primary border-2 border-glass-border rounded-xl py-3.5 pl-11 pr-12 focus:outline-none focus:border-primary-indigo focus:bg-opacity-60 focus:shadow-2xl focus:shadow-primary-indigo/30 transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed placeholder:text-secondary placeholder:opacity-40 font-medium tracking-widest hover:border-primary-indigo hover:border-opacity-50"
                                 placeholder="••••••••"
                                 required
                                 autoComplete="current-password"
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(v => !v)}
+                                disabled={isAuthenticating}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-secondary hover:text-primary-indigo transition-colors duration-200 disabled:opacity-40 focus:outline-none"
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-primary-indigo to-primary-indigo-hover opacity-0 group-focus-within:opacity-15 blur-xl transition-all duration-300 pointer-events-none -z-10"></div>
                         </div>
                     </div>

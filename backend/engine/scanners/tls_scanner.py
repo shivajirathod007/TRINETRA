@@ -25,8 +25,17 @@ from core.logging import get_logger
 
 log = get_logger(__name__)
 
-# Commands that matter for quantum assessment
+# Commands that matter for quantum assessment — keep minimal for speed.
+# Vulnerability checks (ROBOT, HEARTBLEED, CCS, RENEGOTIATION) are slow
+# and not needed for PQC scoring. Run only cipher/version + cert.
 SCAN_COMMANDS = {
+    ScanCommand.TLS_1_2_CIPHER_SUITES,
+    ScanCommand.TLS_1_3_CIPHER_SUITES,
+    ScanCommand.CERTIFICATE_INFO,
+}
+
+# Full command set used only when deep_scan=True
+SCAN_COMMANDS_DEEP = {
     ScanCommand.SSL_2_0_CIPHER_SUITES,
     ScanCommand.SSL_3_0_CIPHER_SUITES,
     ScanCommand.TLS_1_0_CIPHER_SUITES,
@@ -82,20 +91,32 @@ class TLSScanner:
     to avoid blocking the async event loop.
     """
 
-    async def scan(self, hostname: str, port: int = 443) -> TLSScanResult:
+    async def scan(self, hostname: str, port: int = 443, deep: bool = False) -> TLSScanResult:
         """
-        Runs full TLS scan on hostname:port.
+        Runs TLS scan on hostname:port.
+        deep=False (default): fast mode — TLS 1.2/1.3 + cert only (~2-4s per host)
+        deep=True: full vulnerability scan — all protocol versions + vuln checks
         Never raises — errors are captured in result.error.
         """
         try:
             loop = asyncio.get_event_loop()
-            raw_result = await loop.run_in_executor(
-                None,
-                self._run_sslyze_sync,
-                hostname,
-                port,
+            raw_result = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    self._run_sslyze_sync,
+                    hostname,
+                    port,
+                    deep,
+                ),
+                timeout=30.0,  # Hard 30s cap per host — SSLyze can hang on firewalled hosts
             )
             return self._normalize(raw_result, hostname, port)
+
+        except asyncio.TimeoutError:
+            log.warning("tls_scan_timeout", hostname=hostname, port=port)
+            result = TLSScanResult(hostname=hostname, port=port)
+            result.error = "TLS scan timed out after 30s"
+            return result
 
         except ServerHostnameCouldNotBeResolved as e:
             log.warning("tls_scan_hostname_error", hostname=hostname, error=str(e))
@@ -116,15 +137,16 @@ class TLSScanner:
             result.error = str(e)[:500]
             return result
 
-    def _run_sslyze_sync(self, hostname: str, port: int):
+    def _run_sslyze_sync(self, hostname: str, port: int, deep: bool = False):
         """
         SSLyze synchronous scan — runs in thread executor.
         Returns raw SSLyze ServerScanResult.
         """
+        commands = SCAN_COMMANDS_DEEP if deep else SCAN_COMMANDS
         location = ServerNetworkLocation(hostname, port)
         request = ServerScanRequest(
             server_location=location,
-            scan_commands=SCAN_COMMANDS,
+            scan_commands=commands,
         )
         scanner = Scanner()
         scanner.queue_scans([request])

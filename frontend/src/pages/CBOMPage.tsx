@@ -251,7 +251,7 @@ function ComponentModal({ comp, onClose }: { comp: any; onClose: () => void }) {
 
 // ─── TRINETRA Certificate Listing Panel ──────────────────────────────────────
 
-function CertificatesPanel({ scanId, allScans }: { scanId: string; allScans: any[] }) {
+function CertificatesPanel({ scanId, allScans, orgSummary }: { scanId: string; allScans: any[]; orgSummary?: any }) {
   const [view, setView] = useState<'current' | 'all'>('current');
   const [allCerts, setAllCerts] = useState<any[]>([]);
   const [loadingAll, setLoadingAll] = useState(false);
