@@ -42,26 +42,19 @@ def _asset_to_response(a):
 async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_user: str = Depends(get_current_user)):
     """
     Returns aggregate stats across ALL completed scans.
-    Used for the 'All Scans' view in the dashboard.
+    Counts are from actual ScannedAsset rows (not ScanJob counters) to avoid
+    double-counting when the same domain is scanned multiple times.
     """
-    # Sum risk counts across all completed scans
-    result = await db.execute(
-        select(
-            func.count(ScanJob.id).label("total_scans"),
-            func.sum(ScanJob.assets_scanned).label("total_assets"),
-            func.sum(ScanJob.critical_count).label("critical_count"),
-            func.sum(ScanJob.high_count).label("high_count"),
-            func.sum(ScanJob.medium_count).label("medium_count"),
-            func.sum(ScanJob.low_count).label("low_count"),
-            func.sum(ScanJob.safe_count).label("safe_count"),
-            func.sum(ScanJob.shadow_assets_found).label("shadow_count"),
-            func.avg(ScanJob.organization_score).label("avg_score"),
-        )
+    # Count completed scans
+    scan_count_result = await db.execute(
+        select(func.count(ScanJob.id), func.avg(ScanJob.organization_score))
         .where(ScanJob.status == "COMPLETED")
     )
-    row = result.one_or_none()
+    scan_row = scan_count_result.one_or_none()
+    total_scans = int(scan_row[0] or 0) if scan_row else 0
+    avg_score = float(scan_row[1] or 0) if scan_row else 0.0
 
-    if not row or not row.total_scans:
+    if not total_scans:
         return {
             "domain": "ALL SCANS",
             "total_scans": 0,
@@ -79,7 +72,37 @@ async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_us
             "scans_breakdown": [],
         }
 
-    # Per-scan breakdown for the trend chart
+    # Count assets directly from ScannedAsset joined to completed ScanJobs
+    # This gives accurate counts per risk level across all scans
+    risk_result = await db.execute(
+        select(ScannedAsset.risk_level, func.count(ScannedAsset.id).label("cnt"))
+        .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
+        .where(ScanJob.status == "COMPLETED", ScannedAsset.risk_level.isnot(None))
+        .group_by(ScannedAsset.risk_level)
+    )
+    risk_map = {r.risk_level: r.cnt for r in risk_result.all()}
+
+    total_assets_result = await db.execute(
+        select(func.count(ScannedAsset.id))
+        .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
+        .where(ScanJob.status == "COMPLETED")
+    )
+    total_assets = total_assets_result.scalar() or 0
+
+    shadow_result = await db.execute(
+        select(func.count(ScannedAsset.id))
+        .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
+        .where(ScanJob.status == "COMPLETED", ScannedAsset.is_shadow_asset == True)
+    )
+    shadow_count = shadow_result.scalar() or 0
+
+    critical_count = risk_map.get("CRITICAL", 0)
+    high_count     = risk_map.get("HIGH", 0)
+    medium_count   = risk_map.get("MEDIUM", 0)
+    low_count      = risk_map.get("LOW", 0)
+    safe_count     = risk_map.get("SAFE", 0)
+
+    # Per-scan breakdown for the trend chart (most recent 20)
     scans_result = await db.execute(
         select(ScanJob)
         .where(ScanJob.status == "COMPLETED")
@@ -95,6 +118,7 @@ async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_us
             "score": round(s.organization_score or 0, 0),
             "assets": s.assets_scanned or 0,
             "critical": s.critical_count or 0,
+            "high": s.high_count or 0,
             "completed_at": s.completed_at.isoformat() if s.completed_at else None,
         }
         for s in scans
@@ -115,25 +139,25 @@ async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_us
     ]
 
     risk_distribution = [
-        {"name": "CRITICAL", "value": int(row.critical_count or 0), "color": RISK_COLORS["CRITICAL"]},
-        {"name": "HIGH",     "value": int(row.high_count or 0),     "color": RISK_COLORS["HIGH"]},
-        {"name": "MEDIUM",   "value": int(row.medium_count or 0),   "color": RISK_COLORS["MEDIUM"]},
-        {"name": "LOW",      "value": int(row.low_count or 0),      "color": RISK_COLORS["LOW"]},
-        {"name": "SAFE",     "value": int(row.safe_count or 0),     "color": RISK_COLORS["SAFE"]},
+        {"name": "CRITICAL", "value": critical_count, "color": RISK_COLORS["CRITICAL"]},
+        {"name": "HIGH",     "value": high_count,     "color": RISK_COLORS["HIGH"]},
+        {"name": "MEDIUM",   "value": medium_count,   "color": RISK_COLORS["MEDIUM"]},
+        {"name": "LOW",      "value": low_count,      "color": RISK_COLORS["LOW"]},
+        {"name": "SAFE",     "value": safe_count,     "color": RISK_COLORS["SAFE"]},
     ]
     risk_distribution = [r for r in risk_distribution if r["value"] > 0]
 
     return {
         "domain": "ALL SCANS",
-        "total_scans": int(row.total_scans or 0),
-        "exposure_score": round(float(row.avg_score or 0), 0),
-        "total_assets": int(row.total_assets or 0),
-        "critical_count": int(row.critical_count or 0),
-        "high_count": int(row.high_count or 0),
-        "medium_count": int(row.medium_count or 0),
+        "total_scans": total_scans,
+        "exposure_score": round(avg_score, 0),
+        "total_assets": total_assets,
+        "critical_count": critical_count,
+        "high_count": high_count,
+        "medium_count": medium_count,
         "pqc_ready": 0,
-        "safe": int(row.safe_count or 0),
-        "shadow_count": int(row.shadow_count or 0),
+        "safe": safe_count,
+        "shadow_count": shadow_count,
         "risk_distribution": risk_distribution,
         "algorithm_breakdown": algorithm_breakdown,
         "ip_distribution": [{"name": "IPv4", "value": 100, "color": "#3B82F6"}],

@@ -508,9 +508,6 @@ export default function CBOMPage() {
         </div>
       )}
 
-      {/* ── TRINETRA Certificates Panel ──────────────────────────────── */}
-      <CertificatesPanel scanId={selectedScanId} allScans={scans} />
-
       {/* ── PQC Readiness Columns ────────────────────────────────────── */}
       <div className="glass-card border rounded-xl p-6" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
         <div className="mb-5 pb-4 border-b border-glass-border flex items-center justify-between">

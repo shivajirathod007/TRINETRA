@@ -160,7 +160,7 @@ const DashboardPage = () => {
     const kpis = viewMode === 'all'
         ? [
             { label: 'Total Scans',     value: activeStats.total_scans ?? 0,    icon: Activity,   color: 'text-primary-indigo' },
-            { label: 'Total Assets',    value: totalAssets,                      icon: Server,     color: 'text-primary' },
+            { label: 'Total Assets',    value: totalAssets,                      icon: Server,     color: 'text-primary', note: 'across all scans' },
             { label: 'Critical',        value: activeStats.critical_count ?? 0,  icon: ShieldAlert,color: 'text-status-critical' },
             { label: 'High Risk',       value: activeStats.high_count ?? 0,      icon: ShieldAlert,color: 'text-status-high' },
             { label: 'Shadow Assets',   value: activeStats.shadow_count ?? 0,    icon: Server,     color: 'text-status-medium' },
@@ -341,11 +341,12 @@ const DashboardPage = () => {
                     <div className="flex items-center gap-2">
                         <Activity size={16} className="text-primary-indigo" />
                         <span className="text-sm font-bold text-primary">Aggregate Intelligence</span>
-                        <span className="text-xs text-secondary">— across all {aggregateStats.total_scans} completed scans</span>
+                        <span className="text-xs text-secondary">— across all {aggregateStats.total_scans} completed scans (includes repeat scans of same domain)</span>
                     </div>
-                    <div className="flex gap-4 text-xs">
+                    <div className="flex gap-4 text-xs flex-wrap">
                         <span className="text-secondary">Avg Risk Score: <span className="font-mono font-bold text-primary">{aggregateStats.exposure_score ?? 0}</span></span>
-                        <span className="text-secondary">Total Assets: <span className="font-mono font-bold text-primary">{aggregateStats.total_assets ?? 0}</span></span>
+                        <span className="text-secondary">Total Asset Records: <span className="font-mono font-bold text-primary">{aggregateStats.total_assets ?? 0}</span></span>
+                        <span className="text-secondary">Critical: <span className="font-mono font-bold text-status-critical">{aggregateStats.critical_count ?? 0}</span></span>
                         <span className="text-secondary">Shadow: <span className="font-mono font-bold text-status-high">{aggregateStats.shadow_count ?? 0}</span></span>
                     </div>
                 </div>
@@ -567,7 +568,7 @@ const DashboardPage = () => {
                 <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
                     <div className="p-4 border-b flex items-center justify-between bg-surface-card-hover">
                         <h2 className="font-bold">Scan History — Risk Breakdown</h2>
-                        <span className="text-xs text-secondary">{scansBreakdown.length} scans</span>
+                        <span className="text-xs text-secondary">{scansBreakdown.length} most recent scans</span>
                     </div>
                     <div className="table-container flex-1">
                         {aggregateLoading ? (
@@ -583,7 +584,7 @@ const DashboardPage = () => {
                             <table className="data-table">
                                 <thead className="sticky top-0 bg-surface-card-hover">
                                     <tr>
-                                        <th>Domain</th><th>Date</th><th>Assets</th><th>Critical</th><th>Risk Score</th><th />
+                                        <th>Domain</th><th>Date</th><th>Assets</th><th>Critical</th><th>High</th><th>Risk Score</th><th />
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -601,6 +602,11 @@ const DashboardPage = () => {
                                             <td>
                                                 <span className={`font-mono font-bold ${scan.critical > 0 ? 'text-status-critical' : 'text-status-safe'}`}>
                                                     {scan.critical}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <span className={`font-mono font-bold text-xs ${(scan.high ?? 0) > 0 ? 'text-status-high' : 'text-secondary'}`}>
+                                                    {scan.high ?? 0}
                                                 </span>
                                             </td>
                                             <td>

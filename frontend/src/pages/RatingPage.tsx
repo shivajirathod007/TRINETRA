@@ -18,8 +18,7 @@ import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 import { useScanStore } from '../store';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
-  Cell, CartesianGrid, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis
+  Cell, CartesianGrid
 } from 'recharts';
 import { useDashboard, useAssets } from '../hooks';
 
@@ -177,6 +176,18 @@ export default function RatingPage() {
   const pqcReadiness = totalAssets > 0 ? Math.round((pqcReadyCount / totalAssets) * 100) : 0;
 
   // Per-asset URL scores — sorted by risk score descending (worst first)
+  // Infer PQC status from risk_level when quantum_safe_status is missing/UNKNOWN
+  function inferPqcStatus(asset: any): string {
+    const qs = asset.quantum_safe_status;
+    if (qs && qs !== 'UNKNOWN') return qs;
+    // Fallback: infer from risk_level
+    const rl = (asset.risk_level || '').toUpperCase();
+    if (rl === 'CRITICAL' || rl === 'HIGH') return 'VULNERABLE';
+    if (rl === 'MEDIUM') return 'PQC_READY';
+    if (rl === 'LOW' || rl === 'SAFE') return 'FULLY_QUANTUM_SAFE';
+    return 'UNKNOWN';
+  }
+
   const urlScores = [...(assets as any[])]
     .filter(a => a.score != null || a.quantum_exposure_score != null)
     .sort((a, b) => (b.score ?? b.quantum_exposure_score ?? 0) - (a.score ?? a.quantum_exposure_score ?? 0))
@@ -184,8 +195,8 @@ export default function RatingPage() {
     .map(a => ({
       url: a.url || a.fqdn || '—',
       score: Math.round(a.score ?? a.quantum_exposure_score ?? 0),
-      pqcStatus: a.quantum_safe_status || 'UNKNOWN',
-      type: a.type || a.asset_type || '—',
+      pqcStatus: inferPqcStatus(a),
+      type: (a.type || a.asset_type || '—').replace(/_/g, ' '),
     }));
 
   // Chart data for bar chart
@@ -193,15 +204,6 @@ export default function RatingPage() {
     name: u.url.length > 18 ? '…' + u.url.slice(-16) : u.url,
     score: u.score,
   }));
-
-  // Radar — all dimensions are "safety" oriented (higher = better)
-  const radarData = [
-    { subject: 'Network',    value: Math.max(0, 100 - exposureScore) },
-    { subject: 'Crypto',     value: pqcReadiness },
-    { subject: 'PQC Ready',  value: pqcReadiness },
-    { subject: 'Shadow',     value: Math.max(0, 100 - Math.round((shadowCount / Math.max(1, totalAssets)) * 100)) },
-    { subject: 'Certs',      value: Math.max(0, 100 - Math.round((critCount / Math.max(1, totalAssets)) * 100)) },
-  ];
 
   // Domain breakdown — all scores are "safety" oriented (higher = better)
   const breakdown = [
@@ -368,25 +370,70 @@ export default function RatingPage() {
           </div>
         </div>
 
-        {/* Radar chart */}
-        <div className="glass-card border rounded-xl p-5 flex flex-col">
-          <div className="text-sm font-bold text-primary mb-1">Security Posture Radar</div>
-          <div className="text-xs text-secondary mb-4">All axes: higher = safer</div>
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={220}>
-              <RadarChart data={radarData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-                <PolarGrid stroke="rgba(148,163,184,0.12)" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#64748b', fontSize: 11 }} />
-                <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                <Radar name="Safety" dataKey="value" stroke="#6366f1" fill="#6366f1" fillOpacity={0.18} strokeWidth={2} />
-              </RadarChart>
-            </ResponsiveContainer>
+        {/* PQC Status breakdown — replaces radar (easier to understand) */}
+        <div className="glass-card border rounded-xl p-5 flex flex-col gap-4">
+          <div>
+            <div className="text-sm font-bold text-primary mb-1">PQC Status Breakdown</div>
+            <div className="text-xs text-secondary">Asset classification by quantum readiness</div>
           </div>
-          <div className="mt-3 pt-3 border-t border-glass-border grid grid-cols-2 gap-2 text-[10px] text-secondary">
-            <div>Vulnerable: <span className="text-red-400 font-bold">{vulnerableCount}</span></div>
-            <div>PQC Ready: <span className="text-amber-400 font-bold">{pqcReadyCount}</span></div>
+
+          {/* Stacked bar */}
+          {totalAssets > 0 && (
+            <div className="w-full h-5 rounded-full overflow-hidden flex gap-0.5">
+              {vulnerableCount > 0 && (
+                <div className="h-full bg-red-500 transition-all duration-700 rounded-l-full"
+                  style={{ width: `${Math.round((vulnerableCount / totalAssets) * 100)}%` }}
+                  title={`Vulnerable: ${vulnerableCount}`} />
+              )}
+              {pqcReadyCount > 0 && (
+                <div className="h-full bg-amber-500 transition-all duration-700"
+                  style={{ width: `${Math.round((pqcReadyCount / totalAssets) * 100)}%` }}
+                  title={`PQC Ready: ${pqcReadyCount}`} />
+              )}
+              {(() => {
+                const safeCount = (assets as any[]).filter(a => inferPqcStatus(a) === 'FULLY_QUANTUM_SAFE').length;
+                return safeCount > 0 ? (
+                  <div className="h-full bg-emerald-500 transition-all duration-700 rounded-r-full"
+                    style={{ width: `${Math.round((safeCount / totalAssets) * 100)}%` }}
+                    title={`Quantum Safe: ${safeCount}`} />
+                ) : null;
+              })()}
+            </div>
+          )}
+
+          {/* Legend */}
+          <div className="flex flex-col gap-3">
+            {[
+              { label: 'Quantum Vulnerable', count: vulnerableCount, color: '#ef4444', desc: 'RSA/ECDSA — broken by CRQC' },
+              { label: 'PQC Ready (Hybrid)', count: pqcReadyCount,   color: '#f59e0b', desc: 'Partially protected' },
+              { label: 'Fully Quantum Safe', count: (assets as any[]).filter(a => inferPqcStatus(a) === 'FULLY_QUANTUM_SAFE').length, color: '#22c55e', desc: 'NIST FIPS 203/204/205' },
+              { label: 'Unknown / Unanalyzed', count: (assets as any[]).filter(a => inferPqcStatus(a) === 'UNKNOWN').length, color: '#6366f1', desc: 'Scan incomplete' },
+            ].filter(r => r.count > 0).map(row => (
+              <div key={row.label} className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: row.color }} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold" style={{ color: row.color }}>{row.label}</span>
+                    <span className="font-black font-mono text-sm" style={{ color: row.color }}>{row.count}</span>
+                  </div>
+                  <div className="text-[10px] text-secondary">{row.desc}</div>
+                  <div className="w-full h-1.5 bg-surface-card rounded-full mt-1 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${totalAssets > 0 ? Math.round((row.count / totalAssets) * 100) : 0}%`, background: row.color }} />
+                  </div>
+                </div>
+                <span className="text-[10px] text-secondary w-8 text-right">
+                  {totalAssets > 0 ? Math.round((row.count / totalAssets) * 100) : 0}%
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Summary stats */}
+          <div className="mt-1 pt-3 border-t border-glass-border grid grid-cols-2 gap-2 text-[10px] text-secondary">
+            <div>Total Assets: <span className="text-primary font-bold">{totalAssets}</span></div>
             <div>Shadow: <span className="text-orange-400 font-bold">{shadowCount}</span></div>
-            <div>Critical: <span className="text-red-400 font-bold">{critCount}</span></div>
+            <div>Critical Risk: <span className="text-red-400 font-bold">{critCount}</span></div>
+            <div>High Risk: <span className="text-orange-400 font-bold">{highCount}</span></div>
           </div>
         </div>
       </div>

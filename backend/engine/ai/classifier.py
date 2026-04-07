@@ -93,15 +93,13 @@ class AIClassifier:
                 max_conf = 1.0
 
         # ── 2. DistilBERT Model Prediction ──────────────────────────────────
-        if not self.is_loaded:
-            return detections, max_conf
-
+        if self.is_loaded:
             model_detection, model_conf = self._predict_model(text)
             if model_detection:
                 detections.append(model_detection)
                 max_conf = max(max_conf, model_conf)
 
-            return detections, max_conf
+        return detections, max_conf
 
     def _predict_model(self, text: str) -> Tuple[Optional[SingleDetection], float]:
         """Internal model-only prediction logic."""
@@ -177,12 +175,20 @@ async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:
         fallback_reason = None
         
         if max_conf > 0.0 and max_conf < 0.60:
-            llm_detections = await llm_classify(payload)
-            if llm_detections:
-                detections = llm_detections
+            rule_detections = await llm_classify(payload)
+            if rule_detections:
+                detections = rule_detections
                 fallback_used = True
                 fallback_reason = f"low_confidence:{max_conf:.2f}"
-                model_version = "llm-fallback"
+                model_version = "rule-based-fallback"
+        elif max_conf == 0.0 and not detections:
+            # No regex hits and no model — run rule-based fallback anyway
+            rule_detections = await llm_classify(payload)
+            if rule_detections:
+                detections = rule_detections
+                fallback_used = True
+                fallback_reason = "no_regex_match"
+                model_version = "rule-based-fallback"
 
         return ClassifierOutput(
             asset_url=payload.asset_url,
