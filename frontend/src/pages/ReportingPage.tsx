@@ -61,27 +61,33 @@ function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; sta
   const CARDS = [
     {
       key: 'executive',
-      icon: <FileText size={32} className="text-primary-indigo" />,
+      icon: <FileText size={28} className="text-primary-indigo" />,
       label: 'Executive\nReporting',
       desc: 'High-level CISO briefing with full exposure overview',
-      color: 'rgba(99,102,241,0.12)',
-      border: 'rgba(99,102,241,0.3)',
+      color: 'rgba(99,102,241,0.1)',
+      border: 'rgba(99,102,241,0.25)',
+      accent: '#6366f1',
+      badge: 'CISO Ready',
     },
     {
       key: 'schedule',
-      icon: <Calendar size={32} className="text-status-safe" />,
+      icon: <Calendar size={28} className="text-status-safe" />,
       label: 'Scheduled\nReporting',
       desc: 'Automated weekly and monthly scan cadence',
-      color: 'rgba(34,197,94,0.1)',
-      border: 'rgba(34,197,94,0.3)',
+      color: 'rgba(34,197,94,0.08)',
+      border: 'rgba(34,197,94,0.25)',
+      accent: '#22c55e',
+      badge: 'Automated',
     },
     {
       key: 'ondemand',
-      icon: <BarChart2 size={32} className="text-brand-gold" />,
+      icon: <BarChart2 size={28} className="text-brand-gold" />,
       label: 'On-Demand\nReporting',
       desc: 'Generate CBOM + risk report on demand',
-      color: 'rgba(234,179,8,0.1)',
-      border: 'rgba(234,179,8,0.3)',
+      color: 'rgba(234,179,8,0.08)',
+      border: 'rgba(234,179,8,0.25)',
+      accent: '#f59e0b',
+      badge: 'Instant',
     },
   ];
 
@@ -92,14 +98,26 @@ function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; sta
         {CARDS.map(c => (
           <div key={c.key}
             onClick={() => c.key !== 'executive' && setActiveCard(c.key as any)}
-            className={`glass-card border rounded-2xl p-6 flex flex-col items-center gap-3 text-center transition-all duration-200 ${c.key !== 'executive' ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
-            style={{ background: c.color, borderColor: c.border, boxShadow: `0 0 20px ${c.color}` }}>
-            <div className="w-20 h-20 rounded-full flex items-center justify-center border-2"
-              style={{ background: c.color, borderColor: c.border }}>
-              {c.icon}
+            className={`glass-card border rounded-2xl p-5 flex flex-col gap-3 transition-all duration-200 ${c.key !== 'executive' ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
+            style={{ background: c.color, borderColor: c.border }}>
+            {/* Top row: icon + badge */}
+            <div className="flex items-start justify-between">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
+                style={{ background: c.color, border: `1px solid ${c.border}` }}>
+                {c.icon}
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ color: c.accent, background: `${c.accent}18`, border: `1px solid ${c.accent}30` }}>
+                {c.badge}
+              </span>
             </div>
-            <div className="font-black text-primary whitespace-pre-line leading-tight">{c.label}</div>
-            <div className="text-xs text-secondary">{c.desc}</div>
+            {/* Label + desc */}
+            <div>
+              <div className="font-black text-primary whitespace-pre-line leading-tight text-sm mb-1">{c.label}</div>
+              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{c.desc}</div>
+            </div>
+            {/* Bottom accent line */}
+            <div className="h-0.5 rounded-full mt-auto" style={{ background: `linear-gradient(90deg, ${c.accent}60, transparent)` }} />
           </div>
         ))}
       </div>
@@ -443,15 +461,20 @@ export default function ReportingPage() {
       />
 
       {/* Tab switcher */}
-      <div className="flex gap-2 p-1 rounded-xl w-fit"
+      <div className="flex gap-1 p-1 rounded-xl w-fit"
         style={{ background: 'var(--surface-card)', border: '1px solid var(--glass-border)' }}>
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-bold transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
               tab === t.key
-                ? 'bg-primary-indigo text-white shadow-[0_4px_12px_rgba(99,102,241,0.35)]'
-                : 'text-secondary hover:text-primary'
-            }`}>
+                ? 'text-white'
+                : 'hover:text-primary'
+            }`}
+            style={tab === t.key ? {
+              background: 'var(--primary-indigo)',
+              boxShadow: '0 2px 12px rgba(99,102,241,0.4)',
+              color: 'white',
+            } : { color: 'var(--text-secondary)' }}>
             {t.icon} {t.label}
           </button>
         ))}

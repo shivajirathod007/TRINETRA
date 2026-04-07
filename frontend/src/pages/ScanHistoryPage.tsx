@@ -367,16 +367,22 @@ export default function ScanHistoryPage() {
       {/* ── KPI tiles ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Scans',    value: scans.length,          color: '#6366f1', icon: <Activity size={20} /> },
-          { label: 'Completed',      value: completedScans.length, color: '#22c55e', icon: <CheckCircle size={20} /> },
-          { label: 'Failed',         value: failedScans.length,    color: '#ef4444', icon: <XCircle size={20} /> },
-          { label: 'Avg Risk Score', value: avgScore,              color: '#f59e0b', icon: <Target size={20} /> },
+          { label: 'Total Scans',    value: scans.length,          color: '#6366f1', icon: <Activity size={18} />,     sub: 'all time' },
+          { label: 'Completed',      value: completedScans.length, color: '#22c55e', icon: <CheckCircle size={18} />,  sub: 'successful' },
+          { label: 'Failed',         value: failedScans.length,    color: '#ef4444', icon: <XCircle size={18} />,      sub: 'errored' },
+          { label: 'Avg Risk Score', value: avgScore,              color: '#f59e0b', icon: <Target size={18} />,       sub: 'higher = worse' },
         ].map(k => (
-          <div key={k.label} className="glass-card border rounded-xl p-5 relative overflow-hidden"
-            style={{ borderColor: `${k.color}30`, background: `${k.color}0a` }}>
-            <div className="absolute top-3 right-3 opacity-15" style={{ color: k.color }}>{k.icon}</div>
-            <div className="text-3xl font-black font-mono mb-1" style={{ color: k.color }}>{k.value}</div>
-            <div className="text-xs text-secondary font-semibold uppercase tracking-wider">{k.label}</div>
+          <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
+            style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${k.color}15`, color: k.color }}>
+              {k.icon}
+            </div>
+            <div>
+              <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>{k.value}</div>
+              <div className="text-[10px] text-secondary font-semibold uppercase tracking-wider mt-0.5">{k.label}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
+            </div>
           </div>
         ))}
       </div>
@@ -385,23 +391,34 @@ export default function ScanHistoryPage() {
       <AnalyticsSection scans={scans} />
 
       {/* ── Filter + Table ─────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-glass-border flex items-center justify-between flex-wrap gap-3">
+      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+        <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
           <div className="flex items-center gap-2">
-            <Clock size={16} className="text-indigo-400" />
-            <span className="font-bold text-primary">History ({filtered.length})</span>
+            <Clock size={15} className="text-indigo-400" />
+            <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
+              History
+              <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+                {filtered.length}
+              </span>
+            </span>
           </div>
-          <div className="flex gap-2 flex-wrap">
+          <div className="flex gap-1.5 flex-wrap">
             {(['ALL', 'COMPLETED', 'RUNNING', 'FAILED'] as const).map(f => (
               <button key={f} onClick={() => setFilter(f)}
-                className={`px-4 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                  filter === f
-                    ? 'bg-indigo-500 text-white border-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.35)]'
-                    : 'border-glass-border text-secondary hover:text-primary hover:border-indigo-500/40'
-                }`}>
+                className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
+                style={filter === f ? {
+                  background: '#6366f1',
+                  borderColor: '#6366f1',
+                  color: 'white',
+                  boxShadow: '0 0 10px rgba(99,102,241,0.3)',
+                } : {
+                  background: 'var(--surface-card)',
+                  borderColor: 'var(--glass-border)',
+                  color: 'var(--text-secondary)',
+                }}>
                 {f}
                 {f === 'RUNNING' && runningScans.length > 0 && (
-                  <span className="ml-1.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px]">
+                  <span className="ml-1.5 rounded-full px-1.5 py-0.5 text-[10px]" style={{ background: 'rgba(255,255,255,0.2)' }}>
                     {runningScans.length}
                   </span>
                 )}
@@ -413,9 +430,9 @@ export default function ScanHistoryPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-surface-card-hover">
+              <tr style={{ background: 'var(--surface-card)' }}>
                 {['Date', 'Domain', 'Assets', 'Risk Score', 'Critical', 'Status', 'Action'].map(h => (
-                  <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+                  <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -431,11 +448,10 @@ export default function ScanHistoryPage() {
                 return (
                   <tr key={sid}
                     onClick={() => handleRowClick(scan)}
-                    className={`border-b border-glass-border/30 transition-colors group ${
-                      isActive    ? 'cursor-pointer hover:bg-indigo-500/5' :
-                      isCompleted ? 'cursor-pointer hover:bg-surface-card-hover/60' :
-                      'cursor-default'
-                    }`}>
+                    className="border-b transition-colors group"
+                    style={{ borderColor: 'var(--border-divider)', cursor: isActive || isCompleted ? 'pointer' : 'default' }}
+                    onMouseEnter={e => { if (isActive || isCompleted) e.currentTarget.style.background = 'var(--surface-card-hover)'; }}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}>
 
                     <td className="px-4 py-3 font-mono text-secondary text-xs whitespace-nowrap">
                       {fmtDate(scan.started_at)}
@@ -446,7 +462,7 @@ export default function ScanHistoryPage() {
                         {isActive && (
                           <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
                         )}
-                        <span className="font-mono text-primary font-semibold">{scan.domain}</span>
+                        <span className="font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{scan.domain}</span>
                       </div>
                     </td>
 

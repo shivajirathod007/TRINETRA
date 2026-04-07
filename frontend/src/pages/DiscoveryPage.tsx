@@ -57,27 +57,29 @@ function EmptyRow({ cols }: { cols: number }) {
 function DomainsTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['Detection Date', 'Domain Name', 'Asset Type', 'Risk Level', 'Discovery', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
-          <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
+          <tr key={i} className="border-b transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-indigo-400 font-medium">{row.domain}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: '#818cf8' }}>{row.domain}</td>
             <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
             <td className={`px-4 py-3 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
             <td className="px-4 py-3 text-xs">
-              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${row.discovery === 'Shadow' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${row.discovery === 'Shadow' ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'bg-green-500/15 text-green-400 border border-green-500/25'}`}>
                 {row.discovery}
               </span>
             </td>
             <td className="px-4 py-3 font-bold text-primary tracking-wide">
               <div className="flex items-center justify-between">
                 {company}
-                <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight size={13} className="text-secondary opacity-0 group-hover:opacity-60 transition-opacity" />
               </div>
             </td>
           </tr>
@@ -539,17 +541,21 @@ export default function DiscoveryPage() {
       {assets.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: 'Total Assets',   value: assets.length,  color: '#6366f1', icon: <Globe size={16} /> },
-            { label: 'SSL / TLS',      value: sslData.length, color: '#06b6d4', icon: <Lock size={16} /> },
-            { label: 'Critical Risk',  value: critCount,      color: '#ef4444', icon: <AlertTriangle size={16} /> },
-            { label: 'Shadow Assets',  value: shadowCount,    color: '#f97316', icon: <Wifi size={16} /> },
+            { label: 'Total Assets',   value: assets.length,  color: '#6366f1', icon: <Globe size={18} />, sub: 'discovered' },
+            { label: 'SSL / TLS',      value: sslData.length, color: '#06b6d4', icon: <Lock size={18} />, sub: 'certificates' },
+            { label: 'Critical Risk',  value: critCount,      color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
+            { label: 'Shadow Assets',  value: shadowCount,    color: '#f97316', icon: <Wifi size={18} />, sub: 'unmanaged' },
           ].map(k => (
-            <div key={k.label} className="glass-card border rounded-xl px-4 py-3 flex items-center gap-3"
-              style={{ borderColor: `${k.color}28`, background: `${k.color}08` }}>
-              <div className="opacity-60" style={{ color: k.color }}>{k.icon}</div>
+            <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
+              style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${k.color}15`, color: k.color }}>
+                {k.icon}
+              </div>
               <div>
-                <div className="text-xl font-black font-mono" style={{ color: k.color }}>{k.value}</div>
-                <div className="text-[10px] text-secondary uppercase tracking-wider font-semibold">{k.label}</div>
+                <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>{k.value}</div>
+                <div className="text-[10px] text-secondary uppercase tracking-wider font-semibold mt-0.5">{k.label}</div>
+                <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
               </div>
             </div>
           ))}
@@ -562,29 +568,31 @@ export default function DiscoveryPage() {
       {/* ── Scan input ────────────────────────────────────────────── */}
       <form onSubmit={handleInitiate} className="w-full">
         <div className="glass-card border rounded-xl overflow-hidden"
-          style={{ borderColor: 'rgba(99,102,241,0.25)', boxShadow: '0 0 30px rgba(99,102,241,0.08)' }}>
-          <div className="flex items-center p-2 border-b border-glass-border">
-            <Search size={20} className="text-indigo-400 ml-4 mr-3 shrink-0" />
+          style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+          <div className="flex items-center px-2 py-1">
+            <Search size={18} className="ml-3 mr-2 shrink-0" style={{ color: '#818cf8' }} />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-transparent text-primary placeholder-secondary focus:outline-none py-3 text-base font-mono font-medium"
+              className="w-full bg-transparent placeholder-secondary focus:outline-none py-3 text-sm font-mono"
+              style={{ color: 'var(--text-primary)' }}
               placeholder="Search domain, URL, contact, IoC or other..."
             />
             <button
               type="submit"
               disabled={isScanning || !search.trim()}
-              className="px-6 py-2.5 bg-indigo-500 text-white font-bold uppercase tracking-widest text-xs rounded-lg hover:bg-indigo-600 transition-all whitespace-nowrap ml-2 mr-1 disabled:opacity-50 flex items-center gap-2"
+              className="px-5 py-2 font-bold uppercase tracking-widest text-xs rounded-lg transition-all whitespace-nowrap ml-2 mr-1 disabled:opacity-40 flex items-center gap-2"
+              style={{ background: '#6366f1', color: 'white' }}
             >
-              {isScanning ? <RefreshCw size={13} className="animate-spin" /> : null}
+              {isScanning ? <RefreshCw size={12} className="animate-spin" /> : null}
               {isScanning ? 'Scanning…' : 'Scan Now'}
             </button>
           </div>
           {activeDomain && (
-            <div className="bg-surface-card-hover px-5 py-2.5 flex items-center gap-4 text-xs flex-wrap">
+            <div className="px-5 py-2 flex items-center gap-4 text-xs flex-wrap" style={{ background: 'var(--surface-card)', borderTop: '1px solid var(--border-divider)' }}>
               <span className="text-secondary font-mono">Active domain:</span>
-              <span className="text-primary font-bold font-mono">{activeDomain}</span>
+              <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{activeDomain}</span>
               {isRunning && (
                 <span className="flex items-center gap-1.5 text-amber-400">
                   <RefreshCw size={11} className="animate-spin" />
@@ -605,35 +613,64 @@ export default function DiscoveryPage() {
       <div className="flex flex-wrap gap-2">
         {(Object.keys(CATEGORY_COUNTS) as Category[]).map(cat => (
           <button key={cat} onClick={() => setCategory(cat)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${
-              category === cat
-                ? 'bg-indigo-500 text-white border-indigo-500 shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
-                : 'bg-surface-card text-secondary hover:text-primary hover:bg-surface-card-hover border-glass-border'
-            }`}>
-            {CATEGORY_ICONS[cat]} {cat} ({CATEGORY_COUNTS[cat]})
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all border"
+            style={category === cat ? {
+              background: '#6366f1',
+              borderColor: '#6366f1',
+              color: 'white',
+              boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+            } : {
+              background: 'var(--surface-card)',
+              borderColor: 'var(--glass-border)',
+              color: 'var(--text-secondary)',
+            }}>
+            {CATEGORY_ICONS[cat]}
+            <span>{cat}</span>
+            <span className="text-xs font-mono px-1.5 py-0.5 rounded-md"
+              style={category === cat ? { background: 'rgba(255,255,255,0.2)' } : { background: 'var(--surface-card-hover)' }}>
+              {CATEGORY_COUNTS[cat]}
+            </span>
           </button>
         ))}
       </div>
 
       {/* ── Status filter ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-secondary uppercase tracking-widest">Status:</span>
+        <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Status:</span>
         {(Object.keys(STATUS_COUNTS) as StatusFilter[]).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className={`px-4 py-1.5 rounded-full font-bold text-xs transition-all border ${
-              statusFilter === s
-                ? 'bg-amber-500 text-black border-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.35)]'
-                : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
-            }`}>
-            {s} ({STATUS_COUNTS[s]})
+            className="px-3 py-1 rounded-full font-semibold text-xs transition-all border"
+            style={statusFilter === s ? {
+              background: '#f59e0b',
+              borderColor: '#f59e0b',
+              color: 'black',
+              boxShadow: '0 0 10px rgba(245,158,11,0.3)',
+            } : {
+              background: 'var(--surface-card)',
+              borderColor: 'var(--glass-border)',
+              color: 'var(--text-secondary)',
+            }}>
+            {s} <span className="opacity-70">({STATUS_COUNTS[s]})</span>
           </button>
         ))}
       </div>
 
       {/* ── Data table ────────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden">
+      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+        {/* Table toolbar */}
+        <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+            {category}
+            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+              {CATEGORY_COUNTS[category]}
+            </span>
+          </span>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
+            {activeDomain || 'No domain selected'}
+          </span>
+        </div>
         {isLoading ? (
-          <div className="flex items-center justify-center py-16 text-secondary gap-3">
+          <div className="flex items-center justify-center py-16 gap-3" style={{ color: 'var(--text-secondary)' }}>
             <LoadingSpinner size={22} /> Loading assets…
           </div>
         ) : (
@@ -645,14 +682,14 @@ export default function DiscoveryPage() {
           </div>
         )}
         {!isLoading && (
-          <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">
+          <div className="px-5 py-3 border-t flex items-center justify-between text-xs" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
             <span>Showing {
               category === 'Domains' ? domainsData.length :
               category === 'SSL' ? sslData.length :
               category === 'IP Address/Subnets' ? ipData.length :
               softwareData.length
-            } assets</span>
-            <span>TRINETRA — Quantum Exposure Intelligence Platform</span>
+            } records</span>
+            <span className="font-mono opacity-50">TRINETRA — Quantum Exposure Intelligence</span>
           </div>
         )}
       </div>

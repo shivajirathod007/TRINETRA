@@ -10,20 +10,20 @@ interface ScoreBadgeProps {
 }
 
 export function ScoreBadge({ score, size = 'md' }: ScoreBadgeProps) {
-  if (score == null) return <span className="text-gray-500">—</span>
+  if (score == null) return <span style={{ color: 'var(--text-muted)' }}>—</span>
 
-  const color = score >= 80 ? '#E24B4A'
-    : score >= 60 ? '#EF9F27'
-    : score >= 40 ? '#FAC775'
-    : score >= 20 ? '#97C459'
-    : '#1D9E75'
+  const color = score >= 80 ? '#ef4444'
+    : score >= 60 ? '#f97316'
+    : score >= 40 ? '#eab308'
+    : score >= 20 ? '#84cc16'
+    : '#22c55e'
 
   const sizeClass = size === 'sm' ? 'text-xs px-1.5 py-0.5' : size === 'lg' ? 'text-lg px-3 py-1' : 'text-sm px-2 py-0.5'
 
   return (
     <span
-      className={clsx('font-mono font-bold rounded', sizeClass)}
-      style={{ color, background: color + '22', border: `1px solid ${color}44` }}
+      className={clsx('font-mono font-bold rounded-md', sizeClass)}
+      style={{ color, background: color + '18', border: `1px solid ${color}35` }}
     >
       {score.toFixed(0)}
     </span>
@@ -142,12 +142,12 @@ interface SectionHeaderProps { title: string; subtitle?: string; action?: React.
 
 export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
   return (
-    <div className="flex items-start justify-between mb-6">
+    <div className="flex items-start justify-between mb-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">{title}</h2>
-        {subtitle && <p className="text-sm text-gray-400 mt-0.5">{subtitle}</p>}
+        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</h2>
+        {subtitle && <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
       </div>
-      {action}
+      {action && <div className="flex items-center gap-2 flex-shrink-0 ml-4">{action}</div>}
     </div>
   )
 }

@@ -2,7 +2,8 @@ import React from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileJson, ShieldCheck, Moon, Sun,
-  Home, Search, Star, BarChart2, LogOut, Database, History, Settings
+  Home, Search, Star, BarChart2, LogOut, Database, History, Settings,
+  ChevronRight
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -44,41 +45,37 @@ const Sidebar = () => {
   const { user, role, logout } = useAuth();
   const location = useLocation();
 
-  const handleLogout = () => {
-    logout();
-  };
-
   return (
     <nav className="sidebar" style={{ justifyContent: 'space-between' }}>
       {/* ── Top: Logo + Nav ──────────────────────────────────────── */}
       <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
 
         {/* Logo */}
-        <Link to="/home" className="sidebar-logo flex items-center gap-2 no-underline text-inherit hover:opacity-90 transition-opacity">
+        <Link to="/home" className="sidebar-logo flex items-center gap-3 no-underline text-inherit hover:opacity-90 transition-opacity">
           <div className="relative flex-shrink-0">
             <img src="/logo.png" alt="TRINETRA" className="h-8 w-8 object-contain" />
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-status-safe border-2 border-surface-card"
-              style={{ boxShadow: '0 0 6px #22c55e' }} />
+            <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-status-safe border-2 border-surface-card"
+              style={{ boxShadow: '0 0 5px #22c55e' }} />
           </div>
           <div className="sidebar-logo-text">
-            <div className="font-black text-sm tracking-[0.12em] uppercase text-primary">TRINETRA</div>
-            <div className="text-[10px] text-secondary font-medium tracking-wider opacity-80">Quantum Intelligence</div>
+            <div className="font-black text-sm tracking-[0.1em] uppercase" style={{ color: 'var(--text-primary)' }}>TRINETRA</div>
+            <div className="text-[10px] font-medium tracking-wider" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>Quantum Intelligence</div>
           </div>
         </Link>
 
         {/* Nav Groups */}
-        <div className="flex flex-col" style={{ padding: '0 0.75rem', gap: '0.25rem' }}>
+        <div className="flex flex-col" style={{ padding: '0.25rem 0.625rem', gap: '0.125rem' }}>
           {NAV_GROUPS.map((group, gi) => (
-            <div key={gi} style={{ marginBottom: '0.5rem' }}>
+            <div key={gi} style={{ marginBottom: '0.375rem' }}>
               {group.label && (
                 <div style={{
-                  fontSize: '10px',
+                  fontSize: '9.5px',
                   fontWeight: 700,
-                  letterSpacing: '0.1em',
+                  letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   color: 'var(--text-secondary)',
-                  opacity: 0.55,
-                  padding: '0.75rem 0.5rem 0.35rem',
+                  opacity: 0.5,
+                  padding: '0.625rem 0.625rem 0.3rem',
                 }}>
                   {group.label}
                 </div>
@@ -93,24 +90,20 @@ const Sidebar = () => {
                     to={item.path}
                     className="nav-item"
                     style={isActive ? {
-                      background: 'rgba(99,102,241,0.15)',
+                      background: 'rgba(99,102,241,0.12)',
                       color: '#818cf8',
-                      borderLeft: '3px solid #6366f1',
-                      paddingLeft: 'calc(1rem - 3px)',
-                      fontWeight: 700,
+                      borderLeftColor: '#6366f1',
+                      fontWeight: 600,
                     } : {}}
                     title={item.name}
                   >
-                    <Icon size={18} className="nav-icon" style={isActive ? { color: '#818cf8' } : {}} />
-                    <span className="nav-text">{item.name}</span>
+                    <Icon size={16} className="nav-icon" style={isActive ? { color: '#818cf8' } : {}} />
+                    <span className="nav-text" style={{ fontSize: '0.8125rem' }}>{item.name}</span>
                     {isActive && (
-                      <span style={{
+                      <ChevronRight size={12} style={{
                         marginLeft: 'auto',
-                        width: '6px',
-                        height: '6px',
-                        borderRadius: '50%',
-                        background: '#6366f1',
-                        boxShadow: '0 0 6px #6366f1',
+                        color: '#6366f1',
+                        opacity: 0.7,
                         flexShrink: 0,
                       }} />
                     )}
@@ -125,21 +118,22 @@ const Sidebar = () => {
       {/* ── Bottom: User + Theme ─────────────────────────────────── */}
       <div className="sidebar-footer">
         {/* User chip */}
-        <div className="nav-text" style={{ marginBottom: '0.75rem' }}>
+        <div className="nav-text" style={{ marginBottom: '0.625rem' }}>
           <div style={{
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            padding: '0.5rem 0.6rem',
-            borderRadius: '8px',
+            padding: '0.5rem 0.625rem',
+            borderRadius: '10px',
             background: 'var(--surface-card-hover)',
             border: '1px solid var(--glass-border)',
           }}>
             <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'rgba(99,102,241,0.2)',
+              width: 26, height: 26, borderRadius: '50%',
+              background: 'linear-gradient(135deg, rgba(99,102,241,0.3), rgba(139,92,246,0.2))',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '11px', fontWeight: 700, color: '#818cf8', flexShrink: 0,
+              fontSize: '10px', fontWeight: 700, color: '#818cf8', flexShrink: 0,
+              border: '1px solid rgba(99,102,241,0.3)',
             }}>
               {user[0].toUpperCase()}
             </div>
@@ -147,26 +141,30 @@ const Sidebar = () => {
               <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user}
               </div>
-              <div style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>{role || 'Analyst'}</div>
+              <div style={{ fontSize: '10px', color: 'var(--text-secondary)', opacity: 0.7 }}>{role || 'Analyst'}</div>
             </div>
-            <button onClick={handleLogout} title="Logout" style={{ marginLeft: 'auto', color: 'var(--text-secondary)', cursor: 'pointer', background: 'none', border: 'none', padding: '2px', flexShrink: 0 }}>
-              <LogOut size={14} />
+            <button onClick={logout} title="Logout" style={{ marginLeft: 'auto', color: 'var(--text-secondary)', cursor: 'pointer', background: 'none', border: 'none', padding: '3px', flexShrink: 0, borderRadius: '4px', transition: 'color 0.15s' }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'var(--status-critical)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}>
+              <LogOut size={13} />
             </button>
           </div>
         </div>
 
-        {/* Theme toggle + version */}
+        {/* Theme toggle */}
         <button
           onClick={toggleTheme}
-          className="sidebar-theme-btn flex items-center gap-2 p-2 mb-3 rounded w-full text-secondary transition-colors"
+          className="sidebar-theme-btn flex items-center gap-2 p-2 mb-3 rounded w-full"
+          style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-secondary)' }}
         >
-          {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
-          <span className="nav-text text-sm font-medium">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          {isDarkMode ? <Sun size={14} /> : <Moon size={14} />}
+          <span className="nav-text">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
         </button>
 
-        <div className="nav-text flex items-center justify-between">
-          <div style={{ fontSize: '10px', fontFamily: 'monospace', color: 'var(--text-secondary)', opacity: 0.6 }}>v1.2.0-beta</div>
-          <div className="flex items-center gap-1.5" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>
+        {/* Version + status */}
+        <div className="nav-text flex items-center justify-between" style={{ opacity: 0.6 }}>
+          <div style={{ fontSize: '9.5px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>v1.2.0-beta</div>
+          <div className="flex items-center gap-1.5" style={{ fontSize: '9.5px', color: 'var(--text-secondary)' }}>
             <span className="badge-dot badge-dot-safe" />
             <span>Online</span>
           </div>

@@ -65,20 +65,23 @@ function exportCSV(assets: any[], tab: Tab) {
 function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) => void }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL / FQDN', 'Type', 'Sensitivity', 'Risk Level', 'Score', 'PQC Status', 'Discovery', ''].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {assets.map((a, i) => (
           <tr key={a.id || i}
             onClick={() => onRowClick(a)}
-            className={`border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group ${a.discovery === 'Shadow' ? 'bg-status-high/5' : ''}`}>
+            className="border-b transition-colors cursor-pointer group"
+            style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
             <td className="px-4 py-3">
               <div className="flex items-center gap-2">
                 {a.discovery === 'Shadow' && <AlertTriangle size={12} className="text-status-high flex-shrink-0" />}
-                <span className="font-mono text-primary-indigo font-medium text-xs truncate max-w-[220px]" title={a.url}>{a.url}</span>
+                <span className="font-mono font-medium text-xs truncate max-w-[220px]" style={{ color: '#818cf8' }} title={a.url}>{a.url}</span>
               </div>
             </td>
             <td className="px-4 py-3 text-secondary text-xs">{a.type ?? '—'}</td>
@@ -90,11 +93,11 @@ function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: a
             <td className="px-4 py-3"><CertBadge tier={a.quantum_safe_status ?? 'UNKNOWN'} /></td>
             <td className="px-4 py-3">
               {a.discovery === 'Shadow'
-                ? <span className="text-xs font-bold text-status-high">Shadow</span>
+                ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={{ color: '#fb923c', background: 'rgba(249,115,22,0.1)', borderColor: 'rgba(249,115,22,0.25)' }}>Shadow</span>
                 : <span className="text-xs text-secondary">Known</span>}
             </td>
             <td className="px-4 py-3 text-right">
-              <ChevronRight size={16} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-60 transition-opacity" />
             </td>
           </tr>
         ))}
@@ -106,17 +109,19 @@ function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: a
 function SSLTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) => void }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'TLS Version', 'Cert Algorithm', 'Cert Issuer', 'Expiry', 'Risk', 'Score', ''].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {assets.map((a, i) => (
-          <tr key={a.id || i}
-            onClick={() => onRowClick(a)}
-            className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
-            <td className="px-4 py-3 font-mono text-primary-indigo text-xs truncate max-w-[180px]" title={a.url}>{a.url}</td>
+          <tr key={a.id || i} onClick={() => onRowClick(a)}
+            className="border-b transition-colors cursor-pointer group"
+            style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs truncate max-w-[180px]" style={{ color: '#818cf8' }} title={a.url}>{a.url}</td>
             <td className="px-4 py-3">
               <span className={`font-mono text-xs font-bold ${a.tls_version === 'TLS_1_3' ? 'text-status-safe' : a.tls_version === 'TLS_1_2' ? 'text-status-medium' : 'text-status-critical'}`}>
                 {a.tls_version ?? '—'}
@@ -128,7 +133,7 @@ function SSLTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) 
             <td className="px-4 py-3"><RiskBadge level={a.risk_level} /></td>
             <td className="px-4 py-3"><ScoreBar score={a.score} /></td>
             <td className="px-4 py-3 text-right">
-              <ChevronRight size={16} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-60 transition-opacity" />
             </td>
           </tr>
         ))}
@@ -140,24 +145,26 @@ function SSLTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) 
 function IPTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) => void }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'IP Address', 'Port', 'Type', 'Risk Level', 'Score', ''].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {assets.map((a, i) => (
-          <tr key={a.id || i}
-            onClick={() => onRowClick(a)}
-            className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
-            <td className="px-4 py-3 font-mono text-primary-indigo text-xs truncate max-w-[200px]" title={a.url}>{a.url}</td>
+          <tr key={a.id || i} onClick={() => onRowClick(a)}
+            className="border-b transition-colors cursor-pointer group"
+            style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs truncate max-w-[200px]" style={{ color: '#818cf8' }} title={a.url}>{a.url}</td>
             <td className="px-4 py-3 font-mono text-xs text-secondary">{a.ip_address ?? '—'}</td>
             <td className="px-4 py-3 font-mono text-xs text-secondary">{a.port ?? '—'}</td>
             <td className="px-4 py-3 text-xs text-secondary">{a.type ?? '—'}</td>
             <td className="px-4 py-3"><RiskBadge level={a.risk_level} /></td>
             <td className="px-4 py-3"><ScoreBar score={a.score} /></td>
             <td className="px-4 py-3 text-right">
-              <ChevronRight size={16} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-60 transition-opacity" />
             </td>
           </tr>
         ))}
@@ -169,17 +176,19 @@ function IPTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) =
 function APIsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) => void }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'Type', 'Sensitivity', 'Risk Level', 'Score', 'Discovery', ''].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] text-secondary uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {assets.map((a, i) => (
-          <tr key={a.id || i}
-            onClick={() => onRowClick(a)}
-            className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors cursor-pointer group">
-            <td className="px-4 py-3 font-mono text-primary-indigo text-xs truncate max-w-[220px]" title={a.url}>{a.url}</td>
+          <tr key={a.id || i} onClick={() => onRowClick(a)}
+            className="border-b transition-colors cursor-pointer group"
+            style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs truncate max-w-[220px]" style={{ color: '#818cf8' }} title={a.url}>{a.url}</td>
             <td className="px-4 py-3 text-xs text-secondary">{a.type ?? '—'}</td>
             <td className="px-4 py-3">
               <SensitivityBadge tier={a.data_sensitivity_tier || 'static'} source={a.data_sensitivity_tier_source} />
@@ -188,11 +197,11 @@ function APIsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any)
             <td className="px-4 py-3"><ScoreBar score={a.score} /></td>
             <td className="px-4 py-3">
               {a.discovery === 'Shadow'
-                ? <span className="text-xs font-bold text-status-high flex items-center gap-1"><AlertTriangle size={10} /> Shadow</span>
+                ? <span className="text-xs font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1 w-fit" style={{ color: '#fb923c', background: 'rgba(249,115,22,0.1)', borderColor: 'rgba(249,115,22,0.25)' }}><AlertTriangle size={10} /> Shadow</span>
                 : <span className="text-xs text-secondary">Known</span>}
             </td>
             <td className="px-4 py-3 text-right">
-              <ChevronRight size={16} className="text-secondary opacity-0 group-hover:opacity-100 transition-opacity" />
+              <ChevronRight size={14} className="text-secondary opacity-0 group-hover:opacity-60 transition-opacity" />
             </td>
           </tr>
         ))}
@@ -322,17 +331,24 @@ export default function AssetInventoryPage() {
       {/* ── Summary KPIs ──────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Assets', value: assets.length, color: '#6366f1' },
-          { label: 'SSL / TLS', value: sslAssets.length, color: '#06b6d4' },
-          { label: 'Critical Risk', value: criticalCount, color: '#EF4444' },
-          { label: 'Shadow Assets', value: shadowCount, color: '#F97316' },
+          { label: 'Total Assets',  value: assets.length,   color: '#6366f1', icon: <Globe size={18} />,         sub: 'discovered' },
+          { label: 'SSL / TLS',     value: sslAssets.length, color: '#06b6d4', icon: <Shield size={18} />,        sub: 'certificates' },
+          { label: 'Critical Risk', value: criticalCount,   color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
+          { label: 'Shadow Assets', value: shadowCount,     color: '#f97316', icon: <Server size={18} />,         sub: 'unmanaged' },
         ].map(k => (
-          <div key={k.label} className="card-sm text-center"
-            style={{ borderColor: `${k.color}33`, background: `${k.color}0d` }}>
-            <div className="text-2xl font-black font-mono" style={{ color: k.color }}>
-              {isLoading ? '—' : k.value}
+          <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
+            style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${k.color}15`, color: k.color }}>
+              {k.icon}
             </div>
-            <div className="text-xs text-secondary font-semibold mt-1 uppercase tracking-wider">{k.label}</div>
+            <div>
+              <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>
+                {isLoading ? '—' : k.value}
+              </div>
+              <div className="text-[10px] text-secondary font-semibold uppercase tracking-wider mt-0.5">{k.label}</div>
+              <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
+            </div>
           </div>
         ))}
       </div>
@@ -346,17 +362,19 @@ export default function AssetInventoryPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search URL, type, IP, issuer…"
-            className="w-full bg-surface-card border border-glass-border rounded-lg pl-9 pr-4 py-2 text-sm text-primary placeholder-secondary focus:outline-none focus:border-primary-indigo"
+            className="w-full rounded-lg pl-9 pr-4 py-2 text-sm placeholder-secondary focus:outline-none"
+            style={{ background: 'var(--surface-card)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
+            onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+            onBlur={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
           />
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE'] as RiskFilter[]).map(r => (
             <button key={r} onClick={() => setRiskFilter(r)}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${riskFilter === r
-                  ? 'text-white border-transparent'
-                  : 'bg-surface-card text-secondary border-glass-border hover:text-primary'
-                }`}
-              style={riskFilter === r ? { background: RISK_COLORS[r] ?? '#6366f1', borderColor: RISK_COLORS[r] ?? '#6366f1' } : {}}>
+              className="px-3 py-1.5 rounded-full text-xs font-semibold border transition-all"
+              style={riskFilter === r
+                ? { background: (RISK_COLORS as any)[r] ?? '#6366f1', borderColor: (RISK_COLORS as any)[r] ?? '#6366f1', color: 'white' }
+                : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
               {r}
             </button>
           ))}
@@ -367,17 +385,41 @@ export default function AssetInventoryPage() {
       <div className="flex flex-wrap gap-2">
         {(Object.keys(tabCounts) as Tab[]).map(t => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex-1 border ${tab === t
-                ? 'bg-primary-indigo text-white border-primary-indigo shadow-[0_4px_15px_rgba(99,102,241,0.3)]'
-                : 'bg-surface-card text-secondary hover:text-primary border-glass-border'
-              }`}>
-            {tabIcons[t]} {t} ({tabCounts[t]})
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all border"
+            style={tab === t ? {
+              background: '#6366f1',
+              borderColor: '#6366f1',
+              color: 'white',
+              boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
+            } : {
+              background: 'var(--surface-card)',
+              borderColor: 'var(--glass-border)',
+              color: 'var(--text-secondary)',
+            }}>
+            {tabIcons[t]}
+            <span>{t}</span>
+            <span className="text-xs font-mono px-1.5 py-0.5 rounded-md"
+              style={tab === t ? { background: 'rgba(255,255,255,0.2)' } : { background: 'var(--surface-card-hover)' }}>
+              {tabCounts[t]}
+            </span>
           </button>
         ))}
       </div>
 
       {/* ── Data Table ────────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden">
+      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+        {/* Toolbar */}
+        <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+          <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+            {tab}
+            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+              {filtered.length}
+            </span>
+          </span>
+          <span className="text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
+            {riskFilter !== 'ALL' ? `Filtered: ${riskFilter}` : 'All risk levels'}
+          </span>
+        </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-3 text-secondary">
             <LoadingSpinner size={22} /> Loading assets…
@@ -392,7 +434,7 @@ export default function AssetInventoryPage() {
             <Filter size={28} className="opacity-30" />
             <p className="text-sm">No assets match the current filter.</p>
             <button onClick={() => { setRiskFilter('ALL'); setSearch(''); }}
-              className="text-xs text-primary-indigo hover:underline">Clear filters</button>
+              className="text-xs hover:underline" style={{ color: 'var(--primary-indigo)' }}>Clear filters</button>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -402,9 +444,9 @@ export default function AssetInventoryPage() {
             {tab === 'APIs' && <APIsTable assets={filtered} onRowClick={handleRowClick} />}
           </div>
         )}
-        <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">
-          <span>Showing {filtered.length} of {tabData[tab].length} assets</span>
-          <span>TRINETRA — Quantum Exposure Intelligence Platform</span>
+        <div className="px-5 py-3 border-t flex items-center justify-between text-xs" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
+          <span>Showing {filtered.length} of {tabData[tab].length} records</span>
+          <span className="font-mono opacity-50">TRINETRA — Quantum Exposure Intelligence</span>
         </div>
       </div>
     </div>

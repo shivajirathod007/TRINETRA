@@ -356,23 +356,37 @@ const DashboardPage = () => {
             <div className="grid grid-cols-2 md-grid-cols-3 lg-grid-cols-6 gap-3">
                 {kpis.map((kpi, i) => {
                     const Icon = kpi.icon;
+                    const colorMap = {
+                        'text-status-critical': '#ef4444',
+                        'text-status-high': '#f97316',
+                        'text-status-safe': '#22c55e',
+                        'text-status-medium': '#eab308',
+                        'text-primary-indigo': '#6366f1',
+                        'text-primary': 'var(--text-primary)',
+                        'text-secondary': 'var(--text-secondary)',
+                    };
+                    const hexColor = colorMap[kpi.color] ?? '#6366f1';
                     const isCritical = kpi.color === 'text-status-critical' && kpi.value > 0;
                     const isWarning = kpi.color === 'text-status-high' && kpi.value > 0;
                     return (
-                        <div key={i} className="glass-card p-4 border flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:border-primary-indigo/30"
-                            style={isCritical ? { borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.04)' }
-                                : isWarning ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.03)' } : {}}>
-                            <div className="flex items-center justify-between mb-2">
-                                <div className="text-[10px] text-secondary uppercase tracking-widest font-semibold">{kpi.label}</div>
-                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${isCritical ? 'bg-status-critical/15' : isWarning ? 'bg-status-high/15' : 'bg-primary-indigo/10'}`}>
-                                    <Icon size={14} className={kpi.color} />
+                        <div key={i} className="glass-card border rounded-xl px-4 py-3.5 flex items-center gap-3 relative overflow-hidden transition-all duration-200"
+                            style={isCritical
+                                ? { borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }
+                                : isWarning
+                                ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.04)' }
+                                : { borderColor: `${hexColor}20`, background: `${hexColor}06` }}>
+                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: `${hexColor}18`, color: hexColor }}>
+                                <Icon size={16} />
+                            </div>
+                            <div className="min-w-0">
+                                <div className="text-[10px] text-secondary uppercase tracking-widest font-semibold truncate">{kpi.label}</div>
+                                <div className="text-2xl font-black font-mono leading-tight" style={{ color: hexColor }}>
+                                    {isLoading ? <span className="text-secondary text-lg">—</span> : <AnimatedCounters value={kpi.value} />}
                                 </div>
                             </div>
-                            <div className={`text-3xl font-bold font-mono z-10 ${kpi.color}`}>
-                                {isLoading ? <span className="text-secondary text-xl">—</span> : <AnimatedCounters value={kpi.value} />}
-                            </div>
-                            {isCritical && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-status-critical/40" />}
-                            {isWarning && <div className="absolute bottom-0 left-0 h-0.5 w-full bg-status-high/40" />}
+                            {isCritical && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: 'rgba(239,68,68,0.5)' }} />}
+                            {isWarning && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: 'rgba(249,115,22,0.4)' }} />}
                         </div>
                     );
                 })}
@@ -474,13 +488,13 @@ const DashboardPage = () => {
 
                 {/* Cryptographic Asset Map Table — single scan mode */}
                 {viewMode === 'scan' && (
-                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
-                    <div className="p-4 border-b flex flex-wrap gap-2 items-center justify-between bg-surface-card-hover">
-                        <h2 className="font-bold">Cryptographic Asset Map</h2>
+                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                    <div className="px-5 py-3 border-b flex flex-wrap gap-2 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Cryptographic Asset Map</span>
                         <div className="flex items-center gap-2">
-                            <button className="action-btn"><Filter size={14} /> Filter</button>
-                            <button className="action-btn" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
-                                Sort by {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={14} />
+                            <button className="action-btn text-xs"><Filter size={13} /> Filter</button>
+                            <button className="action-btn text-xs" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
+                                Sort by {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={13} />
                             </button>
                         </div>
                     </div>
@@ -497,16 +511,26 @@ const DashboardPage = () => {
                             </div>
                         ) : (
                             <table className="data-table">
-                                <thead className="sticky top-0 bg-surface-card-hover">
-                                    <tr>
-                                        <th>URL</th><th>Type</th><th>Tier</th><th>Status</th><th>Risk Score</th><th>Discovery</th><th />
+                                <thead>
+                                    <tr style={{ background: 'var(--surface-card)' }}>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>URL</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Type</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Tier</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Status</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Discovery</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }} />
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {sortedAssets.map(asset => (
-                                        <tr key={asset.id} className={asset.discovery === 'Shadow' ? 'bg-status-high/5' : ''}>
+                                        <tr key={asset.id}
+                                            style={{ borderColor: 'var(--border-divider)' }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = '')}>
                                             <td
-                                                className="font-mono font-medium text-primary-indigo hover:text-primary cursor-pointer transition-colors"
+                                                className="font-mono font-medium cursor-pointer transition-colors"
+                                                style={{ color: '#818cf8' }}
                                                 onClick={() => navigate(`/asset/${asset.id}`)}
                                             >
                                                 {asset.url}
