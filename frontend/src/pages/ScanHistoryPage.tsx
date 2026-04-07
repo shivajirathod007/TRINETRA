@@ -22,22 +22,22 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface ScanRecord {
-  scan_id:       string;
-  id?:           string;
-  domain:        string;
-  status:        'completed' | 'failed' | 'running' | 'pending' | string;
-  started_at?:   string;
-  completed_at?: string;
-  assets_found?: number;
+  scan_id:         string;
+  id?:             string;
+  domain:          string;
+  status:          'completed' | 'failed' | 'running' | 'pending' | string;
+  started_at?:     string;
+  completed_at?:   string;
+  assets_found?:   number;
   assets_scanned?: number;
   critical_count?: number;
-  high_count?: number;
-  medium_count?: number;
-  low_count?: number;
-  safe_count?: number;
+  high_count?:     number;
+  medium_count?:   number;
+  low_count?:      number;
+  safe_count?:     number;
   exposure_score?: number;
   organization_score?: number;
-  error_message?: string;
+  error_message?:  string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -235,12 +235,16 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
           </div>
         </div>
 
-        {/* If all counts are 0, show a "no findings" state instead of empty chart */}
+        {/* If all counts are 0 AND no scan has risk data at all, show a note */}
         {chartData.every(d => d.critical === 0 && d.high === 0) ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-secondary">
             <CheckCircle size={28} className="text-emerald-400 opacity-60" />
             <p className="text-sm font-medium text-emerald-400">No critical or high findings recorded</p>
-            <p className="text-xs text-secondary">All scans returned low/medium risk or counts were not captured.</p>
+            <p className="text-xs text-secondary">
+              {completed.length === 0
+                ? 'No completed scans yet.'
+                : 'All scans returned low/medium risk — or risk counts were not captured in older scans.'}
+            </p>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={200}>
@@ -467,15 +471,19 @@ export default function ScanHistoryPage() {
                     </td>
 
                     <td className="px-4 py-3">
-                      {(scan.critical_count ?? 0) > 0 || (scan.high_count ?? 0) > 0 ? (
-                        <div className="flex items-center gap-2">
-                          {(scan.critical_count ?? 0) > 0 && (
-                            <span className="font-bold font-mono text-red-400">{scan.critical_count}</span>
-                          )}
-                          {(scan.high_count ?? 0) > 0 && (
-                            <span className="font-bold font-mono text-orange-400 text-xs">+{scan.high_count}H</span>
-                          )}
-                        </div>
+                      {isCompleted ? (
+                        (scan.critical_count ?? 0) > 0 || (scan.high_count ?? 0) > 0 ? (
+                          <div className="flex items-center gap-2">
+                            {(scan.critical_count ?? 0) > 0 && (
+                              <span className="font-bold font-mono text-red-400">{scan.critical_count}</span>
+                            )}
+                            {(scan.high_count ?? 0) > 0 && (
+                              <span className="font-bold font-mono text-orange-400 text-xs">+{scan.high_count}H</span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-emerald-400 text-xs font-bold">0</span>
+                        )
                       ) : (
                         <span className="text-secondary text-xs">—</span>
                       )}
