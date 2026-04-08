@@ -38,6 +38,12 @@ const STATUS_CONFIG: Record<string, {
     color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)',
     icon: <TrendingUp size={28} />, iconSm: <TrendingUp size={16} />,
   },
+  // Backend stores QUANTUM_VULNERABLE — normalise to VULNERABLE for display
+  QUANTUM_VULNERABLE: {
+    label: 'Quantum Vulnerable', shortLabel: 'Vulnerable',
+    color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)',
+    icon: <ShieldAlert size={28} />, iconSm: <ShieldAlert size={16} />,
+  },
   VULNERABLE: {
     label: 'Quantum Vulnerable', shortLabel: 'Vulnerable',
     color: '#ef4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)',
@@ -55,7 +61,13 @@ const STATUS_CONFIG: Record<string, {
   },
 };
 
-const TILE_ORDER = ['FULLY_QUANTUM_SAFE', 'CLASSICAL_SAFE', 'PQC_READY', 'VULNERABLE', 'UNKNOWN', 'SCAN_FAILED'];
+// Normalise backend value → display key
+function normaliseStatus(raw: string): string {
+  if (raw === 'QUANTUM_VULNERABLE') return 'QUANTUM_VULNERABLE';
+  return raw || 'UNKNOWN';
+}
+
+const TILE_ORDER = ['FULLY_QUANTUM_SAFE', 'CLASSICAL_SAFE', 'PQC_READY', 'QUANTUM_VULNERABLE', 'VULNERABLE', 'UNKNOWN', 'SCAN_FAILED'];
 
 const TOOLTIP_STYLE = {
   contentStyle: { background: 'rgba(10,16,36,0.97)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, fontSize: 12 },
@@ -121,22 +133,24 @@ export default function PosturePage() {
 
   const total = assets.length || 1;
 
-  // Build counts
+  // Build counts — normalise QUANTUM_VULNERABLE → QUANTUM_VULNERABLE (already in config)
   const counts: Record<string, number> = {};
   for (const asset of assets) {
-    const key = (asset.quantum_safe_status as string) || 'UNKNOWN';
+    const key = normaliseStatus((asset.quantum_safe_status as string) || 'UNKNOWN');
     counts[key] = (counts[key] || 0) + 1;
   }
 
   const tiles = TILE_ORDER
     .filter(k => STATUS_CONFIG[k])
+    // Deduplicate: skip VULNERABLE if QUANTUM_VULNERABLE already has count
+    .filter((k, _, arr) => !(k === 'VULNERABLE' && arr.includes('QUANTUM_VULNERABLE') && (counts['QUANTUM_VULNERABLE'] || 0) > 0))
     .map(k => ({
       key: k,
       ...STATUS_CONFIG[k],
       count: counts[k] || 0,
       pct: Math.round(((counts[k] || 0) / total) * 100),
     }))
-    .filter(t => t.count > 0 || ['FULLY_QUANTUM_SAFE', 'PQC_READY', 'VULNERABLE', 'UNKNOWN'].includes(t.key));
+    .filter(t => t.count > 0 || ['FULLY_QUANTUM_SAFE', 'PQC_READY', 'QUANTUM_VULNERABLE', 'UNKNOWN'].includes(t.key));
 
   // Pie data
   const pieData = tiles.filter(t => t.count > 0).map(t => ({
@@ -159,7 +173,8 @@ export default function PosturePage() {
 
   // Filtered table assets
   const filtered = assets.filter((a: any) => {
-    const matchStatus = statusFilter === 'ALL' || (a.quantum_safe_status || 'UNKNOWN') === statusFilter;
+    const status = normaliseStatus(a.quantum_safe_status || 'UNKNOWN');
+    const matchStatus = statusFilter === 'ALL' || status === statusFilter;
     const q = search.toLowerCase();
     const matchSearch = !q || (a.url || a.fqdn || '').toLowerCase().includes(q) || (a.type || '').toLowerCase().includes(q);
     return matchStatus && matchSearch;
