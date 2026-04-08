@@ -2,7 +2,7 @@
  * DiscoveryPage — Asset Discovery & Scan Initiation
  * Enhanced with live topology visualization and improved UI.
  */
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Globe, Shield, Network, Code2, ChevronRight,
@@ -92,20 +92,23 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
 function SSLTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['Detection Date', 'SSL SHA256 Fingerprint', 'Expires', 'Common Name', 'Certificate Authority', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
+            style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
-          <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-indigo-400 text-xs truncate max-w-xs" title={row.fingerprint}>{row.fingerprint}</td>
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.expiry}</td>
-            <td className="px-4 py-3 text-secondary text-xs">{row.commonName}</td>
-            <td className="px-4 py-3 text-secondary text-xs">{row.ca}</td>
-            <td className="px-4 py-3 font-bold text-primary">{company}</td>
+          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
+            <td className="px-4 py-3 font-mono text-xs truncate max-w-xs" style={{ color: '#818cf8' }} title={row.fingerprint}>{row.fingerprint}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.expiry}</td>
+            <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{row.commonName}</td>
+            <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{row.ca}</td>
+            <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-primary)' }}>{company}</td>
           </tr>
         ))}
       </tbody>
@@ -116,20 +119,23 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
 function IPTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['Detection Date', 'IP Address', 'Port', 'TLS Version', 'Asset Type', 'Company'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
+            style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
-          <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 font-mono text-indigo-400 font-medium">{row.ip}</td>
-            <td className="px-4 py-3 font-mono text-primary">{row.port ?? '—'}</td>
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
-            <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className="px-4 py-3 font-bold text-primary">{company}</td>
+          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
+            <td className="px-4 py-3 font-mono font-medium" style={{ color: '#818cf8' }}>{row.ip}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{row.port ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.tlsVersion ?? '—'}</td>
+            <td className="px-4 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>{row.type?.replace(/_/g, ' ')}</td>
+            <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-primary)' }}>{company}</td>
           </tr>
         ))}
       </tbody>
@@ -140,21 +146,24 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
 function SoftwareTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="w-full text-sm">
-      <thead><tr className="bg-surface-card-hover">
+      <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['Detection Date', 'Asset Type', 'TLS Version', 'Cipher Suite', 'Port', 'Host', 'Company Name'].map(h => (
-          <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
+            style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={7} /> : data.map((row, i) => (
-          <tr key={i} className="border-b border-glass-border/40 hover:bg-surface-card-hover/60 transition-colors">
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
-            <td className="px-4 py-3 text-primary font-semibold capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.tlsVersion ?? '—'}</td>
-            <td className="px-4 py-3 font-mono text-secondary text-xs truncate max-w-xs" title={row.cipherSuite}>{row.cipherSuite ?? '—'}</td>
-            <td className="px-4 py-3 font-mono text-primary font-medium">{row.port ?? '—'}</td>
-            <td className="px-4 py-3 font-mono text-secondary text-xs">{row.host ?? '—'}</td>
-            <td className="px-4 py-3 font-bold text-primary">{company}</td>
+          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
+            <td className="px-4 py-3 font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{row.type?.replace(/_/g, ' ')}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.tlsVersion ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-xs truncate max-w-xs" style={{ color: 'var(--text-secondary)' }} title={row.cipherSuite}>{row.cipherSuite ?? '—'}</td>
+            <td className="px-4 py-3 font-mono font-medium" style={{ color: 'var(--text-primary)' }}>{row.port ?? '—'}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.host ?? '—'}</td>
+            <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-primary)' }}>{company}</td>
           </tr>
         ))}
       </tbody>
@@ -408,241 +417,6 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
   );
 }
 
-  const W = 900, H = 280;
-  const cx = W / 2, cy = H / 2;
-
-  const nodes: TopoNode[] = useMemo(() => {
-    const seen = new Set<string>();
-    const result: TopoNode[] = [];
-    const unique = assets.filter(a => {
-      const key = (a.url || a.fqdn || '').replace(/^https?:\/\//, '').split('/')[0];
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, 20);
-
-    unique.forEach((a, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(unique.length, 1) - Math.PI / 2;
-      // Vary radius slightly by risk to create depth
-      const riskOffset = a.risk_level === 'CRITICAL' ? 20 : a.risk_level === 'HIGH' ? 10 : 0;
-      const r = 110 + riskOffset;
-      const label = (a.url || a.fqdn || '')
-        .replace(/^https?:\/\//, '')
-        .split('/')[0]
-        .slice(0, 14);
-      result.push({
-        id: a.id || String(i),
-        label,
-        risk: a.risk_level || 'UNKNOWN',
-        url: a.url || a.fqdn || '',
-        type: a.type || 'web_portal',
-        isShadow: !!a.is_shadow_asset || a.discovery === 'Shadow',
-        x: Math.round(cx + r * Math.cos(angle)),
-        y: Math.round(cy + r * Math.sin(angle)),
-      });
-    });
-    return result;
-  }, [assets]);
-
-  const rootLabel = domain ? domain.split('.')[0].toUpperCase().slice(0, 6) : 'ROOT';
-  const critCount = nodes.filter(n => n.risk === 'CRITICAL').length;
-  const shadowCount = nodes.filter(n => n.isShadow).length;
-
-  return (
-    <div className="glass-card border rounded-xl overflow-hidden"
-      style={{ borderColor: 'rgba(99,102,241,0.25)', background: 'rgba(6,10,24,0.75)' }}>
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-glass-border flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-bold uppercase tracking-widest text-secondary">Domain Relationship Map</span>
-          </div>
-          {assets.length > 0 && (
-            <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span className="text-secondary">{nodes.length} nodes</span>
-              {critCount > 0 && <span className="text-red-400 font-bold">{critCount} critical</span>}
-              {shadowCount > 0 && <span className="text-orange-400 font-bold">{shadowCount} shadow</span>}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-[10px]">
-          {/* Legend */}
-          <div className="flex items-center gap-2">
-            {[['#ef4444','Critical'],['#f97316','High'],['#eab308','Medium'],['#22c55e','Safe'],['#6366f1','Unknown']].map(([c,l]) => (
-              <span key={l} className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full" style={{ background: c as string }} />
-                <span className="text-secondary">{l}</span>
-              </span>
-            ))}
-          </div>
-          <span className="text-indigo-400 font-mono font-bold">Live Topology</span>
-        </div>
-      </div>
-
-      {/* SVG canvas */}
-      <div className="relative" style={{ height: 280 }}>
-        {assets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
-            <Activity size={28} className="opacity-20" />
-            <p className="text-sm">No scan data — run a scan to populate the topology</p>
-          </div>
-        ) : (
-          <>
-            <svg ref={svgRef} width="100%" height="280" viewBox={`0 0 ${W} ${H}`}
-              preserveAspectRatio="xMidYMid meet"
-              onMouseLeave={() => setHovered(null)}>
-              <defs>
-                <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
-                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.7"/>
-                </radialGradient>
-                <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="rgba(99,102,241,0.08)" stopOpacity="1"/>
-                  <stop offset="100%" stopColor="transparent" stopOpacity="0"/>
-                </radialGradient>
-                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="3.5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-                <filter id="glowStrong" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur stdDeviation="6" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-              </defs>
-
-              {/* Background radial glow */}
-              <ellipse cx={cx} cy={cy} rx="180" ry="120" fill="url(#bgGrad)" />
-
-              {/* Connection lines */}
-              {nodes.map((node, i) => {
-                const col = nodeColor(node.risk);
-                const isHov = hovered?.id === node.id;
-                return (
-                  <line key={`line-${i}`}
-                    x1={cx} y1={cy} x2={node.x} y2={node.y}
-                    stroke={isHov ? col : 'rgba(99,102,241,0.25)'}
-                    strokeWidth={isHov ? 1.5 : 0.8}
-                    strokeDasharray={node.isShadow ? '5 4' : '3 3'}
-                    opacity={isHov ? 0.9 : 0.5}>
-                    {!isHov && (
-                      <animate attributeName="stroke-opacity"
-                        values="0.2;0.55;0.2"
-                        dur={`${2.5 + i * 0.25}s`}
-                        repeatCount="indefinite"/>
-                    )}
-                  </line>
-                );
-              })}
-
-              {/* Satellite nodes */}
-              {nodes.map((node, i) => {
-                const col = nodeColor(node.risk);
-                const isHov = hovered?.id === node.id;
-                const r = isHov ? 14 : node.risk === 'CRITICAL' ? 12 : 10;
-                return (
-                  <g key={`node-${i}`}
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={e => {
-                      setHovered(node);
-                      const rect = svgRef.current?.getBoundingClientRect();
-                      if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    }}
-                    onMouseMove={e => {
-                      const rect = svgRef.current?.getBoundingClientRect();
-                      if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    }}>
-                    {/* Outer ring for shadow assets */}
-                    {node.isShadow && (
-                      <circle cx={node.x} cy={node.y} r={r + 5}
-                        fill="none" stroke="#f97316" strokeWidth="1" strokeDasharray="3 2" opacity="0.6">
-                        <animateTransform attributeName="transform" type="rotate"
-                          from={`0 ${node.x} ${node.y}`} to={`360 ${node.x} ${node.y}`}
-                          dur="8s" repeatCount="indefinite"/>
-                      </circle>
-                    )}
-                    {/* Pulse ring for critical */}
-                    {node.risk === 'CRITICAL' && (
-                      <circle cx={node.x} cy={node.y} r={r + 4}
-                        fill="none" stroke={col} strokeWidth="1" opacity="0">
-                        <animate attributeName="r" values={`${r};${r + 12};${r}`} dur="2s" repeatCount="indefinite"/>
-                        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
-                      </circle>
-                    )}
-                    {/* Main node */}
-                    <circle cx={node.x} cy={node.y} r={r}
-                      fill={col} filter={isHov ? 'url(#glowStrong)' : 'url(#glow)'}
-                      opacity={isHov ? 1 : 0.88}
-                      style={{ transition: 'r 0.2s ease' }}>
-                      {!isHov && (
-                        <animate attributeName="r"
-                          values={`${r - 1};${r + 1};${r - 1}`}
-                          dur={`${3 + i * 0.35}s`}
-                          repeatCount="indefinite"/>
-                      )}
-                    </circle>
-                    {/* Label */}
-                    <text x={node.x} y={node.y + r + 13}
-                      textAnchor="middle" fontSize="8"
-                      fill={isHov ? '#f8fafc' : 'rgba(148,163,184,0.75)'}
-                      fontFamily="monospace" fontWeight={isHov ? 'bold' : 'normal'}>
-                      {node.label}
-                    </text>
-                  </g>
-                );
-              })}
-
-              {/* Root node */}
-              <circle cx={cx} cy={cy} r="28" fill="url(#rootGrad)" filter="url(#glowStrong)">
-                <animate attributeName="r" values="26;30;26" dur="3s" repeatCount="indefinite"/>
-              </circle>
-              <circle cx={cx} cy={cy} r="36" fill="none" stroke="rgba(245,158,11,0.3)" strokeWidth="1" strokeDasharray="4 3">
-                <animateTransform attributeName="transform" type="rotate"
-                  from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`}
-                  dur="20s" repeatCount="indefinite"/>
-              </circle>
-              <text x={cx} y={cy - 5} textAnchor="middle" fontSize="10"
-                fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
-              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7.5"
-                fill="rgba(255,255,255,0.65)" fontFamily="monospace">ROOT</text>
-            </svg>
-
-            {/* Hover tooltip */}
-            {hovered && (
-              <div className="absolute pointer-events-none z-20 px-3 py-2.5 rounded-xl border text-xs"
-                style={{
-                  left: Math.min(tooltip.x + 12, W - 200),
-                  top: Math.max(tooltip.y - 60, 4),
-                  background: 'rgba(10,16,36,0.97)',
-                  borderColor: `${nodeColor(hovered.risk)}50`,
-                  boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px ${nodeColor(hovered.risk)}30`,
-                  minWidth: 180,
-                }}>
-                <div className="font-mono font-bold text-primary mb-1.5 truncate max-w-[200px]">{hovered.url}</div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full" style={{ background: nodeColor(hovered.risk) }} />
-                  <span className="font-bold" style={{ color: nodeColor(hovered.risk) }}>{hovered.risk}</span>
-                </div>
-                <div className="text-secondary capitalize">{hovered.type?.replace(/_/g, ' ')}</div>
-                {hovered.isShadow && (
-                  <div className="mt-1 text-orange-400 font-bold flex items-center gap-1">
-                    <AlertTriangle size={10} /> Shadow Asset
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Node count badge */}
-            <div className="absolute bottom-2 right-3 text-[10px] font-mono text-secondary/50">
-              {assets.length} nodes discovered
-            </div>
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function cleanDomain(input: string): string {
@@ -666,6 +440,11 @@ export default function DiscoveryPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [category, setCategory] = useState<Category>('Domains');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
+  
+  // New state variables for the table
+  const [tableSearch, setTableSearch] = useState('');
+  const [rowLimit, setRowLimit] = useState(15);
+  
   const navigate = useNavigate();
 
   const company = activeDomain ? activeDomain.split('.')[0].toUpperCase() : '—';
@@ -750,6 +529,26 @@ export default function DiscoveryPage() {
   const isRunning = scanStatus?.status?.toLowerCase() === 'running' || scanStatus?.status?.toLowerCase() === 'pending';
   const critCount  = assets.filter((a: any) => a.risk_level === 'CRITICAL').length;
   const shadowCount = assets.filter((a: any) => a.discovery === 'Shadow' || a.is_shadow_asset).length;
+
+  const currentTableData = useMemo(() => {
+    let data: any[] = [];
+    if (category === 'Domains') data = domainsData;
+    else if (category === 'SSL') data = sslData;
+    else if (category === 'IP Address/Subnets') data = ipData;
+    else if (category === 'Software') data = softwareData;
+
+    if (tableSearch.trim()) {
+      const q = tableSearch.toLowerCase();
+      data = data.filter((row: any) => 
+        Object.values(row).some(val => val && String(val).toLowerCase().includes(q))
+      );
+    }
+    return data;
+  }, [category, domainsData, sslData, ipData, softwareData, tableSearch]);
+
+  const pagedTableData = useMemo(() => {
+    return currentTableData.slice(0, rowLimit);
+  }, [currentTableData, rowLimit]);
 
   return (
     <div className="flex flex-col gap-5 max-w-7xl mx-auto w-full">
@@ -878,39 +677,70 @@ export default function DiscoveryPage() {
 
       {/* ── Data table ────────────────────────────────────────────── */}
       <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
-        {/* Table toolbar */}
-        <div className="px-5 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+        {/* Toolbar */}
+        <div className="px-5 py-3 border-b flex flex-wrap items-center gap-3"
+          style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
           <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
             {category}
-            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
-              {CATEGORY_COUNTS[category]}
+            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded"
+              style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+              {currentTableData.length}
             </span>
           </span>
-          <span className="text-[10px] font-mono" style={{ color: 'var(--text-secondary)' }}>
+          {/* Table search */}
+          <div className="relative flex-1 min-w-[160px]">
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
+            <input type="text" value={tableSearch} onChange={e => { setTableSearch(e.target.value); setRowLimit(15); }}
+              placeholder="Search in table…"
+              className="w-full rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
+              style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')} />
+          </div>
+          <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--text-secondary)' }}>
             {activeDomain || 'No domain selected'}
           </span>
         </div>
+
+        {/* Row slider */}
+        <div className="px-5 py-2 border-b flex items-center gap-3"
+          style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+          <span className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>
+            Show rows:
+          </span>
+          <input type="range" min={5} max={Math.max(5, currentTableData.length)} step={5}
+            value={Math.min(rowLimit, Math.max(5, currentTableData.length))}
+            onChange={e => setRowLimit(Number(e.target.value))}
+            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+            style={{ accentColor: 'var(--primary-indigo)' }} />
+          <span className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0"
+            style={{ color: 'var(--primary-indigo)' }}>
+            {Math.min(rowLimit, currentTableData.length)} / {currentTableData.length}
+          </span>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-16 gap-3" style={{ color: 'var(--text-secondary)' }}>
             <LoadingSpinner size={22} /> Loading assets…
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            {category === 'Domains'            && <DomainsTable  company={company} data={domainsData} />}
-            {category === 'SSL'                && <SSLTable      company={company} data={sslData} />}
-            {category === 'IP Address/Subnets' && <IPTable       company={company} data={ipData} />}
-            {category === 'Software'           && <SoftwareTable company={company} data={softwareData} />}
+          <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 420 }}>
+            {category === 'Domains'            && <DomainsTable  company={company} data={pagedTableData} />}
+            {category === 'SSL'                && <SSLTable      company={company} data={pagedTableData} />}
+            {category === 'IP Address/Subnets' && <IPTable       company={company} data={pagedTableData} />}
+            {category === 'Software'           && <SoftwareTable company={company} data={pagedTableData} />}
           </div>
         )}
         {!isLoading && (
-          <div className="px-5 py-3 border-t flex items-center justify-between text-xs" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
-            <span>Showing {
-              category === 'Domains' ? domainsData.length :
-              category === 'SSL' ? sslData.length :
-              category === 'IP Address/Subnets' ? ipData.length :
-              softwareData.length
-            } records</span>
-            <span className="font-mono opacity-50">TRINETRA — Quantum Exposure Intelligence</span>
+          <div className="px-5 py-3 border-t flex items-center justify-between text-xs"
+            style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
+            <span>Showing {Math.min(rowLimit, currentTableData.length)} of {currentTableData.length} records</span>
+            {currentTableData.length > rowLimit && (
+              <button onClick={() => setRowLimit(r => Math.min(r + 15, currentTableData.length))}
+                className="font-semibold" style={{ color: 'var(--primary-indigo)' }}>
+                Show more ↓
+              </button>
+            )}
           </div>
         )}
       </div>
