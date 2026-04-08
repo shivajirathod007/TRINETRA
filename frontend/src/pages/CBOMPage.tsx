@@ -134,113 +134,106 @@ function ComponentModal({ comp, onClose }: { comp: any; onClose: () => void }) {
   const certInfo = getCertInfo(comp.cert || comp.cert_algorithm);
 
   const rows = [
-    {
-      label: 'TLS Version',
-      value: comp.tls || '—',
-      icon: <Wifi size={14} />,
-      impact: tlsInfo?.impact,
-      color: tlsInfo?.color,
-    },
-    {
-      label: 'Key Exchange',
-      value: comp.kx || comp.key_exchange || '—',
-      icon: <Key size={14} />,
-      impact: kexInfo?.impact,
-      color: kexInfo?.color,
-    },
-    {
-      label: 'Cipher Suite',
-      value: comp.cipher || '—',
-      icon: <Lock size={14} />,
-      impact: 'The negotiated cipher suite determines encryption strength and forward secrecy. Weak ciphers (RC4, 3DES, CBC) are flagged.',
-      color: undefined,
-    },
-    {
-      label: 'Certificate Algorithm',
-      value: comp.cert || comp.cert_algorithm || '—',
-      icon: <Shield size={14} />,
-      impact: certInfo?.impact,
-      color: certInfo?.color,
-    },
-    {
-      label: 'Certificate Issuer',
-      value: comp.issuer || comp.cert_issuer || '—',
-      icon: <Award size={14} />,
-      impact: 'Certificate Authority that signed this certificate. Self-signed certs are flagged as higher risk.',
-      color: undefined,
-    },
-    {
-      label: 'Cert Expiry',
-      value: comp.expiry || comp.cert_expiry || '—',
-      icon: <Clock size={14} />,
-      impact: 'Certificates expiring within 90 days increase HNDL urgency. Expired certs are critical.',
-      color: undefined,
-    },
+    { label: 'TLS Version',          value: comp.tls || '—',                          icon: <Wifi size={14} />,    impact: tlsInfo?.impact,   color: tlsInfo?.color },
+    { label: 'Key Exchange',         value: comp.kx || comp.key_exchange || '—',       icon: <Key size={14} />,     impact: kexInfo?.impact,   color: kexInfo?.color },
+    { label: 'Cipher Suite',         value: comp.cipher || '—',                        icon: <Lock size={14} />,    impact: 'The negotiated cipher suite determines encryption strength and forward secrecy. Weak ciphers (RC4, 3DES, CBC) are flagged.', color: undefined },
+    { label: 'Certificate Algorithm',value: comp.cert || comp.cert_algorithm || '—',   icon: <Shield size={14} />,  impact: certInfo?.impact,  color: certInfo?.color },
+    { label: 'Certificate Issuer',   value: comp.issuer || comp.cert_issuer || '—',    icon: <Award size={14} />,   impact: 'Certificate Authority that signed this certificate. Self-signed certs are flagged as higher risk.', color: undefined },
+    { label: 'Cert Expiry',          value: comp.expiry || comp.cert_expiry || '—',    icon: <Clock size={14} />,   impact: 'Certificates expiring within 90 days increase HNDL urgency. Expired certs are critical.', color: undefined },
   ];
+
+  const scoreColor = (comp.score ?? 0) > 70 ? '#ef4444' : (comp.score ?? 0) > 40 ? '#f97316' : '#22c55e';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
-      style={{ background: 'rgba(0,0,0,0.75)' }}
+      style={{ background: 'rgba(0,0,0,0.7)' }}
       onClick={onClose}>
-      <div className="glass-card border rounded-2xl w-full max-w-2xl overflow-hidden"
-        style={{ borderColor: 'rgba(99,102,241,0.3)', boxShadow: '0 0 60px rgba(99,102,241,0.15)' }}
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl"
+        style={{
+          background: 'var(--glass-bg)',
+          border: '1px solid rgba(99,102,241,0.3)',
+          boxShadow: '0 0 60px rgba(99,102,241,0.2), 0 24px 48px rgba(0,0,0,0.4)',
+        }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div className="px-6 py-4 border-b border-glass-border flex items-start justify-between gap-4"
-          style={{ background: 'rgba(99,102,241,0.06)' }}>
-          <div>
-            <div className="font-bold text-primary font-mono text-sm max-w-[420px] truncate">{comp.url || comp.name}</div>
-            <div className="mt-2 flex gap-2 flex-wrap">
+        <div className="px-6 py-4 flex items-start justify-between gap-4"
+          style={{ borderBottom: '1px solid var(--border-divider)', background: 'rgba(99,102,241,0.06)' }}>
+          <div className="min-w-0">
+            <div className="font-bold font-mono text-sm truncate mb-2" style={{ color: 'var(--text-primary)' }}
+              title={comp.url || comp.name}>
+              {comp.url || comp.name}
+            </div>
+            <div className="flex gap-2 flex-wrap">
               <RiskBadge level={comp.status || comp.risk_level || 'UNKNOWN'} />
               {comp.is_shadow && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-orange-400 px-2 py-0.5 rounded-full border border-orange-400/30 bg-orange-400/10">
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border"
+                  style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)', borderColor: 'rgba(249,115,22,0.3)' }}>
                   <AlertTriangle size={10} /> SHADOW ASSET
                 </span>
               )}
             </div>
           </div>
-          <button onClick={onClose} className="text-secondary hover:text-primary mt-1"><X size={18} /></button>
+          <button onClick={onClose} className="mt-1 flex-shrink-0 transition-colors"
+            style={{ color: 'var(--text-secondary)' }}
+            onMouseEnter={e => (e.currentTarget.style.color = 'var(--text-primary)')}
+            onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-secondary)')}>
+            <X size={18} />
+          </button>
         </div>
 
         {/* Risk Score Bar */}
-        <div className="px-6 py-3 border-b border-glass-border/50 flex items-center gap-4">
-          <span className="text-xs text-secondary font-semibold w-24">Quantum Risk</span>
-          <div className="flex-1 h-2 rounded-full bg-surface-card overflow-hidden">
+        <div className="px-6 py-3 flex items-center gap-4"
+          style={{ borderBottom: '1px solid var(--border-divider)' }}>
+          <span className="text-xs font-semibold w-24 flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Quantum Risk</span>
+          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-card)' }}>
             <div className="h-full rounded-full transition-all"
-              style={{
-                width: `${comp.score ?? 0}%`,
-                background: (comp.score ?? 0) > 70 ? '#ef4444' : (comp.score ?? 0) > 40 ? '#f97316' : '#22c55e'
-              }} />
+              style={{ width: `${comp.score ?? 0}%`, background: scoreColor }} />
           </div>
-          <span className="font-black font-mono text-sm w-12 text-right"
-            style={{ color: (comp.score ?? 0) > 70 ? '#ef4444' : '#94a3b8' }}>
+          <span className="font-black font-mono text-sm w-14 text-right flex-shrink-0" style={{ color: scoreColor }}>
             {comp.score ?? '—'}/100
           </span>
         </div>
 
-        {/* Findings with impact explanations */}
-        <div className="divide-y divide-glass-border/30 max-h-[400px] overflow-y-auto">
-          {rows.map(r => (
-            <div key={r.label} className="flex px-6 py-3.5 gap-3 items-start">
-              <span className="text-primary-indigo/60 mt-0.5 shrink-0">{r.icon}</span>
+        {/* Findings */}
+        <div className="max-h-[400px] overflow-y-auto">
+          {rows.map((r, i) => (
+            <div key={r.label} className="flex px-6 py-4 gap-3 items-start"
+              style={{ borderBottom: i < rows.length - 1 ? '1px solid var(--border-divider)' : 'none' }}>
+              {/* Icon */}
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary-indigo)' }}>
+                {r.icon}
+              </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1 mb-0.5">
-                  <span className="text-[10px] text-secondary font-bold uppercase tracking-wider">{r.label}</span>
+                {/* Label */}
+                <div className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>
+                  {r.label}
                 </div>
-                <div className="font-mono text-sm text-primary truncate" style={r.color ? { color: r.color } : {}}>
+                {/* Value */}
+                <div className="font-mono text-sm font-semibold" style={{ color: r.color ?? 'var(--text-primary)' }}>
                   {r.value}
                 </div>
+                {/* Impact explanation */}
                 {r.impact && (
-                  <div className="text-[10px] text-secondary/70 mt-1 leading-relaxed">{r.impact}</div>
+                  <div className="text-[10px] mt-1.5 leading-relaxed px-2 py-1.5 rounded-lg"
+                    style={{ color: 'var(--text-secondary)', background: 'var(--surface-card)', border: '1px solid var(--border-divider)' }}>
+                    {r.impact}
+                  </div>
                 )}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="px-6 py-3 border-t border-glass-border flex justify-end">
-          <button onClick={onClose} className="text-xs text-secondary hover:text-primary px-4 py-2 rounded-lg border border-glass-border transition-colors">
+        {/* Footer */}
+        <div className="px-6 py-3 flex justify-end"
+          style={{ borderTop: '1px solid var(--border-divider)', background: 'var(--surface-card)' }}>
+          <button onClick={onClose}
+            className="text-xs px-4 py-2 rounded-lg transition-all"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--glass-border)', background: 'transparent' }}
+            onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--glass-border-hover)'; }}
+            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
             Close
           </button>
         </div>
@@ -459,11 +452,11 @@ export default function CBOMPage() {
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-primary">Operations Center</h1>
-          <p className="text-xs text-secondary mt-1">Cryptographic Bill of Materials — PQC Readiness Intelligence</p>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Operations Center</h1>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Cryptographic Bill of Materials — PQC Readiness Intelligence</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <span className="text-secondary text-xs uppercase tracking-widest font-bold">Target:</span>
+          <span className="text-xs uppercase tracking-widest font-bold" style={{ color: 'var(--text-secondary)' }}>Target:</span>
           <div className="relative">
             <select
               value={selectedScanId}
@@ -473,20 +466,24 @@ export default function CBOMPage() {
                 const s = scans.find(x => (x.scan_id || x.id) === id);
                 if (s) setActiveScan(id, s.domain);
               }}
-              className="appearance-none bg-surface-card border border-glass-border text-primary font-mono text-sm rounded-lg px-4 py-2 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer min-w-[200px]"
+              className="appearance-none font-mono text-sm rounded-lg px-4 py-2 pr-8 focus:outline-none cursor-pointer min-w-[200px]"
+              style={{ background: 'var(--surface-card)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
             >
               {scans.map(s => {
                 const id = s.scan_id || s.id;
                 return <option key={id} value={id}>{s.domain} ({s.status})</option>;
               })}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-2.5 text-secondary pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-3 top-2.5 pointer-events-none" style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <button className="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+          <button className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: 'var(--text-secondary)' }}>
             <RefreshCw size={12} /> Live Sync
           </button>
           {allComponents.length > 0 && (
-            <button onClick={handleDownload} className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border border-glass-border text-secondary hover:text-primary hover:border-primary-indigo/50 transition-all">
+            <button onClick={handleDownload} className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border transition-all"
+              style={{ borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.borderColor = 'var(--glass-border-hover)'; }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
               <Download size={14} /> Export JSON
             </button>
           )}
@@ -498,10 +495,10 @@ export default function CBOMPage() {
         <div className="border rounded-xl p-4 flex items-start gap-3" style={{ background: 'rgba(239,68,68,0.07)', borderColor: 'rgba(239,68,68,0.2)' }}>
           <AlertTriangle size={18} className="text-red-400 mt-0.5 shrink-0" />
           <div>
-            <div className="font-bold text-red-400 text-sm mb-1">SHADOW ASSETS DETECTED ({shadowAssets.length})</div>
-            <div className="text-xs text-secondary leading-relaxed">
+            <div className="font-bold text-sm mb-1" style={{ color: 'var(--status-critical)' }}>SHADOW ASSETS DETECTED ({shadowAssets.length})</div>
+            <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
               Assets found via CT log mining that are NOT in the known inventory: {' '}
-              <span className="font-mono text-primary">{shadowAssets.slice(0, 3).map(s => s.url).join(', ')}{shadowAssets.length > 3 ? ` +${shadowAssets.length - 3} more` : ''}</span>.
+              <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{shadowAssets.slice(0, 3).map(s => s.url).join(', ')}{shadowAssets.length > 3 ? ` +${shadowAssets.length - 3} more` : ''}</span>.
               {' '}These may be forgotten subdomains still running vulnerable cryptography.
             </div>
           </div>
@@ -512,8 +509,8 @@ export default function CBOMPage() {
       <div className="glass-card border rounded-xl p-6" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
         <div className="mb-5 pb-4 border-b border-glass-border flex items-center justify-between">
           <div>
-            <h2 className="font-bold text-primary">PQC Readiness Certificates</h2>
-            <div className="text-xs text-secondary mt-1">Domain: <span className="font-mono text-primary">{currentDomain}</span></div>
+            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>PQC Readiness Certificates</h2>
+            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Domain: <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{currentDomain}</span></div>
           </div>
           <div className="text-xs text-secondary font-mono">{allComponents.length} assets classified</div>
         </div>
@@ -555,14 +552,16 @@ export default function CBOMPage() {
                 <div className="text-[9px] leading-relaxed mb-2" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{col.sublabel}</div>
                 <div><span className="text-2xl font-black" style={{ color: col.color }}>{col.count}</span> <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>assets</span></div>
               </div>
-              <div className="flex flex-col gap-1.5 overflow-y-auto pr-1" style={{ maxHeight: 240, scrollbarWidth: 'thin' }}>
+              <div className="flex flex-col gap-1 overflow-y-auto pr-1" style={{ maxHeight: 240, scrollbarWidth: 'thin' }}>
                 {allComponents.filter(c => c.status === col.key).map((c, i) => (
                   <button key={i} onClick={() => setSelectedComp(c)}
-                    className="flex items-center justify-between text-xs font-mono text-left group transition-colors rounded-lg px-2 py-1.5 hover:bg-black/10"
-                    style={{ color: 'var(--text-secondary)' }}
+                    className="flex items-start justify-between text-left group transition-colors rounded-lg px-2 py-1.5"
+                    style={{ color: 'var(--primary-indigo)' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = '')}
                     title={c.url}>
-                    <span className="truncate pr-2 max-w-[180px]" style={{ color: 'var(--primary-indigo)' }}>{c.url}</span>
-                    <ChevronDown size={11} className="opacity-0 group-hover:opacity-60 -rotate-90 shrink-0 transition-opacity" />
+                    <span className="font-mono text-[10px] leading-relaxed break-all text-left">{c.url}</span>
+                    <ChevronDown size={10} className="opacity-0 group-hover:opacity-60 -rotate-90 shrink-0 ml-1 mt-0.5 transition-opacity" />
                   </button>
                 ))}
                 {col.count === 0 && (
@@ -578,16 +577,16 @@ export default function CBOMPage() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'ORG RISK SCORE', value: stats.orgScore, unit: '/100', color: stats.orgScore > 70 ? '#ef4444' : stats.orgScore > 40 ? '#f97316' : '#22c55e', icon: <TrendingUp size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'TOTAL ASSETS',   value: stats.total,    unit: '',     color: '#e2e8f0', icon: <Globe size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'VULNERABLE',     value: stats.vulnCount, unit: '',   color: '#ef4444', icon: <AlertTriangle size={40} className="absolute right-0 bottom-0 opacity-10 text-red-400" /> },
-          { label: 'PQC READY',      value: stats.readyCount, unit: '',  color: '#8b5cf6', icon: <Shield size={40} className="absolute right-0 bottom-0 opacity-10 text-purple-400" /> },
-          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',   color: '#22c55e', icon: <CheckCircle2 size={40} className="absolute right-0 bottom-0 opacity-10 text-green-400" /> },
+          { label: 'TOTAL ASSETS',   value: stats.total,    unit: '',     color: 'var(--text-primary)', icon: <Globe size={40} className="absolute right-0 bottom-0 opacity-10" /> },
+          { label: 'VULNERABLE',     value: stats.vulnCount, unit: '',   color: '#ef4444', icon: <AlertTriangle size={40} className="absolute right-0 bottom-0 opacity-10" /> },
+          { label: 'PQC READY',      value: stats.readyCount, unit: '',  color: '#8b5cf6', icon: <Shield size={40} className="absolute right-0 bottom-0 opacity-10" /> },
+          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',   color: '#22c55e', icon: <CheckCircle2 size={40} className="absolute right-0 bottom-0 opacity-10" /> },
         ].map(t => (
           <div key={t.label} className="glass-card border rounded-xl p-5 relative overflow-hidden flex flex-col justify-center">
-            <div className="text-[9px] font-bold text-secondary uppercase tracking-widest mb-1">{t.label}</div>
+            <div className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>{t.label}</div>
             <div className="flex items-end gap-1">
               <span className="text-2xl font-black" style={{ color: t.color }}>{t.value}</span>
-              {t.unit && <span className="text-xs text-secondary mb-0.5">{t.unit}</span>}
+              {t.unit && <span className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.unit}</span>}
             </div>
             {t.icon}
           </div>

@@ -47,6 +47,9 @@ const SERVER_TYPES  = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gatewa
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
     const [viewMode, setViewMode] = useState('scan'); // 'scan' | 'all'
+    const [assetSearch, setAssetSearch] = useState('');
+    const [assetFilter, setAssetFilter] = useState('ALL');
+    const [assetRowLimit, setAssetRowLimit] = useState(10);
     const navigate = useNavigate();
     const { activeDomain, activeScanId, setActiveScan } = useScanStore();
     const domain = activeDomain || '';
@@ -190,10 +193,20 @@ const DashboardPage = () => {
     const ipData = activeStats.ip_distribution ?? [{ name: 'IPv4', value: 100, color: '#3B82F6' }];
     const scansBreakdown = activeStats.scans_breakdown ?? [];
 
-    // ── Asset table sort ────────────────────────────────────────────────────
+    // ── Asset table sort + filter + search ──────────────────────────────────
     const sortedAssets = [...activeAssets].sort((a, b) =>
         sortField === 'score' ? (b.score ?? 0) - (a.score ?? 0) : 0
     );
+
+    const filteredDashAssets = sortedAssets.filter(a => {
+        const matchFilter = assetFilter === 'ALL'
+            || (assetFilter === 'CRITICAL' && a.risk_level === 'CRITICAL')
+            || (assetFilter === 'HIGH' && a.risk_level === 'HIGH')
+            || (assetFilter === 'SHADOW' && a.discovery === 'Shadow');
+        const q = assetSearch.toLowerCase();
+        const matchSearch = !q || (a.url || '').toLowerCase().includes(q) || (a.type || '').toLowerCase().includes(q);
+        return matchFilter && matchSearch;
+    });
 
     const authUser = localStorage.getItem('trinetra_auth') === 'true' ? 'shiva@gmail.com' : 'Guest';
 
@@ -492,30 +505,72 @@ const DashboardPage = () => {
                 {/* Cryptographic Asset Map Table — single scan mode */}
                 {viewMode === 'scan' && (
                 <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                    {/* Toolbar */}
                     <div className="px-5 py-3 border-b flex flex-wrap gap-2 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
-                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Cryptographic Asset Map</span>
-                        <div className="flex items-center gap-2">
-                            <button className="action-btn text-xs"><Filter size={13} /> Filter</button>
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                            Cryptographic Asset Map
+                            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+                                {filteredDashAssets.length}
+                            </span>
+                        </span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            {/* Search */}
+                            <div className="relative">
+                                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
+                                <input
+                                    type="text"
+                                    value={assetSearch}
+                                    onChange={e => setAssetSearch(e.target.value)}
+                                    placeholder="Search URL or type…"
+                                    className="text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none w-44"
+                                    style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+                            {/* Risk filter */}
+                            <div className="flex items-center gap-1">
+                                {['ALL','CRITICAL','HIGH','SHADOW'].map(f => (
+                                    <button key={f} onClick={() => setAssetFilter(f)}
+                                        className="px-2 py-1 text-[10px] font-bold rounded-md border transition-all"
+                                        style={assetFilter === f
+                                            ? { background: 'var(--primary-indigo)', color: 'white', borderColor: 'var(--primary-indigo)' }
+                                            : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
+                                        {f}
+                                    </button>
+                                ))}
+                            </div>
                             <button className="action-btn text-xs" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
-                                Sort by {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={13} />
+                                Sort: {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={12} />
                             </button>
                         </div>
                     </div>
 
-                    <div className="table-container flex-1">
+                    {/* Row limit slider */}
+                    <div className="px-5 py-2 flex items-center gap-3 border-b" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Show rows:</span>
+                        <input type="range" min={5} max={Math.max(5, filteredDashAssets.length)} step={5}
+                            value={assetRowLimit}
+                            onChange={e => setAssetRowLimit(Number(e.target.value))}
+                            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                            style={{ accentColor: 'var(--primary-indigo)' }} />
+                        <span className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0" style={{ color: 'var(--primary-indigo)' }}>
+                            {Math.min(assetRowLimit, filteredDashAssets.length)} / {filteredDashAssets.length}
+                        </span>
+                    </div>
+
+                    <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 380 }}>
                         {assetsLoading ? (
-                            <div className="flex items-center justify-center h-full text-secondary">
+                            <div className="flex items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
                                 <RefreshCw size={18} className="animate-spin mr-2" /> Loading assets...
                             </div>
-                        ) : activeAssets.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
-                                <Server size={32} className="opacity-30" />
-                                <p className="text-sm">No assets yet. Run a scan from the home page.</p>
+                        ) : filteredDashAssets.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: 'var(--text-secondary)' }}>
+                                <Server size={28} className="opacity-30" />
+                                <p className="text-sm">No assets match the filter.</p>
                             </div>
                         ) : (
                             <table className="data-table">
                                 <thead>
-                                    <tr style={{ background: 'var(--surface-card)' }}>
+                                    <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
                                         <th style={{ borderColor: 'var(--border-divider)' }}>URL</th>
                                         <th style={{ borderColor: 'var(--border-divider)' }}>Type</th>
                                         <th style={{ borderColor: 'var(--border-divider)' }}>Tier</th>
@@ -526,60 +581,47 @@ const DashboardPage = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {sortedAssets.map(asset => (
+                                    {filteredDashAssets.slice(0, assetRowLimit).map(asset => (
                                         <tr key={asset.id}
                                             style={{ borderColor: 'var(--border-divider)' }}
                                             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
                                             onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                                            <td
-                                                className="font-mono font-medium cursor-pointer transition-colors"
-                                                style={{ color: '#818cf8', maxWidth: 260 }}
+                                            <td className="font-mono font-medium cursor-pointer transition-colors"
+                                                style={{ color: '#818cf8', maxWidth: 240 }}
                                                 onClick={() => navigate(`/asset/${asset.id}`)}
-                                                title={asset.url}
-                                            >
+                                                title={asset.url}>
                                                 <span className="block truncate">{asset.url}</span>
                                             </td>
-                                            <td className="text-secondary">
+                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
                                                 {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
                                             </td>
                                             <td>
-                                                <SensitivityBadge
-                                                    tier={asset.data_sensitivity_tier || 'static'}
-                                                    source={asset.data_sensitivity_tier_source}
-                                                />
+                                                <SensitivityBadge tier={asset.data_sensitivity_tier || 'static'} source={asset.data_sensitivity_tier_source} />
                                             </td>
                                             <td><ThreatBadge level={asset.risk_level} /></td>
                                             <td>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="font-mono font-bold w-8">{asset.score ?? 0}</span>
-                                                    <div className="w-24 bg-surface-card rounded-full h-1.5 overflow-hidden">
-                                                        <div
-                                                            className="h-full rounded-full transition-all duration-700"
-                                                            style={{
-                                                                width: `${asset.score ?? 0}%`,
-                                                                backgroundColor: (asset.score ?? 0) >= 75 ? 'var(--status-critical)'
-                                                                    : (asset.score ?? 0) >= 50 ? 'var(--status-high)'
-                                                                    : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
-                                                            }}
-                                                        />
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-mono font-bold text-xs w-7" style={{ color: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : 'var(--text-primary)' }}>{asset.score ?? 0}</span>
+                                                    <div className="w-16 rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
+                                                        <div className="h-full rounded-full" style={{
+                                                            width: `${asset.score ?? 0}%`,
+                                                            backgroundColor: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
+                                                        }} />
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
                                                 {asset.discovery === 'Shadow' ? (
-                                                    <span className="text-xs font-bold text-status-high uppercase tracking-wide flex items-center gap-1">
-                                                        <AlertTriangle size={12} /> Shadow
+                                                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--status-high)' }}>
+                                                        <AlertTriangle size={11} /> Shadow
                                                     </span>
                                                 ) : (
-                                                    <span className="text-secondary text-xs">Known</span>
+                                                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Known</span>
                                                 )}
                                             </td>
                                             <td className="text-right">
-                                                <button
-                                                    className="text-secondary hover:text-primary transition-colors"
-                                                    onClick={() => navigate(`/asset/${asset.id}`)}
-                                                >
-                                                    <ChevronRight size={18} />
+                                                <button onClick={() => navigate(`/asset/${asset.id}`)} style={{ color: 'var(--text-secondary)' }}>
+                                                    <ChevronRight size={16} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -588,6 +630,16 @@ const DashboardPage = () => {
                             </table>
                         )}
                     </div>
+                    {/* Footer */}
+                    {filteredDashAssets.length > assetRowLimit && (
+                        <div className="px-5 py-2 border-t text-xs flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
+                            <span>Showing {Math.min(assetRowLimit, filteredDashAssets.length)} of {filteredDashAssets.length} assets</span>
+                            <button onClick={() => setAssetRowLimit(r => Math.min(r + 10, filteredDashAssets.length))}
+                                className="font-semibold transition-colors" style={{ color: 'var(--primary-indigo)' }}>
+                                Show more ↓
+                            </button>
+                        </div>
+                    )}
                 </div>
                 )}
 
