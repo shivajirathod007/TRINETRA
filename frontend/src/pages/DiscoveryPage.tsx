@@ -24,13 +24,13 @@ const CATEGORY_ICONS: Record<Category, React.ReactNode> = {
   'Software':           <Code2 size={14} />,
 };
 
-const RISK_COLORS: Record<string, string> = {
-  CRITICAL: 'text-red-400',
-  HIGH:     'text-orange-400',
-  MEDIUM:   'text-yellow-400',
-  LOW:      'text-blue-400',
-  SAFE:     'text-green-400',
-  UNKNOWN:  'text-secondary',
+const RISK_COLOR_MAP: Record<string, string> = {
+  CRITICAL: '#ef4444',
+  HIGH:     '#f97316',
+  MEDIUM:   '#eab308',
+  LOW:      '#3b82f6',
+  SAFE:     '#22c55e',
+  UNKNOWN:  'var(--text-secondary)',
 };
 
 function nodeColor(risk: string): string {
@@ -45,7 +45,7 @@ function nodeColor(risk: string): string {
 function EmptyRow({ cols }: { cols: number }) {
   return (
     <tr>
-      <td colSpan={cols} className="px-4 py-10 text-center text-secondary text-sm">
+      <td colSpan={cols} className="px-4 py-10 text-center text-sm" style={{ color: 'var(--text-secondary)' }}>
         No data available for this scan yet.
       </td>
     </tr>
@@ -70,7 +70,7 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: '#818cf8' }}>{row.domain}</td>
             <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
-            <td className={`px-4 py-3 text-xs font-bold ${RISK_COLORS[row.risk] ?? 'text-secondary'}`}>{row.risk}</td>
+            <td className="px-4 py-3 text-xs font-bold" style={{ color: RISK_COLOR_MAP[row.risk] ?? 'var(--text-secondary)' }}>{row.risk}</td>
             <td className="px-4 py-3 text-xs">
               <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${row.discovery === 'Shadow' ? 'bg-orange-500/15 text-orange-400 border border-orange-500/25' : 'bg-green-500/15 text-green-400 border border-green-500/25'}`}>
                 {row.discovery}
@@ -574,7 +574,7 @@ export default function DiscoveryPage() {
               </div>
               <div>
                 <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>{k.value}</div>
-                <div className="text-[10px] text-secondary uppercase tracking-wider font-semibold mt-0.5">{k.label}</div>
+                <div className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-secondary)' }}>{k.label}</div>
                 <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
               </div>
             </div>

@@ -82,9 +82,10 @@ function InfoTooltip({ text }: { text: string }) {
   const [show, setShow] = useState(false);
   return (
     <span className="relative inline-flex items-center" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
-      <Info size={12} className="text-secondary/50 hover:text-primary-indigo cursor-help ml-1" />
+      <Info size={12} className="cursor-help ml-1" style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
       {show && (
-        <span className="absolute z-50 bottom-5 left-0 w-64 text-xs text-secondary bg-surface-card border border-glass-border rounded-lg p-3 shadow-xl leading-relaxed pointer-events-none">
+        <span className="absolute z-50 bottom-5 left-0 w-64 text-xs rounded-lg p-3 shadow-xl leading-relaxed pointer-events-none"
+          style={{ color: 'var(--text-secondary)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', boxShadow: 'var(--card-shadow)' }}>
           {text}
         </span>
       )}
@@ -112,13 +113,13 @@ function TRINETRACertCard({ cert }: { cert: any }) {
         </div>
         <span className="text-[9px] font-mono text-secondary">{cert.certificate_id}</span>
       </div>
-      <div className="font-mono text-xs text-primary truncate" title={cert.asset_url}>{cert.asset_url}</div>
-      <div className="flex items-center gap-3 text-[10px] text-secondary flex-wrap">
+      <div className="font-mono text-xs truncate" style={{ color: 'var(--text-primary)' }} title={cert.asset_url}>{cert.asset_url}</div>
+      <div className="flex items-center gap-3 text-[10px] flex-wrap" style={{ color: 'var(--text-secondary)' }}>
         {(cert.cert_algorithm || cert.signature_algorithm) && <span className="font-mono">{cert.cert_algorithm || cert.signature_algorithm}</span>}
         {cert.nist_standard && <span className="text-primary-indigo font-bold">{cert.nist_standard}</span>}
         <span>Score: <span className="font-bold" style={{ color: s.color }}>{cert.score ?? cert.quantum_exposure_score ?? '—'}</span></span>
       </div>
-      <div className="flex items-center justify-between text-[9px] text-secondary/60 font-mono mt-1">
+      <div className="flex items-center justify-between text-[9px] font-mono mt-1" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>
         <span>Issued: {cert.issued_at || cert.issued_date || '—'}</span>
         <span>Valid until: {cert.valid_until || '—'}</span>
       </div>
@@ -313,7 +314,7 @@ function CertificatesPanel({ scanId, allScans, orgSummary }: { scanId: string; a
         ].map(s => (
           <div key={s.label} className="px-5 py-3 flex flex-col items-center">
             <span className="text-2xl font-black" style={{ color: s.color }}>{s.count}</span>
-            <span className="text-[9px] font-bold text-secondary uppercase tracking-wider mt-0.5">{s.label}</span>
+            <span className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-secondary)' }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -321,11 +322,11 @@ function CertificatesPanel({ scanId, allScans, orgSummary }: { scanId: string; a
       {/* Certificate list */}
       <div className="p-5">
         {isLoading || loadingAll ? (
-          <div className="flex items-center justify-center py-10 text-secondary text-sm gap-2">
+          <div className="flex items-center justify-center py-10 text-sm gap-2" style={{ color: 'var(--text-secondary)' }}>
             <RefreshCw size={14} className="animate-spin" /> Loading certificates…
           </div>
         ) : certs.length === 0 ? (
-          <div className="text-center py-10 text-secondary text-sm">
+          <div className="text-center py-10 text-sm" style={{ color: 'var(--text-secondary)' }}>
             <Award size={32} className="mx-auto mb-3 opacity-20" />
             No certificates issued yet. Run a scan to generate PQC readiness certificates.
           </div>
@@ -698,7 +699,8 @@ export default function CBOMPage() {
         <div className="flex flex-col gap-5">
           {/* Risk Distribution Pie */}
           <div className="glass-card border rounded-xl p-5">
-            <div className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-3">Risk Distribution</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-3"
+              style={{ color: 'var(--text-secondary)' }}>Risk Distribution</div>
             {riskChartData.length > 0 ? (
               <>
                 <ResponsiveContainer width="100%" height={160}>
@@ -706,54 +708,73 @@ export default function CBOMPage() {
                     <Pie data={riskChartData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={2} dataKey="value" stroke="none">
                       {riskChartData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                     </Pie>
-                    <RechartsTooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: 8, fontSize: 11 }} />
+                    <RechartsTooltip
+                      contentStyle={{
+                        background: 'var(--glass-bg)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: 8,
+                        fontSize: 11,
+                        color: 'var(--text-primary)',
+                        boxShadow: 'var(--card-shadow)',
+                      }}
+                      labelStyle={{ color: 'var(--text-secondary)', fontSize: 10 }}
+                      itemStyle={{ color: 'var(--text-primary)' }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+                <div className="flex flex-wrap gap-x-3 gap-y-1.5 mt-2">
                   {riskChartData.map(d => (
                     <div key={d.name} className="flex items-center gap-1.5">
-                      <div className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-                      <span className="text-[9px] text-secondary font-bold">{d.name} ({d.value})</span>
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ background: d.color }} />
+                      <span className="text-[9px] font-bold" style={{ color: 'var(--text-secondary)' }}>
+                        {d.name} ({d.value})
+                      </span>
                     </div>
                   ))}
                 </div>
               </>
-            ) : <div className="text-xs text-secondary/50 text-center py-8">No data yet</div>}
+            ) : (
+              <div className="text-xs text-center py-8" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>No data yet</div>
+            )}
           </div>
 
           {/* Algorithm Breakdown */}
           <div className="glass-card border rounded-xl p-5">
-            <div className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1 flex items-center gap-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-1"
+              style={{ color: 'var(--text-secondary)' }}>
               Algorithm Breakdown <InfoTooltip text="Certificate signature algorithms detected across all assets. RSA/ECDSA variants are quantum-vulnerable. ML-DSA/ML-KEM are NIST PQC standards." />
             </div>
             {algoChartData.length > 0 ? (
-              <div className="flex flex-col gap-2 mt-3">
+              <div className="flex flex-col gap-2.5 mt-3">
                 {algoChartData.slice(0, 6).map((d: any) => {
                   const info = getCertInfo(d.name);
                   const pct = Math.round((d.count / allComponents.length) * 100);
                   return (
                     <div key={d.name}>
                       <div className="flex justify-between text-[9px] mb-1">
-                        <span className="font-mono text-secondary truncate max-w-[140px]" title={d.name}>{d.name}</span>
-                        <span className="font-bold" style={{ color: info?.color || '#94a3b8' }}>{d.count}</span>
+                        <span className="font-mono truncate max-w-[140px]" style={{ color: 'var(--text-secondary)' }} title={d.name}>{d.name}</span>
+                        <span className="font-bold" style={{ color: info?.color || 'var(--text-secondary)' }}>{d.count}</span>
                       </div>
-                      <div className="w-full h-1.5 bg-surface-card rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: info?.color || '#6366f1' }} />
                       </div>
                     </div>
                   );
                 })}
               </div>
-            ) : <div className="text-xs text-secondary/50 text-center py-6">No data yet</div>}
+            ) : (
+              <div className="text-xs text-center py-6" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>No data yet</div>
+            )}
           </div>
 
           {/* TLS Distribution */}
           <div className="glass-card border rounded-xl p-5">
-            <div className="text-[10px] font-bold text-secondary uppercase tracking-widest mb-1 flex items-center gap-1">
+            <div className="text-[10px] font-bold uppercase tracking-widest mb-1 flex items-center gap-1"
+              style={{ color: 'var(--text-secondary)' }}>
               TLS Version Distribution <InfoTooltip text="TLS 1.0/1.1 are deprecated (RFC 8996) and critically flagged. TLS 1.2 is acceptable. TLS 1.3 is the target." />
             </div>
             {tlsChartData.length > 0 ? (
-              <div className="flex flex-col gap-2 mt-3">
+              <div className="flex flex-col gap-2.5 mt-3">
                 {tlsChartData.map((d: any) => {
                   const info = getTlsInfo(d.name);
                   const total = tlsChartData.reduce((s: number, x: any) => s + x.value, 0);
@@ -761,18 +782,20 @@ export default function CBOMPage() {
                   return (
                     <div key={d.name}>
                       <div className="flex justify-between text-[9px] mb-1">
-                        <span className="font-mono font-bold" style={{ color: info?.color || '#94a3b8' }}>{d.name}</span>
-                        <span className="text-secondary">{d.value} assets</span>
+                        <span className="font-mono font-bold" style={{ color: info?.color || 'var(--text-secondary)' }}>{d.name}</span>
+                        <span style={{ color: 'var(--text-secondary)' }}>{d.value} assets</span>
                       </div>
-                      <div className="w-full h-1.5 bg-surface-card rounded-full overflow-hidden">
+                      <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: info?.color || d.color || '#6366f1' }} />
                       </div>
-                      {info && <div className="text-[8px] text-secondary/50 mt-0.5 leading-tight">{info.impact.slice(0, 60)}…</div>}
+                      {info && <div className="text-[8px] mt-0.5 leading-tight" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>{info.impact.slice(0, 60)}…</div>}
                     </div>
                   );
                 })}
               </div>
-            ) : <div className="text-xs text-secondary/50 text-center py-6">No data yet</div>}
+            ) : (
+              <div className="text-xs text-center py-6" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>No data yet</div>
+            )}
           </div>
         </div>
       </div>

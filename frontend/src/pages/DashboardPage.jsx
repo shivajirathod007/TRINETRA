@@ -126,10 +126,32 @@ const DashboardPage = () => {
     const shadowAssets = activeAssets.filter(a => a.discovery === 'Shadow');
 
     // ── Cert expiry timeline from actual scanned asset cert data ────────────
-    // Uses cert_expiry_days from ScannedAsset (real TLS cert expiry, not PQC certs)
-    const assetsWithCerts = activeAssets.filter(a => a.cert_expiry_days != null);
+    // cert_expiry comes as "23 Jun 2026" string — compute days from today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const assetsWithCerts = activeAssets.filter(a => {
+        if (a.cert_expiry_days != null) return true;
+        if (a.cert_expiry && a.cert_expiry !== '—') {
+            const d = new Date(a.cert_expiry);
+            return !isNaN(d.getTime());
+        }
+        return false;
+    });
+
+    const getCertDays = (a) => {
+        if (a.cert_expiry_days != null) return a.cert_expiry_days;
+        if (a.cert_expiry && a.cert_expiry !== '—') {
+            const d = new Date(a.cert_expiry);
+            if (!isNaN(d.getTime())) {
+                return Math.round((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            }
+        }
+        return null;
+    };
+
     const expiringCertsCount = assetsWithCerts.filter(a => {
-        const d = a.cert_expiry_days ?? 0;
+        const d = getCertDays(a) ?? 0;
         return d > 0 && d <= 90;
     }).length;
 
@@ -145,7 +167,7 @@ const DashboardPage = () => {
         color: bucket.color,
         hex: bucket.hex,
         count: assetsWithCerts.filter(a => {
-            const d = a.cert_expiry_days ?? 0;
+            const d = getCertDays(a) ?? 0;
             if (bucket.max === null) return d > bucket.min;
             return d > bucket.min && d <= bucket.max;
         }).length,

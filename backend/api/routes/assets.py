@@ -76,6 +76,10 @@ async def list_assets(
             "cert_subject": a.cert_subject,
             "cert_sha256": a.cert_sha256,
             "cert_expiry": a.cert_expiry.strftime("%d %b %Y") if a.cert_expiry else None,
+            "cert_expiry_days": a.cert_expiry_days if a.cert_expiry_days is not None else (
+                (a.cert_expiry.replace(tzinfo=None) - __import__('datetime').datetime.utcnow()).days
+                if a.cert_expiry else None
+            ),
             "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
             # PQC status — used by Posture of PQC page
             "quantum_safe_status": a.quantum_safe_status or "UNKNOWN",
