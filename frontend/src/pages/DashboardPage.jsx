@@ -212,8 +212,10 @@ const DashboardPage = () => {
                 </div>
 
                 <div className="glass-panel p-1 border-t-4 border-t-primary-indigo mt-8 flex-1 relative flex flex-col items-center justify-center min-h-[500px] z-10 shadow-2xl">
-                    <div className="text-center relative z-20 max-w-xl p-8 bg-surface-card-hover/90 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl">
-                        <div className="w-20 h-20 rounded-full bg-primary-indigo/20 text-primary-indigo flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]">
+                    <div className="text-center relative z-20 max-w-xl p-8 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl"
+                        style={{ background: 'var(--surface-card-hover)' }}>
+                        <div className="w-20 h-20 rounded-full text-primary-indigo flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]"
+                            style={{ background: 'rgba(99,102,241,0.15)' }}>
                             <LayoutDashboard size={40} />
                         </div>
                         <h2 className="text-2xl font-bold font-outfit text-primary mb-3">Welcome to TRINETRA</h2>
@@ -247,29 +249,27 @@ const DashboardPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
                 <div className="flex flex-col">
-                    <h1 className="text-2xl font-bold font-mono">Operations Center</h1>
-                    <div className="text-sm font-outfit text-primary-indigo font-bold mt-1">Welcome User: {authUser}..!</div>
+                    <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>Operations Center</h1>
+                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome User: {authUser}..!</div>
                 </div>
-                <div className="text-secondary text-sm font-mono flex items-center gap-2 flex-wrap">
+                <div className="text-sm font-mono flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
                     {/* View mode toggle */}
-                    <div className="flex items-center rounded-lg border border-glass-border overflow-hidden">
+                    <div className="flex items-center rounded-lg overflow-hidden" style={{ border: '1px solid var(--glass-border)' }}>
                         <button
                             onClick={() => setViewMode('scan')}
-                            className={`px-3 py-1.5 text-xs font-bold transition-colors ${
-                                viewMode === 'scan'
-                                    ? 'bg-primary-indigo text-white'
-                                    : 'text-secondary hover:text-primary'
-                            }`}
+                            className="px-3 py-1.5 text-xs font-bold transition-colors"
+                            style={viewMode === 'scan'
+                                ? { background: 'var(--primary-indigo)', color: 'white' }
+                                : { color: 'var(--text-secondary)' }}
                         >
                             Single Scan
                         </button>
                         <button
                             onClick={() => setViewMode('all')}
-                            className={`px-3 py-1.5 text-xs font-bold transition-colors border-l border-glass-border ${
-                                viewMode === 'all'
-                                    ? 'bg-primary-indigo text-white'
-                                    : 'text-secondary hover:text-primary'
-                            }`}
+                            className="px-3 py-1.5 text-xs font-bold transition-colors"
+                            style={viewMode === 'all'
+                                ? { background: 'var(--primary-indigo)', color: 'white', borderLeft: '1px solid var(--glass-border)' }
+                                : { color: 'var(--text-secondary)', borderLeft: '1px solid var(--glass-border)' }}
                         >
                             All Scans
                         </button>
@@ -278,7 +278,8 @@ const DashboardPage = () => {
                     {/* Scan selector — only shown in single scan mode */}
                     {viewMode === 'scan' && recentScans.length > 1 && (
                         <select
-                            className="bg-surface-card border border-glass-border text-primary text-xs font-mono rounded px-2 py-1 focus:outline-none focus:border-primary-indigo cursor-pointer"
+                            className="text-xs font-mono rounded px-2 py-1 focus:outline-none cursor-pointer"
+                            style={{ background: 'var(--surface-card)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
                             value={activeScanId || ''}
                             onChange={e => {
                                 const scan = recentScans.find(s => s.scan_id === e.target.value);
@@ -294,17 +295,18 @@ const DashboardPage = () => {
                     )}
 
                     <span>
-                        Target: <span className="text-primary font-bold">
+                        Target: <span className="font-bold" style={{ color: 'var(--text-primary)' }}>
                             {viewMode === 'all' ? `${aggregateStats.total_scans ?? 0} scans` : domain}
                         </span>
                     </span>
                     <span>|</span>
                     <span className="flex items-center gap-1">
-                        <span className="w-2 h-2 rounded-full bg-status-safe animate-pulse" /> Live Sync
+                        <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--status-safe)' }} /> Live Sync
                     </span>
                     <button
                         onClick={() => viewMode === 'all' ? null : refetchStats()}
-                        className="ml-2 text-secondary hover:text-primary transition-colors"
+                        className="ml-2 transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
                         title="Refresh"
                     >
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
@@ -314,17 +316,18 @@ const DashboardPage = () => {
 
             {/* Shadow Asset Alert Banner — only in single scan mode */}
             {viewMode === 'scan' && shadowAssets.length > 0 && (
-                <div className="bg-status-critical/10 border border-status-critical/30 rounded-lg p-4 flex items-start gap-4 animate-pulse-subtle">
-                    <AlertTriangle size={24} className="text-status-critical flex-shrink-0 mt-1" />
+                <div className="rounded-lg p-4 flex items-start gap-4 animate-pulse-subtle"
+                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    <AlertTriangle size={24} className="flex-shrink-0 mt-1" style={{ color: 'var(--status-critical)' }} />
                     <div className="flex-1">
-                        <h3 className="text-status-critical font-bold uppercase tracking-wider text-sm mb-1">
+                        <h3 className="font-bold uppercase tracking-wider text-sm mb-1" style={{ color: 'var(--status-critical)' }}>
                             Shadow Assets Detected ({shadowAssets.length})
                         </h3>
-                        <p className="text-sm text-secondary">
+                        <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                             CRQC vulnerability scanner found{' '}
                             {shadowAssets.slice(0, 3).map((a, i) => (
                                 <span key={a.id}>
-                                    <span className="text-primary font-mono">{a.url}</span>
+                                    <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{a.url}</span>
                                     {i < Math.min(shadowAssets.length, 3) - 1 ? ' and ' : ''}
                                 </span>
                             ))}
@@ -339,15 +342,15 @@ const DashboardPage = () => {
                 <div className="glass-card border p-4 flex flex-wrap gap-6 items-center"
                     style={{ borderColor: 'rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.05)' }}>
                     <div className="flex items-center gap-2">
-                        <Activity size={16} className="text-primary-indigo" />
-                        <span className="text-sm font-bold text-primary">Aggregate Intelligence</span>
-                        <span className="text-xs text-secondary">— across all {aggregateStats.total_scans} completed scans (includes repeat scans of same domain)</span>
+                        <Activity size={16} style={{ color: 'var(--primary-indigo)' }} />
+                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Aggregate Intelligence</span>
+                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>— across all {aggregateStats.total_scans} completed scans</span>
                     </div>
                     <div className="flex gap-4 text-xs flex-wrap">
-                        <span className="text-secondary">Avg Risk Score: <span className="font-mono font-bold text-primary">{aggregateStats.exposure_score ?? 0}</span></span>
-                        <span className="text-secondary">Total Asset Records: <span className="font-mono font-bold text-primary">{aggregateStats.total_assets ?? 0}</span></span>
-                        <span className="text-secondary">Critical: <span className="font-mono font-bold text-status-critical">{aggregateStats.critical_count ?? 0}</span></span>
-                        <span className="text-secondary">Shadow: <span className="font-mono font-bold text-status-high">{aggregateStats.shadow_count ?? 0}</span></span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Avg Risk Score: <span className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>{aggregateStats.exposure_score ?? 0}</span></span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Total Assets: <span className="font-mono font-bold" style={{ color: 'var(--text-primary)' }}>{aggregateStats.total_assets ?? 0}</span></span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Critical: <span className="font-mono font-bold" style={{ color: 'var(--status-critical)' }}>{aggregateStats.critical_count ?? 0}</span></span>
+                        <span style={{ color: 'var(--text-secondary)' }}>Shadow: <span className="font-mono font-bold" style={{ color: 'var(--status-high)' }}>{aggregateStats.shadow_count ?? 0}</span></span>
                     </div>
                 </div>
             )}
@@ -397,7 +400,7 @@ const DashboardPage = () => {
                 <div className="lg-col-span-4 grid grid-cols-1 md-grid-cols-3 gap-4">
                     {/* Risk Distribution */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">Risk Distribution</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>Risk Distribution</h3>
                         {riskData.length === 0 ? (
                             <div className="flex-1 flex items-center justify-center text-secondary text-sm">No data yet</div>
                         ) : (
@@ -408,7 +411,7 @@ const DashboardPage = () => {
                                             <Pie data={riskData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
                                                 {riskData.map((entry, i) => <Cell key={i} fill={entry.color ?? '#6366F1'} />)}
                                             </Pie>
-                                            <Tooltip contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)' }} />
+                                            <Tooltip contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
@@ -417,9 +420,9 @@ const DashboardPage = () => {
                                         <div key={d.name} className="flex items-center gap-2 text-xs w-full justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color ?? '#6366F1' }} />
-                                                <span className="text-secondary">{d.name}</span>
+                                                <span style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
                                             </div>
-                                            <span className="font-bold">{d.value}</span>
+                                            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{d.value}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -429,8 +432,8 @@ const DashboardPage = () => {
 
                     {/* Certificate Expiry Timeline */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-1">Certificate Expiry Timeline</h3>
-                        <p className="text-[10px] text-secondary mb-3 opacity-60">Based on TLS cert expiry from scanned assets</p>
+                        <h3 className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>Certificate Expiry Timeline</h3>
+                        <p className="text-[10px] mb-3" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>Based on TLS cert expiry from scanned assets</p>
                         {assetsWithCerts.length === 0 && !isLoading ? (
                             <div className="flex-1 flex items-center justify-center text-secondary text-sm">No cert data in this scan</div>
                         ) : (
@@ -466,7 +469,7 @@ const DashboardPage = () => {
 
                     {/* IP Version Breakdown */}
                     <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-4">IP Version Breakdown</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>IP Version Breakdown</h3>
                         <div className="flex-1 relative flex items-center justify-center">
                             <PieChart width={160} height={160}>
                                 <Pie data={ipData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="none" dataKey="value">
@@ -475,10 +478,10 @@ const DashboardPage = () => {
                                 <Tooltip />
                             </PieChart>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-2xl font-bold text-primary">
+                                <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                                     {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a, b) => a + b.value, 0)) * 100) : 0}%
                                 </span>
-                                <span className="text-xs text-secondary font-mono">
+                                <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
                                     {ipData.length > 0 ? ipData[0].name : 'IPv4'} Dominant
                                 </span>
                             </div>
@@ -530,10 +533,11 @@ const DashboardPage = () => {
                                             onMouseLeave={e => (e.currentTarget.style.background = '')}>
                                             <td
                                                 className="font-mono font-medium cursor-pointer transition-colors"
-                                                style={{ color: '#818cf8' }}
+                                                style={{ color: '#818cf8', maxWidth: 260 }}
                                                 onClick={() => navigate(`/asset/${asset.id}`)}
+                                                title={asset.url}
                                             >
-                                                {asset.url}
+                                                <span className="block truncate">{asset.url}</span>
                                             </td>
                                             <td className="text-secondary">
                                                 {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
@@ -589,10 +593,10 @@ const DashboardPage = () => {
 
                 {/* All Scans breakdown table */}
                 {viewMode === 'all' && (
-                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col">
-                    <div className="p-4 border-b flex items-center justify-between bg-surface-card-hover">
-                        <h2 className="font-bold">Scan History — Risk Breakdown</h2>
-                        <span className="text-xs text-secondary">{scansBreakdown.length} most recent scans</span>
+                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                    <div className="p-4 border-b flex items-center justify-between" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-divider)' }}>
+                        <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Scan History — Risk Breakdown</h2>
+                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{scansBreakdown.length} most recent scans</span>
                     </div>
                     <div className="table-container flex-1">
                         {aggregateLoading ? (
@@ -606,14 +610,24 @@ const DashboardPage = () => {
                             </div>
                         ) : (
                             <table className="data-table">
-                                <thead className="sticky top-0 bg-surface-card-hover">
-                                    <tr>
-                                        <th>Domain</th><th>Date</th><th>Assets</th><th>Critical</th><th>High</th><th>Risk Score</th><th />
+                                <thead>
+                                    <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Domain</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Date</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Assets</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Critical</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>High</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
+                                        <th style={{ borderColor: 'var(--border-divider)' }} />
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {scansBreakdown.map(scan => (
-                                        <tr key={scan.scan_id} className="cursor-pointer hover:bg-surface-card-hover/50"
+                                        <tr key={scan.scan_id}
+                                            className="cursor-pointer"
+                                            style={{ borderColor: 'var(--border-divider)' }}
+                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                                            onMouseLeave={e => (e.currentTarget.style.background = '')}
                                             onClick={() => {
                                                 const found = recentScans.find(s => s.scan_id === scan.scan_id);
                                                 if (found) { setActiveScan(found.scan_id, found.domain); setViewMode('scan'); }
@@ -714,9 +728,6 @@ const DashboardPage = () => {
             </div>
 
             <style>{`
-        .bg-status-critical\\/10 { background-color: rgba(239,68,68,0.1); }
-        .border-status-critical\\/30 { border-color: rgba(239,68,68,0.3); }
-        .bg-status-high\\/5 { background-color: rgba(249,115,22,0.05); }
         @media (min-width: 1024px) {
           .lg-grid-cols-6 { grid-template-columns: repeat(6, minmax(0,1fr)) !important; }
           .lg-grid-cols-4 { grid-template-columns: repeat(4, minmax(0,1fr)) !important; }

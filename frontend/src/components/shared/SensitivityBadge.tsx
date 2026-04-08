@@ -3,11 +3,7 @@
  *
  * transaction    → red   (#E24B4A)
  * authentication → amber (#EF9F27)
- * static         → grey  (#6B7280)
- *
- * Shows a pencil icon overlay when source === "manual_override".
- *
- * Requirements: 8.1, 8.4
+ * static         → grey  (theme-aware)
  */
 
 import React from "react";
@@ -20,18 +16,24 @@ interface SensitivityBadgeProps {
   className?: string;
 }
 
-const TIER_CONFIG: Record<Tier, { label: string; classes: string }> = {
+const TIER_CONFIG: Record<Tier, { label: string; color: string; bg: string; border: string }> = {
   transaction: {
     label: "Transaction",
-    classes: "bg-risk-critical/20 text-risk-critical border border-risk-critical/30",
+    color: "#ef4444",
+    bg: "rgba(239,68,68,0.12)",
+    border: "rgba(239,68,68,0.3)",
   },
   authentication: {
     label: "Auth",
-    classes: "bg-risk-high/20 text-risk-high border border-risk-high/30",
+    color: "#f97316",
+    bg: "rgba(249,115,22,0.12)",
+    border: "rgba(249,115,22,0.3)",
   },
   static: {
     label: "Static",
-    classes: "bg-gray-700/40 text-gray-400 border border-gray-600/30",
+    color: "var(--text-secondary)",
+    bg: "var(--surface-card-hover)",
+    border: "var(--glass-border)",
   },
 };
 
@@ -47,7 +49,12 @@ export const SensitivityBadge: React.FC<SensitivityBadgeProps> = ({
 
   return (
     <span
-      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${config.classes} ${className}`}
+      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${className}`}
+      style={{
+        color: config.color,
+        background: config.bg,
+        border: `1px solid ${config.border}`,
+      }}
       title={
         isManualOverride
           ? `${config.label} (manually overridden)`

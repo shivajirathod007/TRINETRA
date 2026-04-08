@@ -524,7 +524,7 @@ export default function CBOMPage() {
               key: 'QUANTUM_VULNERABLE',
               label: 'Quantum Vulnerable',
               sublabel: 'RSA/ECDSA/ECDHE — broken by CRQC via Shor\'s algorithm',
-              color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.2)',
+              color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.18)',
               icon: <AlertTriangle size={20} className="text-red-400" />,
               count: stats.vulnCount,
             },
@@ -532,7 +532,7 @@ export default function CBOMPage() {
               key: 'PQC_READY',
               label: 'PQC Ready',
               sublabel: 'Hybrid or transitional mode — partially protected',
-              color: '#f97316', bg: 'rgba(249,115,22,0.08)', border: 'rgba(249,115,22,0.2)',
+              color: '#f97316', bg: 'rgba(249,115,22,0.06)', border: 'rgba(249,115,22,0.18)',
               icon: <Shield size={20} className="text-orange-400" />,
               count: stats.readyCount,
             },
@@ -540,30 +540,33 @@ export default function CBOMPage() {
               key: 'FULLY_QUANTUM_SAFE',
               label: 'Quantum Safe',
               sublabel: 'NIST FIPS 203/204/205 — fully post-quantum protected',
-              color: '#22c55e', bg: 'rgba(34,197,94,0.08)', border: 'rgba(34,197,94,0.2)',
+              color: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.18)',
               icon: <CheckCircle2 size={20} className="text-green-400" />,
               count: stats.safeCount,
             },
           ].map(col => (
-            <div key={col.key} className="rounded-xl border p-5 flex flex-col" style={{ background: col.bg, borderColor: col.border }}>
-              <div className="flex flex-col items-center text-center mb-5 pb-5 border-b" style={{ borderColor: col.border }}>
+            <div key={col.key} className="rounded-xl border p-5 flex flex-col"
+              style={{ background: col.bg, borderColor: col.border }}>
+              <div className="flex flex-col items-center text-center mb-4 pb-4 border-b" style={{ borderColor: col.border }}>
                 <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 mb-3" style={{ borderColor: col.color }}>
                   {col.icon}
                 </div>
                 <div className="text-[11px] font-black tracking-widest uppercase mb-1" style={{ color: col.color }}>{col.label}</div>
-                <div className="text-[9px] text-secondary/70 leading-relaxed mb-2">{col.sublabel}</div>
-                <div><span className="text-2xl font-black" style={{ color: col.color }}>{col.count}</span> <span className="text-xs text-secondary">assets</span></div>
+                <div className="text-[9px] leading-relaxed mb-2" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{col.sublabel}</div>
+                <div><span className="text-2xl font-black" style={{ color: col.color }}>{col.count}</span> <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>assets</span></div>
               </div>
-              <div className="flex flex-col gap-2 overflow-y-auto" style={{ maxHeight: 240 }}>
+              <div className="flex flex-col gap-1.5 overflow-y-auto pr-1" style={{ maxHeight: 240, scrollbarWidth: 'thin' }}>
                 {allComponents.filter(c => c.status === col.key).map((c, i) => (
                   <button key={i} onClick={() => setSelectedComp(c)}
-                    className="flex items-center justify-between text-xs font-mono text-secondary hover:text-primary text-left group transition-colors">
-                    <span className="truncate pr-2">{c.url}</span>
-                    <ChevronDown size={12} className="opacity-0 group-hover:opacity-100 -rotate-90 shrink-0 transition-opacity" />
+                    className="flex items-center justify-between text-xs font-mono text-left group transition-colors rounded-lg px-2 py-1.5 hover:bg-black/10"
+                    style={{ color: 'var(--text-secondary)' }}
+                    title={c.url}>
+                    <span className="truncate pr-2 max-w-[180px]" style={{ color: 'var(--primary-indigo)' }}>{c.url}</span>
+                    <ChevronDown size={11} className="opacity-0 group-hover:opacity-60 -rotate-90 shrink-0 transition-opacity" />
                   </button>
                 ))}
                 {col.count === 0 && (
-                  <div className="text-xs text-center text-secondary/40 italic py-8">No assets in this category yet.</div>
+                  <div className="text-xs text-center italic py-8" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>No assets in this category yet.</div>
                 )}
               </div>
             </div>
@@ -595,22 +598,25 @@ export default function CBOMPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Asset Table */}
-        <div className="lg:col-span-2 glass-card border rounded-xl p-6 flex flex-col">
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            <h2 className="font-bold text-primary">Cryptographic Asset Map</h2>
+        <div className="lg:col-span-2 glass-card border rounded-xl overflow-hidden flex flex-col">
+          <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-3"
+            style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+            <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Cryptographic Asset Map</span>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Status filter */}
               <div className="flex items-center gap-1">
                 {statusFilters.map(f => (
                   <button key={f} onClick={() => setFilterStatus(f)}
-                    className={`px-2.5 py-1 text-[10px] font-bold rounded-md border transition-all ${filterStatus === f ? 'bg-primary-indigo text-white border-primary-indigo' : 'border-glass-border text-secondary hover:text-primary'}`}>
+                    className="px-2.5 py-1 text-[10px] font-bold rounded-md border transition-all"
+                    style={filterStatus === f
+                      ? { background: 'var(--primary-indigo)', color: 'white', borderColor: 'var(--primary-indigo)' }
+                      : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
                     {statusFilterLabels[f] ?? f}
                   </button>
                 ))}
               </div>
-              {/* Sort */}
               <select value={sortBy} onChange={e => setSortBy(e.target.value as any)}
-                className="text-xs bg-surface-card border border-glass-border rounded-lg px-3 py-1.5 text-secondary focus:outline-none cursor-pointer">
+                className="text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer"
+                style={{ background: 'var(--surface-card)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)' }}>
                 <option value="risk">Sort: Risk</option>
                 <option value="tls">Sort: TLS</option>
                 <option value="cert">Sort: Cert Algo</option>
@@ -619,54 +625,66 @@ export default function CBOMPage() {
           </div>
 
           {isLoading ? (
-            <div className="flex items-center justify-center py-16 text-secondary gap-2 text-sm">
+            <div className="flex items-center justify-center py-16 gap-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
               <RefreshCw size={16} className="animate-spin" /> Loading CBOM…
             </div>
           ) : filteredComponents.length === 0 ? (
-            <div className="flex items-center justify-center py-16 text-secondary text-sm">No assets found for this scan.</div>
+            <div className="flex items-center justify-center py-16 text-sm" style={{ color: 'var(--text-secondary)' }}>No assets found for this scan.</div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 480 }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-glass-border">
+                  <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
                     {['URL', 'TYPE', 'TLS', 'CERT ALGO', 'STATUS', 'SCORE', 'DISCOVERY'].map(h => (
-                      <th key={h} className="text-left py-3 px-2 text-[9px] font-bold text-secondary uppercase tracking-wider whitespace-nowrap">{h}</th>
+                      <th key={h} className="text-left py-3 px-3 text-[9px] font-bold uppercase tracking-widest whitespace-nowrap border-b"
+                        style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
                     ))}
-                    <th />
+                    <th style={{ borderBottom: '1px solid var(--border-divider)', background: 'var(--surface-card)' }} />
                   </tr>
                 </thead>
                 <tbody>
                   {filteredComponents.map((row, i) => {
                     const tlsInfo = getTlsInfo(row.tls);
+                    // Show full URL with domain highlighted
+                    const displayUrl = row.url || '—';
                     return (
                       <tr key={i} onClick={() => setSelectedComp(row)}
-                        className="border-b border-glass-border/30 hover:bg-surface-card-hover/40 transition-colors cursor-pointer group">
-                        <td className="py-3 px-2 font-mono text-primary text-xs max-w-[180px] truncate" title={row.url}>{row.url}</td>
-                        <td className="py-3 px-2 text-xs text-secondary capitalize">{row.type?.replace(/_/g, ' ')}</td>
-                        <td className="py-3 px-2">
+                        className="border-b transition-colors cursor-pointer group"
+                        style={{ borderColor: 'var(--border-divider)' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                        <td className="py-2.5 px-3 font-mono text-xs" style={{ maxWidth: 220 }}>
+                          <span className="block truncate" style={{ color: 'var(--primary-indigo)' }} title={displayUrl}>
+                            {displayUrl}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>{row.type?.replace(/_/g, ' ')}</td>
+                        <td className="py-2.5 px-3">
                           {row.tls ? (
-                            <span className="text-[10px] font-mono font-bold" style={{ color: tlsInfo?.color || '#94a3b8' }}>
+                            <span className="text-[10px] font-mono font-bold" style={{ color: tlsInfo?.color || 'var(--text-secondary)' }}>
                               {row.tls}
                             </span>
-                          ) : <span className="text-secondary text-xs">—</span>}
+                          ) : <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>—</span>}
                         </td>
-                        <td className="py-3 px-2 text-[10px] font-mono text-secondary max-w-[120px] truncate" title={row.cert}>{row.cert || '—'}</td>
-                        <td className="py-3 px-2"><RiskBadge level={row.risk_level} size="sm" /></td>
-                        <td className="py-3 px-2">
+                        <td className="py-2.5 px-3 text-[10px] font-mono" style={{ color: 'var(--text-secondary)', maxWidth: 120 }}>
+                          <span className="block truncate" title={row.cert}>{row.cert || '—'}</span>
+                        </td>
+                        <td className="py-2.5 px-3"><RiskBadge level={row.risk_level} size="sm" /></td>
+                        <td className="py-2.5 px-3">
                           <div className="flex items-center gap-2">
-                            <span className="font-black font-mono text-xs w-6">{row.score}</span>
-                            <div className="w-12 h-1.5 bg-surface-card rounded-full overflow-hidden">
+                            <span className="font-black font-mono text-xs w-6" style={{ color: row.score > 70 ? '#ef4444' : row.score > 40 ? '#f97316' : '#22c55e' }}>{row.score}</span>
+                            <div className="w-12 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card)' }}>
                               <div className="h-full rounded-full" style={{ width: `${row.score}%`, background: row.score > 70 ? '#ef4444' : row.score > 40 ? '#f97316' : '#22c55e' }} />
                             </div>
                           </div>
                         </td>
-                        <td className="py-3 px-2">
+                        <td className="py-2.5 px-3">
                           {row.is_shadow
-                            ? <span className="text-[9px] font-bold text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full border border-orange-400/20">SHADOW</span>
-                            : <span className="text-[9px] text-secondary">KNOWN</span>}
+                            ? <span className="text-[9px] font-bold px-2 py-0.5 rounded-full border" style={{ color: '#f97316', background: 'rgba(249,115,22,0.1)', borderColor: 'rgba(249,115,22,0.25)' }}>SHADOW</span>
+                            : <span className="text-[9px]" style={{ color: 'var(--text-secondary)' }}>KNOWN</span>}
                         </td>
-                        <td className="py-3 px-2 text-right">
-                          <ChevronDown size={14} className="text-secondary opacity-0 group-hover:opacity-100 -rotate-90 transition-opacity" />
+                        <td className="py-2.5 px-3 text-right">
+                          <ChevronDown size={13} className="-rotate-90 transition-opacity opacity-0 group-hover:opacity-60" style={{ color: 'var(--text-secondary)' }} />
                         </td>
                       </tr>
                     );
