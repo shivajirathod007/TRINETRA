@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileJson, ShieldCheck, Moon, Sun,
   Home, Search, Star, BarChart2, LogOut, Database, History, Settings,
-  ChevronRight
+  ChevronRight, Clock
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -34,6 +34,7 @@ const NAV_GROUPS = [
       { name: 'Cyber Rating',    path: '/rating',      icon: Star },
       { name: 'Reporting',       path: '/reporting',  icon: BarChart2 },
       { name: 'Scan History',    path: '/history',    icon: History },
+      { name: 'Scheduled Scans', path: '/scheduled-scans', icon: Clock },
     ],
   },
 ];

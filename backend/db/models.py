@@ -4,12 +4,13 @@ Full ORM schema for scan jobs, discovered assets, and PQC certificates.
 """
 
 import uuid
+import datetime as dt
 from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import (
-    Boolean, DateTime, Float, ForeignKey,
-    Integer, String, Text, func,
+    Boolean, Date, DateTime, Float, ForeignKey,
+    Index, Integer, String, Text, Time, func,
 )
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -316,3 +317,63 @@ class CustomScanRule(Base):
 
     def __repr__(self) -> str:
         return f"<CustomScanRule match={self.match_type} pattern={self.pattern} status={self.override_status}>"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ScheduledScan — recurring / one-time scan schedule
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ScheduledScan(Base):
+    __tablename__ = "scheduled_scans"
+
+    __table_args__ = (
+        Index("ix_scheduled_scans_status_next_run_at", "status", "next_run_at"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    domain: Mapped[str] = mapped_column(String(255), nullable=False)
+    frequency: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Values: daily | weekly | monthly | one_time
+    scheduled_time: Mapped[dt.time] = mapped_column(Time, nullable=False)
+    day_of_week: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # 0=Monday … 6=Sunday; used when frequency=weekly
+    day_of_month: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # 1–31; used when frequency=monthly
+    one_time_date: Mapped[Optional[dt.date]] = mapped_column(Date, nullable=True)
+    # used when frequency=one_time
+
+    scan_scope: Mapped[str] = mapped_column(String(20), nullable=False)
+    crqc_scenario: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    # Values: active | paused | completed | error
+
+    last_run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    next_run_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
+    last_scan_job_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("scan_jobs.id", ondelete="SET NULL"), nullable=True
+    )
+    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+    # Relationships
+    last_scan_job: Mapped[Optional["ScanJob"]] = relationship(
+        "ScanJob",
+        foreign_keys=[last_scan_job_id],
+        uselist=False,
+    )
+
+    def __repr__(self) -> str:
+        return f"<ScheduledScan id={self.id} domain={self.domain} frequency={self.frequency} status={self.status}>"

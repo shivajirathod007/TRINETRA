@@ -4,6 +4,8 @@ All database access goes through this class.
 Routes and engine code never write raw SQL or ORM queries directly.
 """
 
+from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -12,7 +14,8 @@ from sqlalchemy import select, update, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from db.models import PQCCertificate, ScannedAsset, ScanJob
+from db.models import PQCCertificate, ScannedAsset, ScanJob, ScheduledScan
+from schemas.scheduled_scan import ScheduledScanCreate
 from core.logging import get_logger
 
 log = get_logger(__name__)
@@ -304,3 +307,78 @@ class CertificateRepository:
             select(PQCCertificate).where(PQCCertificate.scan_job_id == scan_id)
         )
         return list(result.scalars().all())
+
+
+class ScheduledScanRepository:
+    """Handles all ScheduledScan persistence."""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def create(self, data: ScheduledScanCreate, next_run_at: datetime) -> ScheduledScan:
+        scan = ScheduledScan(
+            domain=data.domain,
+            frequency=data.frequency,
+            scheduled_time=data.scheduled_time,
+            day_of_week=data.day_of_week,
+            day_of_month=data.day_of_month,
+            one_time_date=data.one_time_date,
+            scan_scope=data.scan_scope,
+            crqc_scenario=data.crqc_scenario,
+            next_run_at=next_run_at,
+        )
+        self.db.add(scan)
+        await self.db.flush()
+        return scan
+
+    async def get(self, id: uuid.UUID) -> Optional[ScheduledScan]:
+        return await self.db.get(ScheduledScan, id)
+
+    async def list(self) -> list[ScheduledScan]:
+        result = await self.db.execute(
+            select(ScheduledScan).order_by(ScheduledScan.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def update_status(self, id: uuid.UUID, status: str) -> None:
+        await self.db.execute(
+            update(ScheduledScan)
+            .where(ScheduledScan.id == id)
+            .values(status=status, updated_at=datetime.now(timezone.utc))
+        )
+
+    async def update_after_run(
+        self,
+        id: uuid.UUID,
+        last_run_at: datetime,
+        next_run_at: Optional[datetime],
+        last_scan_job_id: uuid.UUID,
+        new_status: str,
+    ) -> None:
+        await self.db.execute(
+            update(ScheduledScan)
+            .where(ScheduledScan.id == id)
+            .values(
+                last_run_at=last_run_at,
+                next_run_at=next_run_at,
+                last_scan_job_id=last_scan_job_id,
+                status=new_status,
+                updated_at=datetime.now(timezone.utc),
+            )
+        )
+
+    async def get_due(self) -> list[ScheduledScan]:
+        now = datetime.now(timezone.utc)
+        result = await self.db.execute(
+            select(ScheduledScan)
+            .where(ScheduledScan.status == "active", ScheduledScan.next_run_at <= now)
+        )
+        return list(result.scalars().all())
+
+    async def delete(self, id: uuid.UUID) -> bool:
+        instance = await self.db.get(ScheduledScan, id)
+        if instance is None:
+            return False
+        await self.db.delete(instance)
+        await self.db.flush()
+        return True

@@ -139,6 +139,15 @@ export const certApi = {
     getDetail: (assetId) => request(`/certificates/${assetId}`),
 };
 
+// ── Scheduled Scans ───────────────────────────────────────────────────────────
+
+export const scheduledScanApi = {
+    list: () => request('/scheduled-scans/'),
+    create: (data) => request('/scheduled-scans/', { method: 'POST', body: JSON.stringify(data) }),
+    patch: (id, data) => request(`/scheduled-scans/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+    delete: (id) => request(`/scheduled-scans/${id}`, { method: 'DELETE' }),
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Retrieve the last scanned domain from localStorage */
