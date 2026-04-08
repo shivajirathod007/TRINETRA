@@ -3,7 +3,7 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard, FileJson, ShieldCheck, Moon, Sun,
   Home, Search, Star, BarChart2, LogOut, Database, History, Settings,
-  ChevronRight, Clock
+  ChevronRight, Clock, CalendarClock
 } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Intelligence',
+    label: 'Asset Intelligence',
     items: [
       { name: 'Dashboard',       path: '/dashboard',  icon: LayoutDashboard },
       { name: 'Asset Inventory', path: '/inventory',  icon: Database },
@@ -28,13 +28,18 @@ const NAV_GROUPS = [
     ],
   },
   {
-    label: 'Analysis',
+    label: 'Risk & Posture',
     items: [
       { name: 'Posture of PQC',  path: '/posture',    icon: ShieldCheck },
       { name: 'Cyber Rating',    path: '/rating',      icon: Star },
       { name: 'Reporting',       path: '/reporting',  icon: BarChart2 },
+    ],
+  },
+  {
+    label: 'Scan Management',
+    items: [
+      { name: 'Scheduled Scans', path: '/scheduled-scans', icon: CalendarClock },
       { name: 'Scan History',    path: '/history',    icon: History },
-      { name: 'Scheduled Scans', path: '/scheduled-scans', icon: Clock },
     ],
   },
 ];
