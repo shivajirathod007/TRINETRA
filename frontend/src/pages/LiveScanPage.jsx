@@ -14,6 +14,7 @@ const JsonViewer = ({ data, title }) => {
     const [open, setOpen] = useState(true);
     const [copied, setCopied] = useState(false);
     if (!data) return null;
+    const assetCount = Array.isArray(data) ? data.length : 1;
     const json = JSON.stringify(data, null, 2);
     const handleCopy = () => {
         navigator.clipboard.writeText(json).then(() => {
@@ -22,27 +23,35 @@ const JsonViewer = ({ data, title }) => {
         });
     };
     return (
-        <div className="glass-card border overflow-hidden">
+        <div className="glass-card border overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
             <button type="button" onClick={() => setOpen(v => !v)}
-                className="w-full flex items-center justify-between p-4 hover:bg-surface-card-hover transition-colors">
-                <div className="flex items-center gap-2 text-xs font-bold text-secondary uppercase tracking-widest">
-                    <Code2 size={14} className="text-primary-indigo" />{title}
+                className="w-full flex items-center justify-between p-4 transition-colors"
+                style={{ background: 'var(--surface-card-hover)' }}>
+                <div className="flex items-center gap-3">
+                    <Code2 size={14} className="text-primary-indigo" />
+                    <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-secondary)' }}>{title}</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', border: '1px solid rgba(99,102,241,0.3)' }}>
+                        {assetCount} asset{assetCount !== 1 ? 's' : ''}
+                    </span>
                 </div>
                 <div className="flex items-center gap-2">
-                    {open ? <ChevronUp size={16} className="text-secondary" /> : <ChevronDown size={16} className="text-secondary" />}
+                    {open ? <ChevronUp size={16} style={{ color: 'var(--text-secondary)' }} /> : <ChevronDown size={16} style={{ color: 'var(--text-secondary)' }} />}
                 </div>
             </button>
             {open && (
-                <div className="border-t border-glass-border">
-                    <div className="flex justify-end px-4 py-2 bg-surface-card-hover border-b border-glass-border">
+                <div style={{ borderTop: '1px solid var(--glass-border)' }}>
+                    <div className="flex items-center justify-between px-4 py-2" style={{ background: 'var(--surface-card-hover)', borderBottom: '1px solid var(--glass-border)' }}>
+                        <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
+                            Total assets found: <span className="font-bold" style={{ color: '#818cf8' }}>{assetCount}</span>
+                        </span>
                         <button type="button" onClick={handleCopy}
-                            className="flex items-center gap-1.5 text-xs text-secondary hover:text-primary transition-colors">
+                            className="flex items-center gap-1.5 text-xs transition-colors" style={{ color: 'var(--text-secondary)' }}>
                             {copied ? <Check size={12} className="text-status-safe" /> : <Copy size={12} />}
                             {copied ? 'Copied!' : 'Copy JSON'}
                         </button>
                     </div>
-                    <pre className="p-4 text-xs font-mono overflow-x-auto overflow-y-auto text-status-pqc leading-relaxed"
-                        style={{ maxHeight: 520, background: 'rgba(0,0,0,0.3)' }}>{json}</pre>
+                    <pre className="p-4 text-xs font-mono overflow-x-auto overflow-y-auto leading-relaxed"
+                        style={{ maxHeight: 520, background: '#0f1117', color: '#a5f3fc' }}>{json}</pre>
                 </div>
             )}
         </div>
@@ -52,9 +61,9 @@ const JsonViewer = ({ data, title }) => {
 /** Animated stat card */
 const StatCard = ({ label, value, color = 'text-primary', icon: Icon, pulse = false, accent }) => (
     <div className="p-4 rounded-xl border flex flex-col gap-2 relative overflow-hidden"
-        style={{ background: accent ? `rgba(${accent},0.06)` : 'rgba(255,255,255,0.03)', borderColor: accent ? `rgba(${accent},0.25)` : 'rgba(255,255,255,0.08)' }}>
+        style={{ background: accent ? `rgba(${accent},0.06)` : 'var(--surface-card-hover)', borderColor: accent ? `rgba(${accent},0.25)` : 'var(--glass-border)' }}>
         <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest text-secondary font-semibold">{label}</span>
+            <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
             {Icon && <Icon size={14} className={color} />}
         </div>
         <div className={`text-2xl font-bold font-mono ${color} ${pulse ? 'animate-pulse' : ''}`}>{value}</div>
@@ -133,7 +142,8 @@ const LiveScanPage = () => {
 
     useEffect(() => {
         if (userScrolledRef.current) return;
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const el = terminalRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
     }, [logs]);
 
     /* ── Elapsed timer ── */
@@ -256,10 +266,10 @@ const LiveScanPage = () => {
             </div>
 
             {/* ── Metadata strip ── */}
-            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-3 items-center">
+            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-3 items-center" style={{ borderColor: 'var(--glass-border)' }}>
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-secondary tracking-widest">Target Domain</span>
-                    <span className="text-sm font-bold font-mono text-white flex items-center gap-1.5"><Globe size={12} className="text-primary-indigo" />{domain}</span>
+                    <span className="text-sm font-bold font-mono flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}><Globe size={12} className="text-primary-indigo" />{domain}</span>
                 </div>
                 <div className="flex flex-col">
                     <span className="text-[10px] uppercase text-secondary tracking-widest">Scan UUID</span>
@@ -294,39 +304,39 @@ const LiveScanPage = () => {
 
                 {/* Terminal */}
                 <div className="glass-card flex flex-col overflow-hidden" style={{ minHeight: 420 }}>
-                    <div className="p-3 border-b bg-surface-card-hover flex items-center justify-between">
+                    <div className="p-3 border-b flex items-center justify-between" style={{ background: '#1a1d27', borderColor: '#2d3148' }}>
                         <div className="flex items-center gap-3">
                             <div className="flex gap-1.5">
-                                <div className="w-3 h-3 rounded-full bg-status-critical" />
-                                <div className="w-3 h-3 rounded-full bg-status-medium" />
-                                <div className="w-3 h-3 rounded-full bg-status-safe" />
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#ff5f57' }} />
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#febc2e' }} />
+                                <div className="w-3 h-3 rounded-full" style={{ background: '#28c840' }} />
                             </div>
-                            <span className="text-xs font-mono text-secondary">root@trinetra-node:~#</span>
+                            <span className="text-xs font-mono" style={{ color: '#94a3b8' }}>root@trinetra-node:~#</span>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-secondary font-mono">
-                            {isPending && <span className="flex items-center gap-1 text-status-safe"><span className="w-1.5 h-1.5 rounded-full bg-status-safe animate-pulse inline-block" /> LIVE</span>}
+                        <div className="flex items-center gap-2 text-[10px] font-mono" style={{ color: '#94a3b8' }}>
+                            {isPending && <span className="flex items-center gap-1" style={{ color: '#4ade80' }}><span className="w-1.5 h-1.5 rounded-full bg-status-safe animate-pulse inline-block" /> LIVE</span>}
                             <span>{logs.length} lines</span>
                             {userScrolledRef.current && (
-                                <button onClick={() => { userScrolledRef.current = false; bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }}
+                                <button onClick={() => { userScrolledRef.current = false; const el = terminalRef.current; if (el) el.scrollTop = el.scrollHeight; }}
                                     className="text-primary-indigo hover:underline">↓ scroll to bottom</button>
                             )}
                         </div>
                     </div>
                     <div ref={terminalRef} onScroll={handleTerminalScroll}
-                        className="p-4 font-mono text-xs overflow-y-auto flex-1" style={{ lineHeight: '1.8', maxHeight: 420 }}>
+                        className="p-4 font-mono text-xs overflow-y-auto flex-1" style={{ lineHeight: '1.8', maxHeight: 420, background: '#0f1117' }}>
                         {logs.map((log, i) => {
                             const isWarn = log.toLowerCase().includes('warning') || log.toLowerCase().includes('critical') || log.includes('⚠');
                             const isSuccess = log.toLowerCase().includes('complete') || log.toLowerCase().includes('found') || log.toLowerCase().includes('✓');
                             return (
                                 <div key={i} className="mb-0.5 flex gap-2">
-                                    <span className="text-secondary/60 flex-shrink-0 select-none">[{new Date().toLocaleTimeString()}]</span>
-                                    <span className={isWarn ? 'text-status-critical' : isSuccess ? 'text-status-safe' : 'text-status-pqc'}>{log}</span>
+                                    <span className="flex-shrink-0 select-none" style={{ color: '#4ade80', opacity: 0.7 }}>$</span>
+                                    <span style={{ color: isWarn ? '#f87171' : isSuccess ? '#4ade80' : '#cbd5e1' }}>{log}</span>
                                 </div>
                             );
                         })}
                         {isPending && scanId && (
-                            <div className="flex gap-2 text-primary-indigo animate-pulse mt-1">
-                                <span className="text-secondary/60 flex-shrink-0">[{new Date().toLocaleTimeString()}]</span>
+                            <div className="flex gap-2 animate-pulse mt-1" style={{ color: '#818cf8' }}>
+                                <span style={{ color: '#4ade80', opacity: 0.7 }}>$</span>
                                 <span>Scanning<span className="inline-block animate-bounce">.</span><span className="inline-block animate-bounce" style={{ animationDelay: '0.1s' }}>.</span><span className="inline-block animate-bounce" style={{ animationDelay: '0.2s' }}>.</span></span>
                             </div>
                         )}
