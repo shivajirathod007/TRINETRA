@@ -124,6 +124,7 @@ const DashboardPage = () => {
     const apis      = activeAssets.filter(a => API_TYPES.has(a.type)).length;
     const servers   = activeAssets.filter(a => SERVER_TYPES.has(a.type)).length;
     const shadowAssets = activeAssets.filter(a => a.discovery === 'Shadow');
+    const shadowCount = shadowAssets.length;
 
     // ── Cert expiry timeline from actual scanned asset cert data ────────────
     // cert_expiry comes as "23 Jun 2026" string — compute days from today
@@ -173,14 +174,14 @@ const DashboardPage = () => {
         }).length,
     }));
 
-    // Total assets
+    // Total assets — always use actual fetched assets array length for accuracy
     const totalAssets = viewMode === 'all'
         ? (activeStats.total_assets ?? 0)
-        : ((activeStats.total_assets !== undefined && activeStats.total_assets !== null)
-            ? activeStats.total_assets
-            : activeAssets.length);
+        : activeAssets.length;
 
-    const highRiskAssets = (activeStats.critical_count ?? 0) + (activeStats.high_count ?? 0);
+    const highRiskAssets = viewMode === 'all'
+        ? (activeStats.critical_count ?? 0) + (activeStats.high_count ?? 0)
+        : activeAssets.filter(a => a.risk_level === 'CRITICAL' || a.risk_level === 'HIGH').length;
 
     const kpis = viewMode === 'all'
         ? [
