@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, X, MessageCircle, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
+// @ts-expect-error — ThemeContext is a .jsx file
+import { useTheme } from '../../context/ThemeContext'
 
 interface Message {
   id: string
@@ -47,6 +49,48 @@ export function FloatingChatBot() {
   useEffect(() => {
     console.log('✅ JARSH ChatBot Component Mounted')
   }, [])
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { isDarkMode } = useTheme() as any
+  const t = isDarkMode ? {
+    windowBg: 'linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%)',
+    windowBorder: 'rgba(99,102,241,0.2)',
+    windowShadow: '0 32px 64px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08)',
+    headerBg: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
+    headerBorder: 'rgba(99,102,241,0.2)',
+    msgAreaBg: '#020617',
+    botMsgBg: '#1e293b',
+    botMsgBorder: '#334155',
+    botMsgColor: '#e2e8f0',
+    inputAreaBg: '#0f172a',
+    inputBg: '#1e293b',
+    inputBorder: '#334155',
+    inputColor: '#e2e8f0',
+    inputPlaceholder: '#64748b',
+    iconColor: '#cbd5e1',
+    timestampColor: '#64748b',
+    subText: '#94a3b8',
+    titleColor: '#fff',
+  } : {
+    windowBg: 'linear-gradient(135deg, #ffffff 0%, #f8faff 100%)',
+    windowBorder: 'rgba(99,102,241,0.2)',
+    windowShadow: '0 32px 64px -12px rgba(99,102,241,0.15), 0 0 0 1px rgba(99,102,241,0.1)',
+    headerBg: 'linear-gradient(135deg, #eef2ff 0%, #f8faff 100%)',
+    headerBorder: 'rgba(99,102,241,0.15)',
+    msgAreaBg: '#f8faff',
+    botMsgBg: '#ffffff',
+    botMsgBorder: 'rgba(99,102,241,0.15)',
+    botMsgColor: '#0f172a',
+    inputAreaBg: '#ffffff',
+    inputBg: '#f1f5f9',
+    inputBorder: 'rgba(99,102,241,0.2)',
+    inputColor: '#0f172a',
+    inputPlaceholder: '#94a3b8',
+    iconColor: '#475569',
+    timestampColor: '#94a3b8',
+    subText: '#64748b',
+    titleColor: '#0f172a',
+  }
 
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>(loadChatHistory())
@@ -189,25 +233,26 @@ export function FloatingChatBot() {
             zIndex: 9999,
             width: '420px',
             height: '520px',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1a1f3a 100%)',
-            borderRadius: '12px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255,255,255,0.1)',
-            border: '1px solid #334155',
+            background: t.windowBg,
+            borderRadius: '16px',
+            boxShadow: t.windowShadow,
+            border: `1px solid ${t.windowBorder}`,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
             animation: 'jarsh-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            backdropFilter: 'blur(20px)',
           }}>
 
             {/* Header */}
             <div style={{
-              background: 'linear-gradient(to right, #1e293b 0%, #334155 50%, #1e293b 100%)',
-              borderBottom: '1px solid #334155',
-              padding: '16px',
+              background: t.headerBg,
+              borderBottom: `1px solid ${t.headerBorder}`,
+              padding: '14px 16px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              flexShrink: 0,  // FIX: Prevent header from shrinking
+              flexShrink: 0,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
@@ -226,8 +271,8 @@ export function FloatingChatBot() {
                   ⚡
                 </div>
                 <div>
-                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#fff', letterSpacing: '0.5px' }}>JARSH</div>
-                  <div style={{ fontSize: '12px', color: '#94a3b8' }}>Quantum Security AI</div>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: t.titleColor, letterSpacing: '0.5px' }}>JARSH</div>
+                  <div style={{ fontSize: '12px', color: t.subText }}>Quantum Security AI</div>
                 </div>
               </div>
 
@@ -235,18 +280,18 @@ export function FloatingChatBot() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   onClick={clearHistory}
-                  style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                  style={{ background: 'none', border: 'none', color: t.iconColor, cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
                   onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1.1)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.transform = 'scale(1)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = t.iconColor; e.currentTarget.style.transform = 'scale(1)' }}
                   title="Clear chat history"
                 >
                   <Trash2 size={18} />
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  style={{ background: 'none', border: 'none', color: '#cbd5e1', cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.transform = 'rotate(90deg)' }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = '#cbd5e1'; e.currentTarget.style.transform = 'rotate(0deg)' }}
+                  style={{ background: 'none', border: 'none', color: t.iconColor, cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = t.titleColor; e.currentTarget.style.transform = 'rotate(90deg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = t.iconColor; e.currentTarget.style.transform = 'rotate(0deg)' }}
                   title="Close chat"
                 >
                   <X size={20} />
@@ -262,7 +307,7 @@ export function FloatingChatBot() {
               display: 'flex',
               flexDirection: 'column',
               gap: '12px',
-              background: '#020617',
+              background: t.msgAreaBg,
             }}>
               {messages.map((msg) => (
                 <div
@@ -281,9 +326,9 @@ export function FloatingChatBot() {
                     lineHeight: '1.6',
                     background: msg.sender === 'user'
                       ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
-                      : '#1e293b',
-                    color: msg.sender === 'user' ? 'white' : '#e2e8f0',
-                    border: msg.sender === 'user' ? 'none' : '1px solid #334155',
+                      : t.botMsgBg,
+                    color: msg.sender === 'user' ? 'white' : t.botMsgColor,
+                    border: msg.sender === 'user' ? 'none' : `1px solid ${t.botMsgBorder}`,
                     boxShadow: msg.sender === 'user' ? '0 4px 12px rgba(239, 68, 68, 0.2)' : 'none',
                     wordBreak: 'break-word',
                   }}>
@@ -296,7 +341,7 @@ export function FloatingChatBot() {
                     )}
                     <span style={{
                       fontSize: '11px',
-                      color: msg.sender === 'user' ? 'rgba(255,255,255,0.6)' : '#64748b',
+                      color: msg.sender === 'user' ? 'rgba(255,255,255,0.6)' : t.timestampColor,
                       display: 'block',
                       marginTop: '4px',
                       opacity: 0.7
@@ -311,12 +356,12 @@ export function FloatingChatBot() {
               {isLoading && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
-                    background: '#1e293b',
+                    background: t.botMsgBg,
                     padding: '10px 14px',
                     borderRadius: '12px',
                     display: 'flex',
                     gap: '6px',
-                    border: '1px solid #334155'
+                    border: `1px solid ${t.botMsgBorder}`
                   }}>
                     <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', display: 'block', animation: 'jarsh-bounce 1.4s infinite' }} />
                     <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', display: 'block', animation: 'jarsh-bounce 1.4s infinite 0.2s' }} />
@@ -329,24 +374,24 @@ export function FloatingChatBot() {
 
             {/* Input */}
             <div style={{
-              borderTop: '1px solid #334155',
+              borderTop: `1px solid ${t.headerBorder}`,
               padding: '12px',
-              background: '#0f172a',
+              background: t.inputAreaBg,
               display: 'flex',
               gap: '8px',
-              flexShrink: 0,  // FIX: Prevent input bar from shrinking
+              flexShrink: 0,
             }}>
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                onKeyDown={handleKeyDown}  // FIX: was deprecated onKeyPress
+                onKeyDown={handleKeyDown}
                 placeholder="Ask about scans, mitigations, PQC..."
                 style={{
                   flex: 1,
-                  background: '#1e293b',
-                  color: '#e2e8f0',
+                  background: t.inputBg,
+                  color: t.inputColor,
                   fontSize: '14px',
-                  border: '1px solid #334155',
+                  border: `1px solid ${t.inputBorder}`,
                   borderRadius: '8px',
                   padding: '10px 12px',
                   resize: 'none',
@@ -359,7 +404,7 @@ export function FloatingChatBot() {
                   e.currentTarget.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.1)'
                 }}
                 onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#334155'
+                  e.currentTarget.style.borderColor = t.inputBorder
                   e.currentTarget.style.boxShadow = 'none'
                 }}
                 rows={2}
