@@ -235,7 +235,9 @@ export default function AssetInventoryPage() {
   const assets: any[] = rawAssets as any[];
 
   // ── Derived tab datasets ──────────────────────────────────────────────────
-  const sslAssets = useMemo(() => assets.filter(a => a.tls_version || a.cert_algorithm), [assets]);
+  const sslAssets = useMemo(() => assets.filter(a =>
+    a.tls_version || a.cert_algorithm || a.cert_issuer || a.cert_sha256 || a.cert_expiry
+  ), [assets]);
   const ipAssets = useMemo(() => assets.filter(a => a.ip_address), [assets]);
   const apiAssets = useMemo(() => {
     const result: any[] = [];

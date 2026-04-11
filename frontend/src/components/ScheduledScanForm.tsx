@@ -29,6 +29,15 @@ export interface ScheduledScanFormProps {
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
+// ─── Domain helpers ───────────────────────────────────────────────────────────
+
+function cleanDomain(raw: string): string {
+  let d = raw.trim();
+  if (d.toLowerCase().startsWith('https://')) d = d.slice(8);
+  else if (d.toLowerCase().startsWith('http://')) d = d.slice(7);
+  return d.split('/')[0].trim();
+}
+
 function validateDomain(domain: string): string | null {
   if (!domain.trim()) return 'Domain is required.';
   if (/\s/.test(domain)) return 'Domain must not contain spaces.';
@@ -53,7 +62,13 @@ const DEFAULT_FORM: FormState = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps) {
+// Shared inline style for all inputs/selects — forces theme-aware background
+const fieldStyle = {
+  color: 'var(--text-primary)',
+  background: 'var(--surface-card-hover)',
+  borderColor: 'var(--glass-border)',
+};
+const fieldClass = "w-full px-3 py-2 rounded-lg text-sm border outline-none focus:ring-1 focus:ring-indigo-500/50 transition-colors";export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps) {
   const [form, setForm] = useState<FormState>(DEFAULT_FORM);
   const [domainError, setDomainError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -71,7 +86,7 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
     e.preventDefault();
 
     // Client-side validation
-    const err = validateDomain(form.domain);
+    const err = validateDomain(cleanDomain(form.domain));
     if (err) {
       setDomainError(err);
       return;
@@ -79,7 +94,7 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
 
     // Build payload — only include conditional fields when relevant
     const payload: Record<string, unknown> = {
-      domain: form.domain.trim(),
+      domain: cleanDomain(form.domain),
       frequency: form.frequency,
       scheduled_time: form.scheduled_time,
       scan_scope: form.scan_scope,
@@ -140,13 +155,10 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             type="text"
             value={form.domain}
             onChange={e => set('domain', e.target.value)}
+            onBlur={e => set('domain', cleanDomain(e.target.value))}
             placeholder="example.com"
-            className={`w-full px-3 py-2 rounded-lg text-sm font-mono bg-surface-card border transition-colors outline-none focus:ring-1 focus:ring-indigo-500/50 ${
-              domainError
-                ? 'border-red-500/60 focus:border-red-500'
-                : 'border-glass-border focus:border-indigo-500/60'
-            }`}
-            style={{ color: 'var(--text-primary)', background: 'var(--surface-card-hover)' }}
+            className={`${fieldClass} font-mono`}
+            style={{ ...fieldStyle, ...(domainError ? { borderColor: 'rgba(239,68,68,0.6)' } : {}) }}
           />
           {domainError && (
             <p className="flex items-center gap-1.5 text-xs text-red-400 mt-0.5">
@@ -164,8 +176,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             <select
               value={form.frequency}
               onChange={e => set('frequency', e.target.value as Frequency)}
-              className="w-full px-3 py-2 rounded-lg text-sm border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={fieldClass}
+              style={fieldStyle}
             >
               <option value="once">Once</option>
               <option value="daily">Daily</option>
@@ -183,8 +195,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
               value={form.scheduled_time}
               onChange={e => set('scheduled_time', e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-lg text-sm font-mono border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={`${fieldClass} font-mono`}
+              style={fieldStyle}
             />
           </div>
         </div>
@@ -198,8 +210,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             <select
               value={form.day_of_week}
               onChange={e => set('day_of_week', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={fieldClass}
+              style={fieldStyle}
             >
               {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(
                 (day, i) => (
@@ -219,8 +231,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             <select
               value={form.day_of_month}
               onChange={e => set('day_of_month', e.target.value)}
-              className="w-full px-3 py-2 rounded-lg text-sm border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={fieldClass}
+              style={fieldStyle}
             >
               {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                 <option key={d} value={d}>{d}</option>
@@ -240,8 +252,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
               value={form.one_time_date}
               onChange={e => set('one_time_date', e.target.value)}
               required
-              className="w-full px-3 py-2 rounded-lg text-sm font-mono border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={`${fieldClass} font-mono`}
+              style={fieldStyle}
             />
           </div>
         )}
@@ -255,8 +267,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             <select
               value={form.scan_scope}
               onChange={e => set('scan_scope', e.target.value as ScanScope)}
-              className="w-full px-3 py-2 rounded-lg text-sm border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={fieldClass}
+              style={fieldStyle}
             >
               <option value="full">Full</option>
               <option value="root_only">Root Only</option>
@@ -270,8 +282,8 @@ export default function ScheduledScanForm({ onSuccess }: ScheduledScanFormProps)
             <select
               value={form.crqc_scenario}
               onChange={e => set('crqc_scenario', e.target.value as CrqcScenario)}
-              className="w-full px-3 py-2 rounded-lg text-sm border border-glass-border bg-surface-card-hover outline-none focus:ring-1 focus:ring-indigo-500/50 focus:border-indigo-500/60 transition-colors"
-              style={{ color: 'var(--text-primary)' }}
+              className={fieldClass}
+              style={fieldStyle}
             >
               <option value="pessimistic">Pessimistic</option>
               <option value="moderate">Moderate</option>

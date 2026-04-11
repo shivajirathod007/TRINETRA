@@ -93,7 +93,7 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
   return (
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
-        {['Detection Date', 'SSL SHA256 Fingerprint', 'Expires', 'Common Name', 'Certificate Authority', 'Company Name'].map(h => (
+        {['Detection Date', 'TLS Version', 'Cert Algorithm', 'Expires', 'Certificate Authority', 'Company Name'].map(h => (
           <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
             style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
         ))}
@@ -104,9 +104,9 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
             onMouseLeave={e => (e.currentTarget.style.background = '')}>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
-            <td className="px-4 py-3 font-mono text-xs truncate max-w-xs" style={{ color: '#818cf8' }} title={row.fingerprint}>{row.fingerprint}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: '#818cf8' }}>{row.tls_version}</td>
+            <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{row.algorithm}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.expiry}</td>
-            <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{row.commonName}</td>
             <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-secondary)' }}>{row.ca}</td>
             <td className="px-4 py-3 font-bold" style={{ color: 'var(--text-primary)' }}>{company}</td>
           </tr>
@@ -467,13 +467,15 @@ export default function DiscoveryPage() {
 
   const sslData = useMemo(() =>
     filteredAssets
-      .filter((a: any) => a.cert_issuer || a.cert_sha256 || a.cert_subject)
+      .filter((a: any) => a.tls_version || a.cert_algorithm || a.cert_issuer || a.cert_sha256 || a.cert_expiry)
       .map((a: any) => ({
         date: a.scan_timestamp ?? '—',
         fingerprint: a.cert_sha256 ?? '—',
         expiry: a.cert_expiry ?? '—',
-        commonName: a.cert_subject ?? '—',
+        commonName: a.cert_subject ?? a.url ?? '—',
         ca: a.cert_issuer ?? '—',
+        algorithm: a.cert_algorithm ?? '—',
+        tls_version: a.tls_version ?? '—',
       })), [filteredAssets]);
 
   const ipData = useMemo(() =>

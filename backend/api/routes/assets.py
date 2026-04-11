@@ -72,6 +72,8 @@ async def list_assets(
             "ip_address": a.ip_address,
             "port": a.port,
             "tls_version": a.tls_version_active,
+            "cert_algorithm": a.cert_algorithm,
+            "cert_key_length": a.cert_key_length,
             "cert_issuer": a.cert_issuer,
             "cert_subject": a.cert_subject,
             "cert_sha256": a.cert_sha256,
