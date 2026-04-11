@@ -67,7 +67,7 @@ function DomainsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: a
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL / FQDN', 'Type', 'Sensitivity', 'Risk Level', 'Score', 'PQC Status', 'Discovery', ''].map(h => (
-          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }} style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
@@ -111,7 +111,7 @@ function SSLTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) 
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'TLS Version', 'Cert Algorithm', 'Cert Issuer', 'Expiry', 'Risk', 'Score', ''].map(h => (
-          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }} style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
@@ -148,7 +148,7 @@ function IPTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any) =
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'IP Address', 'Port', 'Type', 'Risk Level', 'Score', ''].map(h => (
-          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }} style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
@@ -179,7 +179,7 @@ function APIsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any)
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
         {['URL', 'Type', 'Sensitivity', 'Risk Level', 'Score', 'Discovery', ''].map(h => (
-          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }} style={{ borderColor: 'var(--border-divider)' }}>{h}</th>
+          <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap" style={{ color: "var(--text-secondary)", borderColor: "var(--border-divider)" }}>{h}</th>
         ))}
       </tr></thead>
       <tbody>
