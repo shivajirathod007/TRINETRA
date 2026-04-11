@@ -246,7 +246,12 @@ class TLSScanner:
         Determines dominant key exchange from cipher suite names.
         Priority: check highest TLS version first.
         """
-        priority_versions = ["TLS_1_3", "TLS_1_2", "TLS_1_1", "TLS_1_0"]
+        # TLS 1.3 logic — Key exchange is negotiated separately and is always (EC)DHE.
+        # The cipher suite names (e.g. TLS_AES_128_GCM_SHA256) don't contain KEX info.
+        if "TLS_1_3" in cipher_suites:
+            return "ECDH/DHE (TLS 1.3)"
+
+        priority_versions = ["TLS_1_2", "TLS_1_1", "TLS_1_0"]
         for version in priority_versions:
             suites = cipher_suites.get(version, [])
             for suite in suites:
@@ -260,5 +265,7 @@ class TLSScanner:
                 if "DHE" in su:
                     return "DHE"
                 if "RSA" in su and "_WITH_" in su:
-                    return "RSA_KEX"        # Static RSA — worst case
+                    # If it's pure RSA (not ECDHE_RSA or DHE_RSA), it's the weak static KEX
+                    if not any(fs in su for fs in ["ECDHE", "DHE"]):
+                        return "RSA_KEX"
         return "UNKNOWN"

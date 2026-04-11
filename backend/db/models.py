@@ -220,6 +220,12 @@ class ScannedAsset(Base):
     scan_timestamp: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     # Relationships
     scan_job: Mapped["ScanJob"] = relationship("ScanJob", back_populates="assets")

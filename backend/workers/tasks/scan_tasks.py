@@ -613,18 +613,12 @@ def _persist_endpoints_as_assets(scan_id: str, parent_asset_data: dict, endpoint
             continue
             
         ep_lower = ep.lower()
-        # Ensure it looks like a genuine software endpoint, not an HTML content page
-        if re.search(r'\.(html|htm|php|pdf|doc|docx)$', ep_lower):
+        # Filter out static files and common non-relevant extensions
+        if re.search(r'\.(html|htm|php|pdf|doc|docx|css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|pdf|webp|mp4|webm|zip|gz|tar)$', ep_lower):
             continue
             
-        # Enterprise endpoints generally contain signatures 
-        is_api = any(sig in ep_lower for sig in [
-            "/api", "/v1", "/v2", "/v3", "/rest", "/graphql", "/swagger",
-            "/docs", "/oauth", "/auth", "/login", "/admin", "/ws", "/socket", ".json", ".xml"
-        ])
-        
-        if is_api:
-            valid_endpoints.append(ep)
+        # If it passed the above filters, it's a valid endpoint for discovery
+        valid_endpoints.append(ep)
 
     if not valid_endpoints:
         return

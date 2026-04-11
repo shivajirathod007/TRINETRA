@@ -142,7 +142,12 @@ class APIInspector:
     async def _discover_endpoints(self, client: httpx.AsyncClient, base_url: str) -> set[str]:
         """Actively crawls and discovers in-scope endpoints for the asset."""
         endpoints = {"/"}
-        common_api_paths = ["/api/v1", "/api", "/v1", "/swagger.json", "/openapi.json", "/api-docs", "/docs"]
+        common_api_paths = [
+            "/api/v1", "/api/v2", "/api", "/v1", "/v2", "/v3",
+            "/swagger.json", "/openapi.json", "/api-docs", "/docs",
+            "/auth/login", "/login", "/admin", "/graphql", "/gql",
+            "/rest", "/ws", "/socket.io", "/actuator/health", "/health"
+        ]
         for p in common_api_paths:
             endpoints.add(p)
 
@@ -176,17 +181,22 @@ class APIInspector:
             # 3. Simple root page crawl for href and src (ignoring static files)
             root_resp = await client.get(base_url, timeout=3.0)
             if root_resp.status_code == 200:
-                hrefs = re.findall(r'href=["\'](/[^"\']+)["\']', root_resp.text)
-                srcs = re.findall(r'src=["\'](/[^"\']+)["\']', root_resp.text)
+                # Optimized regex to find more internal links
+                hrefs = re.findall(r'href=["\']((?:/|https?://' + re.escape(base_url.split("//")[-1]) + r')[^"\'>\s]+)["\']', root_resp.text)
+                srcs = re.findall(r'src=["\']((?:/|https?://' + re.escape(base_url.split("//")[-1]) + r')[^"\'>\s]+)["\']', root_resp.text)
                 for h in hrefs + srcs:
-                    if not re.search(r'\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot)$', h, re.IGNORECASE):
-                        endpoints.add(h)
+                    path = h
+                    if h.startswith("http"):
+                        path = "/" + h.split("//", 1)[1].split("/", 1)[1] if "/" in h.split("//", 1)[1] else "/"
+                    
+                    if not re.search(r'\.(css|js|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|pdf|webp|mp4|webm)$', path, re.IGNORECASE):
+                        endpoints.add(path)
         except Exception:
             pass
 
-        # Limit to top 25 paths to prevent overwhelming the server with requests
+        # Limit to top 50 paths to ensure comprehensive coverage without DOSing
         endpoints_list = list(endpoints)  # type: ignore
-        return set(endpoints_list[:25])
+        return set(endpoints_list[:50])
 
     async def _fetch_and_check(self, client: httpx.AsyncClient, target_url: str, result: APIInspectResult, sec_present: set, sec_missing: set, findings_set: set) -> None:
         """Fetches a specific path and analyzes the response."""

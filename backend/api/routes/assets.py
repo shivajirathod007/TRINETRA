@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from datetime import datetime
 import uuid
 
 from db.session import get_db
@@ -57,6 +58,7 @@ async def list_assets(
         assets = await repo.get_assets_for_scan(uuid.UUID(sid))
     else:
         return []
+
     assets = assets[:limit]
     return [
         {
@@ -66,7 +68,7 @@ async def list_assets(
             "domain": domain or a.fqdn,
             "type": a.asset_type,
             "risk_level": a.risk_level or "UNKNOWN",
-            "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+            "score": round(a.quantum_exposure_score, 1) if a.quantum_exposure_score is not None else 0,
             "discovery": "Shadow" if a.is_shadow_asset else "Known",
             "scan_id": str(a.scan_job_id),
             "ip_address": a.ip_address,
@@ -83,13 +85,17 @@ async def list_assets(
                 if a.cert_expiry else None
             ),
             "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
+            "created_at": a.created_at,
+            "updated_at": a.updated_at,
             # PQC status — used by Posture of PQC page
             "quantum_safe_status": a.quantum_safe_status or "UNKNOWN",
-            # Sensitivity tier fields
-            "data_sensitivity_tier": a.data_sensitivity_tier or "static",
-            "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",
-            # Score breakdown for tooltip
-            "score_breakdown": a.score_breakdown,
+            # Sensitivity & Data Classification
+            "data_classification": {
+                "sensitivity_tier": a.data_sensitivity_tier or "static",
+                "sensitivity_source": a.data_sensitivity_tier_source or "auto_detected",
+                "shelf_life_years": round(a.score_breakdown.get("data_shelf_life_years", 0), 2) if a.score_breakdown and a.score_breakdown.get("data_shelf_life_years") is not None else 0,
+                "override_reason": a.sensitivity_override_reason,
+            },
         }
         for a in assets
     ]
@@ -106,37 +112,82 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
     a = await repo.get_asset(uid)
     if not a:
         raise HTTPException(status_code=404, detail="Asset not found")
-    cert_expiry = a.cert_expiry.isoformat() if a.cert_expiry else None
 
-    # Extract sensitivity tier impact from score_breakdown if available
+    cert_expiry = a.cert_expiry.isoformat() if a.cert_expiry else None
     score_breakdown = a.score_breakdown or {}
-    sensitivity_tier_impact = score_breakdown.get("sensitivity_tier_impact")
     data_shelf_life_years = score_breakdown.get("data_shelf_life_years", 0.0)
+    sensitivity_tier_impact = score_breakdown.get("sensitivity_tier_impact", 0.0)
 
     return {
         "id": str(a.id),
         "url": a.asset_url,
+        "hndl_urgency": a.hndl_urgency,
+        "hndl_window_days": (
+            (lambda d: (datetime(int(d.split()[1]), int(d[1])*3, 28).date() - datetime.now().date()).days)(a.hndl_deadline)
+            if a.hndl_deadline and "Q" in a.hndl_deadline else None
+        ),
         "domain": a.scan_job.domain if a.scan_job else None,
         "type": a.asset_type,
         "risk_level": a.risk_level or "UNKNOWN",
-        "score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
+        "score": round(a.quantum_exposure_score, 1) if a.quantum_exposure_score is not None else 0,
         "discovery": "Shadow" if a.is_shadow_asset else "Known",
         "scan_id": str(a.scan_job_id),
         "tls_version": a.tls_version_active,
         "cipher_suite": a.cipher_suite_active,
         "key_exchange": a.key_exchange,
+        "jwt_algorithm": a.jwt_algorithm,
+        "auth_type": a.auth_type,
+        "cors_policy": a.cors_policy,
+        "graphql_introspection": a.graphql_introspection,
+        "vpn_type": a.vpn_type,
+        "ssh_host_key_algorithm": a.ssh_host_key_algorithm,
+        "ssh_kex_methods": a.ssh_kex_methods,
+        "ssh_server_version": a.ssh_server_version,
         "cert_algorithm": a.cert_algorithm,
+        "cert_key_length": a.cert_key_length,
         "cert_expiry": cert_expiry,
         "cert_issuer": a.cert_issuer,
         "cert_subject": a.cert_subject,
-        "hndl_window_days": None,
+        "cert_sha256": a.cert_sha256,
+        "cert_is_self_signed": a.cert_is_self_signed,
+        "ocsp_stapling": a.ocsp_stapling,
+        "hsts_enabled": a.hsts_enabled,
+        "hsts_max_age": a.hsts_max_age,
         "pqc_status": a.quantum_safe_status or "UNKNOWN",
         "vulnerabilities": a.vulnerabilities or [],
         "recommendations": [],
-        # Sensitivity tier fields (Requirement 7.1, 7.2)
-        "data_sensitivity_tier": a.data_sensitivity_tier or "static",
-        "data_sensitivity_tier_source": a.data_sensitivity_tier_source or "auto_detected",
-        "data_shelf_life_years": data_shelf_life_years,
+        "created_at": a.created_at,
+        "updated_at": a.updated_at,
+        
+        # Risk Score Breakdown
+        "score_breakdown": {
+            "formula": score_breakdown.get("formula", "Score = (AlgRisk×0.40) + (HNDLTimeline×0.40) + (Exposure×0.20)"),
+            "final_score": round(a.quantum_exposure_score, 1) if a.quantum_exposure_score is not None else 0,
+            "risk_level": a.risk_level or "UNKNOWN",
+            "algorithm_risk": {
+                "raw": round(score_breakdown.get("algorithm_risk", 0), 1) if score_breakdown.get("algorithm_risk") is not None else 0,
+                "weighted": round(score_breakdown.get("algorithm_risk", 0) * 0.40, 1) if score_breakdown.get("algorithm_risk") is not None else 0,
+                "weight": "40%",
+            },
+            "hndl_timeline": {
+                "raw": round(score_breakdown.get("hndl_timeline", 0), 1) if score_breakdown.get("hndl_timeline") is not None else 0,
+                "weighted": round(score_breakdown.get("hndl_timeline", 0) * 0.40, 1) if score_breakdown.get("hndl_timeline") is not None else 0,
+                "weight": "40%",
+            },
+            "public_exposure": {
+                "raw": round(score_breakdown.get("public_exposure", 0), 1) if score_breakdown.get("public_exposure") is not None else 0,
+                "weighted": round(score_breakdown.get("public_exposure", 0) * 0.20, 1) if score_breakdown.get("public_exposure") is not None else 0,
+                "weight": "20%",
+            },
+        },
+        
+        # Sensitivity & Data Classification
+        "data_classification": {
+            "sensitivity_tier": a.data_sensitivity_tier or "static",
+            "sensitivity_source": a.data_sensitivity_tier_source or "auto_detected",
+            "shelf_life_years": round(data_shelf_life_years, 2) if data_shelf_life_years is not None else 0,
+            "override_reason": a.sensitivity_override_reason,
+        },
         "sensitivity_tier_impact": sensitivity_tier_impact,
     }
 

@@ -171,77 +171,167 @@ function SoftwareTable({ company, data }: { company: string; data: any[] }) {
   );
 }
 
-// ─── Live Topology Graph ──────────────────────────────────────────────────────
+// ─── Live Topology Graph (force-directed) ────────────────────────────────────
 
-interface TopoNode {
-  id: string;
-  label: string;
-  risk: string;
-  url: string;
-  type: string;
-  isShadow: boolean;
-  x: number;
-  y: number;
+interface FNode {
+  id: string; label: string; risk: string; url: string;
+  type: string; isShadow: boolean; isRoot?: boolean;
+  x: number; y: number; vx: number; vy: number;
+}
+interface FEdge { source: string; target: string; }
+
+function buildGraph(assets: any[], rootDomain: string): { nodes: FNode[]; edges: FEdge[] } {
+  const root = rootDomain.toLowerCase().replace(/\.$/, '').replace(/^www\./, '');
+  const getFqdn = (a: any) =>
+    (a.url || a.fqdn || '').replace(/^https?:\/\//, '').split('/')[0].toLowerCase()
+      .replace(/\.$/, '').replace(/^www\./, '');
+
+  const seen = new Set<string>();
+  const nodeMap = new Map<string, FNode>();
+  const edges: FEdge[] = [];
+
+  // root node
+  nodeMap.set(root, {
+    id: root, label: root.split('.')[0].toUpperCase().slice(0, 6),
+    risk: 'SAFE', url: root, type: 'root', isShadow: false, isRoot: true,
+    x: 0, y: 0, vx: 0, vy: 0,
+  });
+
+  const getOrCreate = (fqdn: string): FNode => {
+    if (nodeMap.has(fqdn)) return nodeMap.get(fqdn)!;
+    const lbl = fqdn.split('.')[0];
+    const n: FNode = {
+      id: fqdn, label: lbl.length > 12 ? lbl.slice(0, 10) + '…' : lbl,
+      risk: 'UNKNOWN', url: fqdn, type: 'domain', isShadow: false,
+      x: (Math.random() - 0.5) * 400, y: (Math.random() - 0.5) * 200,
+      vx: 0, vy: 0,
+    };
+    nodeMap.set(fqdn, n);
+    return n;
+  };
+
+  for (const a of assets) {
+    const fqdn = getFqdn(a);
+    if (!fqdn || fqdn === root) continue;
+    if (!fqdn.endsWith('.' + root) && !fqdn.endsWith(root)) continue;
+    if (seen.has(fqdn)) continue;
+    seen.add(fqdn);
+
+    const n = getOrCreate(fqdn);
+    n.risk = a.risk_level || 'UNKNOWN';
+    n.url = a.url || a.fqdn || fqdn;
+    n.type = a.type || 'web_portal';
+    n.isShadow = !!a.is_shadow_asset || a.discovery === 'Shadow';
+
+    // find parent: strip leftmost label
+    const parts = fqdn.split('.');
+    const rootParts = root.split('.');
+    let parentId = root;
+    if (parts.length > rootParts.length + 1) {
+      parentId = parts.slice(1).join('.');
+      getOrCreate(parentId);
+    }
+    edges.push({ source: parentId, target: fqdn });
+  }
+
+  return { nodes: Array.from(nodeMap.values()), edges };
+}
+
+function runForce(nodes: FNode[], edges: FEdge[], W: number, H: number, iterations = 120): FNode[] {
+  const ns = nodes.map(n => ({ ...n }));
+  const byId = new Map(ns.map(n => [n.id, n]));
+
+  // pin root to center
+  const root = ns.find(n => n.isRoot);
+  if (root) { root.x = W / 2; root.y = H / 2; }
+
+  for (let iter = 0; iter < iterations; iter++) {
+    const alpha = 1 - iter / iterations;
+
+    // repulsion between all pairs
+    for (let i = 0; i < ns.length; i++) {
+      for (let j = i + 1; j < ns.length; j++) {
+        const a = ns[i], b = ns[j];
+        const dx = b.x - a.x || 0.01;
+        const dy = b.y - a.y || 0.01;
+        const dist2 = dx * dx + dy * dy;
+        const force = (1800 / dist2) * alpha;
+        const fx = (dx / Math.sqrt(dist2)) * force;
+        const fy = (dy / Math.sqrt(dist2)) * force;
+        if (!a.isRoot) { a.vx -= fx; a.vy -= fy; }
+        if (!b.isRoot) { b.vx += fx; b.vy += fy; }
+      }
+    }
+
+    // spring attraction along edges
+    for (const e of edges) {
+      const s = byId.get(e.source), t = byId.get(e.target);
+      if (!s || !t) continue;
+      const dx = t.x - s.x;
+      const dy = t.y - s.y;
+      const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+      const ideal = 60;
+      const force = ((dist - ideal) / dist) * 0.3 * alpha;
+      const fx = dx * force, fy = dy * force;
+      if (!s.isRoot) { s.vx += fx; s.vy += fy; }
+      if (!t.isRoot) { t.vx -= fx; t.vy -= fy; }
+    }
+
+    // gravity toward center
+    for (const n of ns) {
+      if (n.isRoot) continue;
+      n.vx += (W / 2 - n.x) * 0.01 * alpha;
+      n.vy += (H / 2 - n.y) * 0.01 * alpha;
+    }
+
+    // integrate + dampen + clamp
+    const pad = 20;
+    for (const n of ns) {
+      if (n.isRoot) continue;
+      n.vx *= 0.7; n.vy *= 0.7;
+      n.x += n.vx; n.y += n.vy;
+      n.x = Math.max(pad, Math.min(W - pad, n.x));
+      n.y = Math.max(pad, Math.min(H - pad, n.y));
+    }
+  }
+  return ns;
 }
 
 function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [hovered, setHovered] = useState<TopoNode | null>(null);
+  const [hovered, setHovered] = useState<FNode | null>(null);
   const [tooltip, setTooltip] = useState({ x: 0, y: 0 });
 
-  const W = 900, H = 300;
-  const cx = W / 2, cy = H / 2;
+  const W = 900, H = 340;
 
-  const nodes: TopoNode[] = useMemo(() => {
-    const seen = new Set<string>();
-    const result: TopoNode[] = [];
-    const unique = assets.filter(a => {
-      const key = (a.url || a.fqdn || '').replace(/^https?:\/\//, '').split('/')[0];
-      if (!key || seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).slice(0, 24);
+  const { nodes, edges } = useMemo(() => {
+    if (!assets.length || !domain) return { nodes: [] as FNode[], edges: [] as FEdge[] };
+    const g = buildGraph(assets, domain);
+    const settled = runForce(g.nodes, g.edges, W, H);
+    return { nodes: settled, edges: g.edges };
+  }, [assets, domain]);
 
-    unique.forEach((a, i) => {
-      const angle = (2 * Math.PI * i) / Math.max(unique.length, 1) - Math.PI / 2;
-      const riskOffset = a.risk_level === 'CRITICAL' ? 25 : a.risk_level === 'HIGH' ? 12 : 0;
-      const r = 115 + riskOffset;
-      const raw = (a.url || a.fqdn || '').replace(/^https?:\/\//, '').split('/')[0];
-      const label = raw.length > 16 ? raw.slice(0, 14) + '…' : raw;
-      result.push({
-        id: a.id || String(i),
-        label,
-        risk: a.risk_level || 'UNKNOWN',
-        url: a.url || a.fqdn || '',
-        type: a.type || 'web_portal',
-        isShadow: !!a.is_shadow_asset || a.discovery === 'Shadow',
-        x: Math.round(cx + r * Math.cos(angle)),
-        y: Math.round(cy + r * Math.sin(angle)),
-      });
-    });
-    return result;
-  }, [assets]);
-
-  const rootLabel = domain ? domain.split('.')[0].toUpperCase().slice(0, 6) : 'ROOT';
+  const rootNode = nodes.find(n => n.isRoot);
+  const rootLabel = rootNode?.label ?? domain.split('.')[0].toUpperCase().slice(0, 6);
   const critCount = nodes.filter(n => n.risk === 'CRITICAL').length;
   const shadowCount = nodes.filter(n => n.isShadow).length;
+  const nonRoot = nodes.filter(n => !n.isRoot);
+  const byId = new Map(nodes.map(n => [n.id, n]));
 
   return (
     <div className="glass-card border rounded-xl overflow-hidden"
-      style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(8,13,26,0.85)' }}>
+      style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(8,13,26,0.9)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-2"
         style={{ borderColor: 'rgba(99,102,241,0.15)' }}>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#22c55e' }} />
-            <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.8)' }}>
-              Domain Relationship Map
-            </span>
-          </div>
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#22c55e' }} />
+          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.8)' }}>
+            Domain Relationship Map
+          </span>
           {assets.length > 0 && (
             <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span style={{ color: 'rgba(148,163,184,0.7)' }}>{nodes.length} nodes</span>
+              <span style={{ color: 'rgba(148,163,184,0.6)' }}>{nodes.length} nodes</span>
               {critCount > 0 && <span className="font-bold" style={{ color: '#ef4444' }}>{critCount} critical</span>}
               {shadowCount > 0 && <span className="font-bold" style={{ color: '#f97316' }}>{shadowCount} shadow</span>}
             </div>
@@ -252,7 +342,7 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
             {[['#ef4444','Critical'],['#f97316','High'],['#eab308','Medium'],['#22c55e','Safe'],['#6366f1','Unknown']].map(([c,l]) => (
               <span key={l} className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full" style={{ background: c as string }} />
-                <span style={{ color: 'rgba(148,163,184,0.7)' }}>{l}</span>
+                <span style={{ color: 'rgba(148,163,184,0.6)' }}>{l}</span>
               </span>
             ))}
           </div>
@@ -260,30 +350,26 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
         </div>
       </div>
 
-      {/* SVG canvas */}
-      <div className="relative" style={{ height: 300 }}>
+      {/* Canvas */}
+      <div className="relative" style={{ height: H }}>
         {assets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2"
-            style={{ color: 'rgba(148,163,184,0.5)' }}>
+            style={{ color: 'rgba(148,163,184,0.4)' }}>
             <Activity size={28} className="opacity-20" />
             <p className="text-sm">No scan data — run a scan to populate the topology</p>
           </div>
         ) : (
           <>
-            <svg ref={svgRef} width="100%" height="300" viewBox={`0 0 ${W} ${H}`}
+            <svg ref={svgRef} width="100%" height={H} viewBox={`0 0 ${W} ${H}`}
               preserveAspectRatio="xMidYMid meet"
               onMouseLeave={() => setHovered(null)}>
               <defs>
                 <radialGradient id="rootGrad" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity="1"/>
-                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.7"/>
-                </radialGradient>
-                <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%">
-                  <stop offset="0%" stopColor="rgba(99,102,241,0.06)" stopOpacity="1"/>
-                  <stop offset="100%" stopColor="transparent" stopOpacity="0"/>
+                  <stop offset="0%" stopColor="#f59e0b" />
+                  <stop offset="100%" stopColor="#d97706" stopOpacity="0.8" />
                 </radialGradient>
                 <filter id="glow">
-                  <feGaussianBlur stdDeviation="3" result="blur"/>
+                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
                   <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
                 </filter>
                 <filter id="glowStrong">
@@ -292,34 +378,30 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
                 </filter>
               </defs>
 
-              <ellipse cx={cx} cy={cy} rx="200" ry="130" fill="url(#bgGrad)" />
-
-              {/* Connection lines */}
-              {nodes.map((node, i) => {
-                const col = nodeColor(node.risk);
-                const isHov = hovered?.id === node.id;
+              {/* Edges */}
+              {edges.map((e, i) => {
+                const s = byId.get(e.source), t = byId.get(e.target);
+                if (!s || !t) return null;
+                const isHov = hovered?.id === t.id;
+                const col = nodeColor(t.risk);
                 return (
-                  <line key={`line-${i}`}
-                    x1={cx} y1={cy} x2={node.x} y2={node.y}
-                    stroke={isHov ? col : 'rgba(99,102,241,0.2)'}
-                    strokeWidth={isHov ? 1.5 : 0.7}
-                    strokeDasharray={node.isShadow ? '5 4' : '3 3'}
-                    opacity={isHov ? 0.9 : 0.45}>
-                    {!isHov && (
-                      <animate attributeName="stroke-opacity" values="0.15;0.45;0.15"
-                        dur={`${2.5 + i * 0.2}s`} repeatCount="indefinite"/>
-                    )}
-                  </line>
+                  <line key={i}
+                    x1={s.x} y1={s.y} x2={t.x} y2={t.y}
+                    stroke={isHov ? col : 'rgba(99,102,241,0.25)'}
+                    strokeWidth={isHov ? 1.5 : 0.6}
+                    strokeDasharray={t.isShadow ? '4 3' : undefined}
+                    opacity={isHov ? 1 : 0.5}
+                  />
                 );
               })}
 
-              {/* Satellite nodes */}
-              {nodes.map((node, i) => {
+              {/* Non-root nodes */}
+              {nonRoot.map((node, i) => {
                 const col = nodeColor(node.risk);
                 const isHov = hovered?.id === node.id;
-                const r = isHov ? 13 : node.risk === 'CRITICAL' ? 11 : 9;
+                const r = isHov ? 10 : node.risk === 'CRITICAL' ? 8 : 5;
                 return (
-                  <g key={`node-${i}`} style={{ cursor: 'pointer' }}
+                  <g key={node.id} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => {
                       setHovered(node);
                       const rect = svgRef.current?.getBoundingClientRect();
@@ -330,72 +412,76 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
                       if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
                     }}>
                     {node.isShadow && (
-                      <circle cx={node.x} cy={node.y} r={r + 5}
-                        fill="none" stroke="#f97316" strokeWidth="1" strokeDasharray="3 2" opacity="0.5">
+                      <circle cx={node.x} cy={node.y} r={r + 4}
+                        fill="none" stroke="#f97316" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5">
                         <animateTransform attributeName="transform" type="rotate"
                           from={`0 ${node.x} ${node.y}`} to={`360 ${node.x} ${node.y}`}
                           dur="8s" repeatCount="indefinite"/>
                       </circle>
                     )}
-                    {node.risk === 'CRITICAL' && (
-                      <circle cx={node.x} cy={node.y} r={r + 4}
-                        fill="none" stroke={col} strokeWidth="1" opacity="0">
-                        <animate attributeName="r" values={`${r};${r + 10};${r}`} dur="2s" repeatCount="indefinite"/>
-                        <animate attributeName="opacity" values="0.5;0;0.5" dur="2s" repeatCount="indefinite"/>
+                    {node.risk === 'CRITICAL' && !isHov && (
+                      <circle cx={node.x} cy={node.y} r={r + 3}
+                        fill="none" stroke={col} strokeWidth="0.8" opacity="0">
+                        <animate attributeName="r" values={`${r};${r + 8};${r}`} dur="2.5s" repeatCount="indefinite"/>
+                        <animate attributeName="opacity" values="0.4;0;0.4" dur="2.5s" repeatCount="indefinite"/>
                       </circle>
                     )}
                     <circle cx={node.x} cy={node.y} r={r}
-                      fill={col} filter={isHov ? 'url(#glowStrong)' : 'url(#glow)'}
-                      opacity={isHov ? 1 : 0.85}>
-                      {!isHov && (
-                        <animate attributeName="r" values={`${r - 1};${r + 1};${r - 1}`}
-                          dur={`${3 + i * 0.3}s`} repeatCount="indefinite"/>
-                      )}
-                    </circle>
-                    <text x={node.x} y={node.y + r + 12}
-                      textAnchor="middle" fontSize="7.5"
-                      fill={isHov ? '#f1f5f9' : 'rgba(148,163,184,0.65)'}
-                      fontFamily="monospace" fontWeight={isHov ? 'bold' : 'normal'}>
-                      {node.label}
-                    </text>
+                      fill={col}
+                      filter={isHov ? 'url(#glowStrong)' : 'url(#glow)'}
+                      opacity={isHov ? 1 : 0.82}
+                    />
+                    {(isHov || node.risk === 'CRITICAL') && (
+                      <text x={node.x} y={node.y - r - 4}
+                        textAnchor="middle" fontSize="7"
+                        fill={isHov ? '#f1f5f9' : 'rgba(148,163,184,0.7)'}
+                        fontFamily="monospace">
+                        {node.label}
+                      </text>
+                    )}
                   </g>
                 );
               })}
 
               {/* Root node */}
-              <circle cx={cx} cy={cy} r="26" fill="url(#rootGrad)" filter="url(#glowStrong)">
-                <animate attributeName="r" values="24;28;24" dur="3s" repeatCount="indefinite"/>
-              </circle>
-              <circle cx={cx} cy={cy} r="34" fill="none" stroke="rgba(245,158,11,0.25)"
-                strokeWidth="1" strokeDasharray="4 3">
-                <animateTransform attributeName="transform" type="rotate"
-                  from={`0 ${cx} ${cy}`} to={`360 ${cx} ${cy}`}
-                  dur="20s" repeatCount="indefinite"/>
-              </circle>
-              <text x={cx} y={cy - 4} textAnchor="middle" fontSize="9"
-                fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
-              <text x={cx} y={cy + 8} textAnchor="middle" fontSize="7"
-                fill="rgba(255,255,255,0.6)" fontFamily="monospace">ROOT</text>
+              {rootNode && (
+                <g>
+                  <circle cx={rootNode.x} cy={rootNode.y} r="22" fill="url(#rootGrad)" filter="url(#glowStrong)">
+                    <animate attributeName="r" values="20;24;20" dur="3s" repeatCount="indefinite"/>
+                  </circle>
+                  <circle cx={rootNode.x} cy={rootNode.y} r="30" fill="none"
+                    stroke="rgba(245,158,11,0.2)" strokeWidth="1" strokeDasharray="4 3">
+                    <animateTransform attributeName="transform" type="rotate"
+                      from={`0 ${rootNode.x} ${rootNode.y}`} to={`360 ${rootNode.x} ${rootNode.y}`}
+                      dur="20s" repeatCount="indefinite"/>
+                  </circle>
+                  <text x={rootNode.x} y={rootNode.y - 3} textAnchor="middle" fontSize="8"
+                    fill="white" fontWeight="bold" fontFamily="monospace">{rootLabel}</text>
+                  <text x={rootNode.x} y={rootNode.y + 8} textAnchor="middle" fontSize="6"
+                    fill="rgba(255,255,255,0.55)" fontFamily="monospace">ROOT</text>
+                </g>
+              )}
             </svg>
 
-            {/* Hover tooltip */}
+            {/* Tooltip */}
             {hovered && (
               <div className="absolute pointer-events-none z-20 px-3 py-2.5 rounded-xl text-xs"
                 style={{
                   left: Math.min(tooltip.x + 14, W - 210),
-                  top: Math.max(tooltip.y - 65, 4),
+                  top: Math.max(tooltip.y - 70, 4),
                   background: 'rgba(8,13,26,0.97)',
-                  border: `1px solid ${nodeColor(hovered.risk)}45`,
-                  boxShadow: `0 4px 20px rgba(0,0,0,0.6)`,
+                  border: `1px solid ${nodeColor(hovered.risk)}40`,
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.6)',
                   minWidth: 190,
                 }}>
-                <div className="font-mono font-bold mb-1.5 break-all text-[10px] leading-relaxed"
-                  style={{ color: '#f1f5f9' }}>{hovered.url}</div>
+                <div className="font-mono font-bold mb-1.5 break-all text-[10px]" style={{ color: '#f1f5f9' }}>
+                  {hovered.url}
+                </div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: nodeColor(hovered.risk) }} />
+                  <span className="w-2 h-2 rounded-full" style={{ background: nodeColor(hovered.risk) }} />
                   <span className="font-bold text-[10px]" style={{ color: nodeColor(hovered.risk) }}>{hovered.risk}</span>
                 </div>
-                <div className="text-[10px] capitalize" style={{ color: 'rgba(148,163,184,0.8)' }}>
+                <div className="text-[10px] capitalize" style={{ color: 'rgba(148,163,184,0.7)' }}>
                   {hovered.type?.replace(/_/g, ' ')}
                 </div>
                 {hovered.isShadow && (
@@ -407,7 +493,7 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
             )}
 
             <div className="absolute bottom-2 right-3 text-[10px] font-mono"
-              style={{ color: 'rgba(148,163,184,0.4)' }}>
+              style={{ color: 'rgba(148,163,184,0.35)' }}>
               {assets.length} nodes discovered
             </div>
           </>

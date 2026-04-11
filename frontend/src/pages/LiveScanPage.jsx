@@ -241,55 +241,56 @@ const LiveScanPage = () => {
         <div className="flex flex-col gap-5 pb-6">
 
             {/* ── Header ── */}
-            <div className="page-header">
-                <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-xl bg-primary-indigo/20 border border-primary-indigo/40 flex items-center justify-center">
+            <div className="flex items-center justify-between gap-4 flex-wrap glass-card border px-5 py-4"
+                style={{ borderColor: 'var(--glass-border)' }}>
+                <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-10 h-10 rounded-xl bg-primary-indigo/20 border border-primary-indigo/40 flex items-center justify-center flex-shrink-0">
                         <Terminal className="text-primary-indigo" size={20} />
                     </div>
-                    <div>
-                        <h1 className="text-xl font-bold">Active Reconnaissance</h1>
-                        <p className="text-xs text-secondary font-mono">Target: <span className="text-primary-indigo">{domain}</span> | Mode: Deep Inspection</p>
+                    <div className="min-w-0">
+                        <h1 className="text-xl font-bold truncate" style={{ color: 'var(--text-primary)', filter: 'contrast(1.2)' }}>Active Reconnaissance</h1>
+                        <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>Target: <span style={{ color: '#818cf8' }}>{domain}</span> | Mode: Deep Inspection</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0">
                     {isPending && scanId && (
                         <button onClick={handleCancel} disabled={cancelling}
-                            className="flex items-center gap-2 px-4 py-2 bg-status-critical/10 text-status-critical border border-status-critical/30 rounded-lg text-sm font-bold hover:bg-status-critical hover:text-white transition-colors disabled:opacity-50">
+                            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-colors disabled:opacity-50"
+                            style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}>
                             <StopCircle size={14} />
                             {cancelling ? 'Cancelling…' : 'Cancel Scan'}
                         </button>
                     )}
-                    <div className={`badge ${status === 'completed' ? 'badge-safe' : status === 'failed' ? 'badge-critical' : 'badge-high animate-pulse-subtle'}`}>
+                    <div className={`px-3 py-1.5 rounded-full text-xs font-bold tracking-wider border flex items-center gap-1.5 ${
+                        status === 'completed' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+                        : status === 'failed'  ? 'text-red-400 border-red-500/30 bg-red-500/10'
+                        : 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10'
+                    }`}>
+                        {status !== 'completed' && status !== 'failed' && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse inline-block" />
+                        )}
                         {status === 'completed' ? 'SCAN COMPLETE' : status === 'failed' ? 'FAILED' : 'SCAN IN PROGRESS'}
                     </div>
                 </div>
             </div>
 
             {/* ── Metadata strip ── */}
-            <div className="glass-card p-4 border flex flex-wrap gap-x-8 gap-y-3 items-center" style={{ borderColor: 'var(--glass-border)' }}>
-                <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-secondary tracking-widest">Target Domain</span>
-                    <span className="text-sm font-bold font-mono flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}><Globe size={12} className="text-primary-indigo" />{domain}</span>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-secondary tracking-widest">Scan UUID</span>
-                    <span className="text-sm font-mono text-primary-indigo truncate max-w-[200px]">{scanId || 'Initializing...'}</span>
-                </div>
-                <div className="flex flex-col">
-                    <span className="text-[10px] uppercase text-secondary tracking-widest">Started At</span>
-                    <span className="text-sm text-status-safe font-mono">{startedAt ? new Date(startedAt).toLocaleString() : '—'}</span>
-                </div>
-                {isPending && (
-                    <div className="flex flex-col">
-                        <span className="text-[10px] uppercase text-secondary tracking-widest">Elapsed</span>
-                        <span className="text-sm font-mono text-status-medium font-bold">{fmtElapsed(elapsed)}</span>
-                    </div>
-                )}
-                <div className="flex flex-col ml-auto">
-                    <span className="text-[10px] uppercase text-secondary tracking-widest text-right">Status</span>
-                    <span className={`text-sm font-bold uppercase tracking-wider ${status === 'completed' ? 'text-status-safe' : status === 'failed' ? 'text-status-critical' : 'text-primary-indigo'}`}>
-                        {status}
-                    </span>
+            <div className="glass-card border" style={{ borderColor: 'var(--glass-border)' }}>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 divide-x divide-y sm:divide-y-0" style={{ borderColor: 'var(--glass-border)' }}>
+                    {[
+                        { label: 'Target Domain',  value: domain,                                                    mono: true, accent: '#818cf8', icon: <Globe size={11} /> },
+                        { label: 'Scan UUID',       value: scanId ? scanId.slice(0, 18) + '…' : 'Initializing…',    mono: true, accent: '#818cf8' },
+                        { label: 'Started At',      value: startedAt ? new Date(startedAt).toLocaleString() : '—',  mono: true, accent: '#4ade80' },
+                        { label: 'Elapsed',         value: fmtElapsed(elapsed),                                      mono: true, accent: '#fbbf24', hide: !isPending },
+                        { label: 'Status',          value: status.toUpperCase(),                                     mono: false, accent: status === 'completed' ? '#4ade80' : status === 'failed' ? '#ef4444' : '#818cf8', bold: true },
+                    ].filter(f => !f.hide).map(f => (
+                        <div key={f.label} className="px-4 py-3 flex flex-col gap-0.5">
+                            <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-secondary)' }}>{f.label}</span>
+                            <span className={`text-sm ${f.mono ? 'font-mono' : ''} ${f.bold ? 'font-bold' : ''} flex items-center gap-1.5 truncate`} style={{ color: f.accent }}>
+                                {f.icon}{f.value}
+                            </span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -303,8 +304,8 @@ const LiveScanPage = () => {
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-5">
 
                 {/* Terminal */}
-                <div className="glass-card flex flex-col overflow-hidden" style={{ minHeight: 420 }}>
-                    <div className="p-3 border-b flex items-center justify-between" style={{ background: '#1a1d27', borderColor: '#2d3148' }}>
+                <div className="glass-card flex flex-col overflow-hidden" style={{ minHeight: 480 }}>
+                    <div className="p-3 border-b flex items-center justify-between flex-shrink-0" style={{ background: '#1a1d27', borderColor: '#2d3148' }}>
                         <div className="flex items-center gap-3">
                             <div className="flex gap-1.5">
                                 <div className="w-3 h-3 rounded-full" style={{ background: '#ff5f57' }} />
@@ -323,7 +324,7 @@ const LiveScanPage = () => {
                         </div>
                     </div>
                     <div ref={terminalRef} onScroll={handleTerminalScroll}
-                        className="p-4 font-mono text-xs overflow-y-auto flex-1" style={{ lineHeight: '1.8', maxHeight: 420, background: '#0f1117' }}>
+                        className="p-4 font-mono text-xs overflow-y-auto flex-1" style={{ lineHeight: '1.8', background: '#0f1117' }}>
                         {logs.map((log, i) => {
                             const isWarn = log.toLowerCase().includes('warning') || log.toLowerCase().includes('critical') || log.includes('⚠');
                             const isSuccess = log.toLowerCase().includes('complete') || log.toLowerCase().includes('found') || log.toLowerCase().includes('✓');
