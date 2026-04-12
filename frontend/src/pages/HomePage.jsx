@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   LayoutDashboard, Search, FileJson, ShieldCheck,
   Star, BarChart2, ArrowRight, Activity, Zap, Lock,
   Globe, Cpu, TrendingUp, AlertTriangle, CheckCircle2,
-  MessageCircle, Rocket, Brain, Clock, Shield
+  MessageCircle, Rocket, Brain, Clock, Shield, Building, BarChart3
 } from 'lucide-react';
 import { useScanStore } from '../store';
 import { useAuth } from '../context/AuthContext';
+import { trinetraApi } from '../api/trinetra';
 
 const NAV_CARDS = [
   {
@@ -66,12 +67,6 @@ const NAV_CARDS = [
   },
 ];
 
-const SYSTEM_STATS = [
-  { label: 'Active Modules', value: '7', icon: <Zap size={18} />, color: '#6366f1' },
-  { label: 'System Status',  value: 'Online', icon: <Activity size={18} />, color: '#22c55e' },
-  { label: 'Security Level', value: 'PQC-Ready', icon: <Lock size={18} />, color: '#a78bfa' },
-];
-
 const PLATFORM_BENEFITS = [
   {
     title: 'Quantum-Safe Readiness',
@@ -102,6 +97,39 @@ const PLATFORM_BENEFITS = [
 export default function HomePage() {
   const { activeDomain, activeScanId } = useScanStore();
   const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState({
+    totalAssets: 0,
+    activeModules: 7,
+    securityLevel: 'Loading...',
+    systemStatus: 'Online'
+  });
+  const [loading, setLoading] = useState(false);
+
+  // Fetch dashboard summary when domain changes
+  useEffect(() => {
+    if (activeDomain) {
+      setLoading(true);
+      trinetraApi.getDashboardSummary(activeDomain)
+        .then(response => {
+          setDashboardData({
+            totalAssets: response.data?.total_assets || 0,
+            activeModules: response.data?.active_modules || 7,
+            securityLevel: response.data?.security_level || 'Unassessed',
+            systemStatus: response.data?.system_status || 'Online'
+          });
+        })
+        .catch(error => {
+          console.error('Failed to fetch dashboard summary:', error);
+          setDashboardData({
+            totalAssets: 0,
+            activeModules: 7,
+            securityLevel: 'Unassessed',
+            systemStatus: 'Online'
+          });
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [activeDomain]);
 
   return (
     <div className="flex flex-col gap-10">
@@ -135,17 +163,36 @@ export default function HomePage() {
 
           {/* Quick stats */}
           <div className="flex flex-wrap gap-3">
-            {SYSTEM_STATS.map(s => (
-              <div key={s.label} className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
-                style={{ 
-                  background: `rgba(99,102,241,0.08)`, 
-                  borderColor: 'rgba(99,102,241,0.3)', 
-                  color: s.color,
-                  boxShadow: `0 4px 12px ${s.color}20`
-                }}>
-                {s.icon} <span className="text-primary">{s.label}:</span> <span className="font-bold">{s.value}</span>
-              </div>
-            ))}
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
+              style={{ 
+                background: `rgba(99,102,241,0.08)`, 
+                borderColor: 'rgba(99,102,241,0.3)', 
+                color: '#6366f1',
+                boxShadow: `0 4px 12px #6366f130`
+              }}>
+              <Zap size={18} /> <span className="text-primary">Active Modules:</span> <span className="font-bold">{dashboardData.activeModules}</span>
+            </div>
+
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
+              style={{ 
+                background: `rgba(34,197,94,0.08)`, 
+                borderColor: 'rgba(34,197,94,0.3)', 
+                color: '#22c55e',
+                boxShadow: `0 4px 12px #22c55e30`
+              }}>
+              <Activity size={18} /> <span className="text-primary">System Status:</span> <span className="font-bold">{dashboardData.systemStatus}</span>
+            </div>
+
+            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
+              style={{ 
+                background: `rgba(168,85,247,0.08)`, 
+                borderColor: 'rgba(168,85,247,0.3)', 
+                color: '#a78bfa',
+                boxShadow: `0 4px 12px #a78bfa30`
+              }}>
+              <Shield size={18} /> <span className="text-primary">Security Level:</span> <span className="font-bold">{dashboardData.securityLevel}</span>
+            </div>
+
             {activeDomain && (
               <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold animate-pulse"
                 style={{ 
@@ -154,7 +201,7 @@ export default function HomePage() {
                   color: '#818cf8',
                   boxShadow: '0 4px 16px rgba(129,140,248,0.3)'
                 }}>
-                <span>🎯 Domain:</span> <span className="font-bold text-primary-indigo">{activeDomain}</span>
+                <Building size={18} /> <span>Enterprise:</span> <span className="font-bold text-primary-indigo">{activeDomain}</span>
               </div>
             )}
           </div>

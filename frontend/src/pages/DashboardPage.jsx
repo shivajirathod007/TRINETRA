@@ -10,6 +10,7 @@ import ThreatBadge from '../components/ThreatBadge';
 import AnimatedCounters from '../components/AnimatedCounters';
 import { dashboardApi, assetsApi, scanApi, certApi } from '../api/index';
 import { useScanStore } from '../store';
+import { useAuth } from '../context/AuthContext';
 import { SensitivityBadge } from '../components/shared/SensitivityBadge';
 
 const RISK_COLORS = {
@@ -119,6 +120,22 @@ const DashboardPage = () => {
     const activeAssets = viewMode === 'all' ? [] : assets;
     const activeCerts = viewMode === 'all' ? [] : certs;
 
+    // ── Filtered assets for search and filter toolbar ──────────────────────
+    const filteredDashAssets = activeAssets.filter(a => {
+        // Filter by search text
+        if (assetSearch && !a.url?.toLowerCase().includes(assetSearch.toLowerCase())) {
+            return false;
+        }
+        // Filter by asset type
+        if (assetFilter !== 'ALL') {
+            if (assetFilter === 'web' && !WEB_APP_TYPES.has(a.type)) return false;
+            if (assetFilter === 'api' && !API_TYPES.has(a.type)) return false;
+            if (assetFilter === 'server' && !SERVER_TYPES.has(a.type)) return false;
+            if (assetFilter === 'shadow' && a.discovery !== 'Shadow') return false;
+        }
+        return true;
+    });
+
     // ── Derived KPI counts from actual backend asset_type values ────────────
     const webApps   = activeAssets.filter(a => WEB_APP_TYPES.has(a.type)).length;
     const apis      = activeAssets.filter(a => API_TYPES.has(a.type)).length;
@@ -215,23 +232,7 @@ const DashboardPage = () => {
     const algoData = activeStats.algorithm_breakdown ?? [];
     const ipData = activeStats.ip_distribution ?? [{ name: 'IPv4', value: 100, color: '#3B82F6' }];
     const scansBreakdown = activeStats.scans_breakdown ?? [];
-
-    // ── Asset table sort + filter + search ──────────────────────────────────
-    const sortedAssets = [...activeAssets].sort((a, b) =>
-        sortField === 'score' ? (b.score ?? 0) - (a.score ?? 0) : 0
-    );
-
-    const filteredDashAssets = sortedAssets.filter(a => {
-        const matchFilter = assetFilter === 'ALL'
-            || (assetFilter === 'CRITICAL' && a.risk_level === 'CRITICAL')
-            || (assetFilter === 'HIGH' && a.risk_level === 'HIGH')
-            || (assetFilter === 'SHADOW' && a.discovery === 'Shadow');
-        const q = assetSearch.toLowerCase();
-        const matchSearch = !q || (a.url || '').toLowerCase().includes(q) || (a.type || '').toLowerCase().includes(q);
-        return matchFilter && matchSearch;
-    });
-
-    const authUser = localStorage.getItem('trinetra_auth') === 'true' ? 'shiva@gmail.com' : 'Guest';
+    const { user } = useAuth();
 
     // ── Empty state (no scans at all) ───────────────────────────────────────
     if (noDomain && !recentLoading && recentScans.length === 0) {
@@ -286,7 +287,7 @@ const DashboardPage = () => {
             <div className="flex justify-between items-center mb-2">
                 <div className="flex flex-col">
                     <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
-                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome, {authUser?.split('@')[0] || 'Guest'}! 👋</div>
+                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome, {user?.split('@')[0] || 'Analyst'}</div>
                 </div>
                 <div className="text-sm font-mono flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
                     {/* View mode toggle */}
