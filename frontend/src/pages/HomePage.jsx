@@ -119,9 +119,12 @@ export default function HomePage() {
           <Lock size={256} />
         </div>
         <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-status-safe animate-pulse" style={{ boxShadow: '0 0 8px #22c55e, inset 0 0 4px #22c55e' }} />
-            <span className="text-xs text-secondary font-bold uppercase tracking-widest">🟢 System Online</span>
+          <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-status-safe animate-pulse"></span>
+              <span className="text-xs text-secondary font-bold uppercase tracking-widest">System Status: Active</span>
+            </div>
+            <span className="text-xs text-secondary font-mono">{new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
           </div>
           <h1 className="text-4xl font-black font-outfit text-primary mb-2 uppercase tracking-wider">
             Welcome back, <span style={{ color: '#6366f1' }}>{user?.split('@')[0] || 'Analyst'}</span>!
@@ -250,7 +253,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-secondary/70 italic mb-4">💬 Chat with JARVIS anytime using the floating button in the bottom-right corner.</p>
+              <p className="text-xs font-medium mb-4 p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', borderLeft: '3px solid #a855f7' }}>💬 Chat with JARVIS anytime using the floating button in the bottom-right corner.</p>
             </div>
 
             {/* Right: Feature showcase */}

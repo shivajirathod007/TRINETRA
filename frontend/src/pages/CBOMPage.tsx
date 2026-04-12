@@ -453,8 +453,8 @@ export default function CBOMPage() {
       {/* ── Header ──────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Operations Center</h1>
-          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Cryptographic Bill of Materials — PQC Readiness Intelligence</p>
+          <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>Cryptographic Bill of Materials</h1>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>CycloneDX 1.6 CBOM — PQC Readiness Intelligence</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <span className="text-xs uppercase tracking-widest font-bold" style={{ color: 'var(--text-secondary)' }}>Target:</span>

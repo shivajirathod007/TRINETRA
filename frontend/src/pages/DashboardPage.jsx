@@ -241,7 +241,7 @@ const DashboardPage = () => {
                 <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-primary-indigo/10 blur-[120px] rounded-full pointer-events-none translate-x-1/3 -translate-y-1/3" />
 
                 <div className="flex justify-between items-center mb-6 relative z-10">
-                    <h1 className="text-3xl font-bold font-outfit tracking-tight">Operations Center</h1>
+                    <h1 className="text-3xl font-bold font-outfit tracking-tight">Dashboard</h1>
                     <div className="flex items-center gap-2 text-status-critical font-mono font-bold uppercase tracking-wider text-xs bg-status-critical/10 border border-status-critical/20 px-3 py-1.5 rounded-md">
                         <AlertTriangle size={14} /> Offline Mode — No Telemetry Detected
                     </div>
@@ -285,8 +285,8 @@ const DashboardPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
                 <div className="flex flex-col">
-                    <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>Operations Center</h1>
-                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome User: {authUser}..!</div>
+                    <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
+                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome, {authUser?.split('@')[0] || 'Guest'}! 👋</div>
                 </div>
                 <div className="text-sm font-mono flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
                     {/* View mode toggle */}
