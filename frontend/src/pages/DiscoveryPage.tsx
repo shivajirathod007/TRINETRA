@@ -568,7 +568,9 @@ export default function DiscoveryPage() {
   }, [assets, statusFilter, rootDomain]);
 
   const domainsData = useMemo(() =>
-    filteredAssets.map((a: any) => ({
+    filteredAssets
+      .filter((a: any) => a.type !== 'api_endpoint' && a.type !== 'api_route')
+      .map((a: any) => ({
       id: a.id,
       date: a.scan_timestamp ?? '—',
       domain: a.url ?? '—',
@@ -579,6 +581,7 @@ export default function DiscoveryPage() {
 
   const sslData = useMemo(() =>
     filteredAssets
+      .filter((a: any) => a.type !== 'api_endpoint' && a.type !== 'api_route')
       .filter((a: any) => a.tls_version || a.cert_algorithm || a.cert_issuer || a.cert_sha256 || a.cert_expiry)
       .map((a: any) => ({
         date: a.scan_timestamp ?? '—',
@@ -592,6 +595,7 @@ export default function DiscoveryPage() {
 
   const ipData = useMemo(() =>
     filteredAssets
+      .filter((a: any) => a.type !== 'api_endpoint' && a.type !== 'api_route')
       .filter((a: any) => a.ip_address)
       .map((a: any) => ({
         date: a.scan_timestamp ?? '—',

@@ -235,10 +235,14 @@ export default function AssetInventoryPage() {
   const assets: any[] = rawAssets as any[];
 
   // ── Derived tab datasets ──────────────────────────────────────────────────
-  const sslAssets = useMemo(() => assets.filter(a =>
-    a.tls_version || a.cert_algorithm || a.cert_issuer || a.cert_sha256 || a.cert_expiry
+  const baseHostAssets = useMemo(() => assets.filter(a => 
+    a.type !== 'api_endpoint' && a.type !== 'api_route'
   ), [assets]);
-  const ipAssets = useMemo(() => assets.filter(a => a.ip_address), [assets]);
+
+  const sslAssets = useMemo(() => baseHostAssets.filter(a =>
+    a.tls_version || a.cert_algorithm || a.cert_issuer || a.cert_sha256 || a.cert_expiry
+  ), [baseHostAssets]);
+  const ipAssets = useMemo(() => baseHostAssets.filter(a => a.ip_address), [baseHostAssets]);
   const apiAssets = useMemo(() => {
     const result: any[] = [];
     for (const a of assets) {
@@ -253,8 +257,8 @@ export default function AssetInventoryPage() {
     return result;
   }, [assets]);
 
-  const tabData: Record<Tab, any[]> = { 'Domains': assets, 'SSL': sslAssets, 'IP / Subnets': ipAssets, 'APIs': apiAssets };
-  const tabCounts: Record<Tab, number> = { 'Domains': assets.length, 'SSL': sslAssets.length, 'IP / Subnets': ipAssets.length, 'APIs': apiAssets.length };
+  const tabData: Record<Tab, any[]> = { 'Domains': baseHostAssets, 'SSL': sslAssets, 'IP / Subnets': ipAssets, 'APIs': apiAssets };
+  const tabCounts: Record<Tab, number> = { 'Domains': baseHostAssets.length, 'SSL': sslAssets.length, 'IP / Subnets': ipAssets.length, 'APIs': apiAssets.length };
   const tabIcons: Record<Tab, React.ReactNode> = { 'Domains': <Globe size={14} />, 'SSL': <Shield size={14} />, 'IP / Subnets': <Network size={14} />, 'APIs': <Code2 size={14} /> };
 
   // ── Filter + search ───────────────────────────────────────────────────────
