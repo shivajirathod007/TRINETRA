@@ -191,7 +191,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* ── JARVIS AI ASSISTANT ──────────────────────────────────────────── */}
+      {/* ── JARSH AI ASSISTANT ──────────────────────────────────────────── */}
       <div
         className="relative rounded-2xl overflow-hidden p-8 border backdrop-blur-xl"
         style={{
@@ -211,17 +211,17 @@ export default function HomePage() {
             <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)' }}>
               <Brain size={20} style={{ color: '#fff' }} />
             </div>
-            <span className="text-sm font-bold text-purple-300 uppercase tracking-wider">Advanced AI Assistant</span>
+            <span className="text-sm font-bold uppercase tracking-wider" style={{ color: '#7c3aed' }}>Advanced AI Assistant</span>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left: Text content */}
             <div className="lg:col-span-2">
               <h2 className="text-3xl font-black text-primary mb-3 uppercase tracking-wider">
-                Meet <span style={{ color: '#a855f7' }}>JARVIS</span>
+                Meet <span style={{ color: '#a855f7' }}>JARSH</span>
               </h2>
               <p className="text-secondary text-sm leading-relaxed mb-4 font-medium">
-                <span className="font-bold text-purple-300">J</span>arvis <span className="font-bold text-purple-300">A</span>dvanced <span className="font-bold text-purple-300">R</span>esearch <span className="font-bold text-purple-300">V</span>irtual <span className="font-bold text-purple-300">I</span>ntelligent <span className="font-bold text-purple-300">S</span>ystem — Your AI-powered security companion.
+                <span className="font-bold" style={{ color: '#7c3aed' }}>J</span>arvis <span className="font-bold" style={{ color: '#7c3aed' }}>A</span>dvanced <span className="font-bold" style={{ color: '#7c3aed' }}>R</span>esearch <span className="font-bold" style={{ color: '#7c3aed' }}>S</span>ecurity <span className="font-bold" style={{ color: '#7c3aed' }}>H</span>elper — Your AI-powered security companion.
               </p>
               <div className="space-y-3 mb-6">
                 <div className="flex items-start gap-3">
@@ -253,7 +253,7 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-              <p className="text-xs font-medium mb-4 p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.15)', color: '#a855f7', borderLeft: '3px solid #a855f7' }}>💬 Chat with JARVIS anytime using the floating button in the bottom-right corner.</p>
+              <p className="text-xs font-medium mb-4 p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.2)', color: '#6d28d9', borderLeft: '3px solid #6d28d9' }}>💬 Chat with JARSH anytime using the floating button in the bottom-right corner.</p>
             </div>
 
             {/* Right: Feature showcase */}
