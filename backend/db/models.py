@@ -153,6 +153,7 @@ class ScannedAsset(Base):
     auth_type: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     # e.g. "Bearer JWT RS256" | "NTLM" | "Basic" | "API-Key"
     cors_policy: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    http_server_software: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     graphql_introspection: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
 
     # ── VPN findings ──────────────────────────────────────────────────────────

@@ -30,32 +30,50 @@ export type QuantumStatus = 'VULNERABLE' | 'PQC_READY' | 'FULLY_QUANTUM_SAFE' | 
 
 export interface AssetSummary {
   id: string
+  url: string  // API returns 'url' not 'asset_url'
   fqdn: string
-  asset_url: string
-  asset_type: AssetType
+  domain?: string
+  type: AssetType  // API returns 'type' not 'asset_type'
   risk_level: RiskLevel
-  quantum_exposure_score: number
+  score: number  // API returns 'score' not 'quantum_exposure_score'
+  discovery: 'Shadow' | 'Known'  // API returns this instead of is_shadow_asset boolean
+  scan_id: string
   quantum_safe_status: QuantumStatus
-  hndl_deadline: string
-  is_shadow_asset: boolean
-  cert_expiry_days?: number
-  key_exchange?: string
+  tls_version?: string
   cert_algorithm?: string
+  cert_key_length?: number
+  cert_issuer?: string
+  cert_subject?: string
+  cert_sha256?: string
+  cert_expiry?: string
+  cert_expiry_days?: number
+  ip_address?: string
+  port?: number
+  scan_timestamp?: string
+  data_classification?: {
+    sensitivity_tier: string
+    sensitivity_source: string
+    shelf_life_years: number
+    override_reason?: string
+  }
 }
 
 export interface AssetDetail extends AssetSummary {
   ip_address?: string
-  port: number
-  scan_status: string
-  // TLS
+  port?: number
+  scan_status?: string
+  // TLS - note: API returns 'tls_version' not 'tls_version_active'
   tls_versions_supported?: string[]
-  tls_version_active?: string
-  cipher_suite_active?: string
+  tls_version?: string
+  cipher_suite?: string
   key_exchange?: string
   vulnerabilities?: string[]
   // Certificate
   cert_key_length?: number
   cert_issuer?: string
+  cert_subject?: string
+  cert_sha256?: string
+  cert_is_self_signed?: boolean
   ocsp_stapling?: boolean
   hsts_enabled?: boolean
   hsts_max_age?: number
@@ -64,14 +82,21 @@ export interface AssetDetail extends AssetSummary {
   auth_type?: string
   cors_policy?: string
   graphql_introspection?: boolean
-  // Risk
-  score_breakdown?: ScoreBreakdown
+  // Risk breakdown - structure from API
+  score_breakdown?: {
+    formula: string
+    final_score: number
+    risk_level: string
+    algorithm_risk: { raw: number; weighted: number; weight: string }
+    hndl_timeline: { raw: number; weighted: number; weight: string }
+    public_exposure: { raw: number; weighted: number; weight: string }
+  }
   hndl_urgency?: string
-  // CBOM + Migration
-  cbom_entry?: Record<string, unknown>
-  migration_plan?: MigrationPlan
-  pqc_certificate_id?: string
-  scan_timestamp: string
+  hndl_deadline?: string
+  scan_timestamp?: string
+  // Additional fields from detail endpoint
+  cert_expiry?: string
+  pqc_status?: string
 }
 
 export interface ScoreBreakdown {
@@ -154,14 +179,16 @@ export interface DashboardStats {
   critical_count: number
   high_count: number
   medium_count: number
-  low_count: number
-  safe_count: number
+  low_count?: number
+  safe_count?: number
   pqc_ready: number
-  safe: number
-  shadow_count: number
-  shadow_assets_found: number
+  safe: number  // Note: API returns 'safe' not 'safe_count'
+  shadow_count: number  // Maps to shadow_assets_found in API
+  shadow_assets_found?: number
   live_sync: boolean
   risk_distribution: { name: string, value: number, color: string }[]
   algorithm_breakdown: { name: string, count: number }[]
+  ip_distribution?: { name: string, value: number, color: string }[]
+  geographic_distribution?: { country: string, count: number, color: string }[]
   assets: AssetSummary[]
 }

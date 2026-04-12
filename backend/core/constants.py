@@ -105,14 +105,79 @@ ALGORITHM_RISK_WEIGHTS: dict[str, int] = {
     "FALCON-1024":            2,
 }
 
-# Normalize lookup — try uppercase
+# Normalize lookup — try uppercase and common certificate signature formats
 def get_algorithm_risk(algorithm: str) -> int:
     """
     Returns risk weight for a given algorithm name.
-    Case-insensitive. Returns 50 (medium) for unknown algorithms.
+    Handles certificate signature algorithm names like "sha256WithRSAEncryption".
+    Case-insensitive, normalizes common formats.
+    Returns 50 (medium) for truly unknown algorithms.
+    
+    Examples:
+        "RSA-2048" → 90
+        "sha256WithRSAEncryption" → 90 (inferred RSA-2048)
+        "ECDSA-256" → 85
+        "NIST P-256" → 85
     """
-    key = algorithm.upper().replace(" ", "-")
-    return ALGORITHM_RISK_WEIGHTS.get(key, 50)
+    if not algorithm:
+        return 50
+    
+    algo_clean = str(algorithm).upper().replace(" ", "").replace("_", "-")
+    
+    # Direct lookup — covers 99% of cases
+    if algo_clean in ALGORITHM_RISK_WEIGHTS:
+        return ALGORITHM_RISK_WEIGHTS[algo_clean]
+    
+    # Certificate signature algorithm normalization
+    # Format: hash + "WITH" + key algorithm + padding
+    # Examples: sha256WithRSAEncryption, sha256WithRSAandMGF1Padding
+    
+    if "WITHRSAENCRYPTION" in algo_clean or "WITHRSA" in algo_clean:
+        # Certificate signature using RSA — infer key size from cert separately
+        # Default to RSA-2048 (most common) if we can't determine size
+        return ALGORITHM_RISK_WEIGHTS.get("RSA-2048", 90)
+    
+    if "ECDSA" in algo_clean or "WITHECDSA" in algo_clean:
+        # ECDSA signature — default to P-256 (most common)
+        return ALGORITHM_RISK_WEIGHTS.get("ECDSA-256", 85)
+    
+    if "ED25519" in algo_clean or "EDDSA" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ED25519", 65)
+    
+    if "ED448" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ED448", 60)
+    
+    # Nist P-curves (common EC naming)
+    if "NISTP256" in algo_clean or "P-256" in algo_clean or "P256" in algo_clean or "PRIME256V1" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ECDSA-256", 85)
+    
+    if "NISTP384" in algo_clean or "P-384" in algo_clean or "P384" in algo_clean or "SECP384R1" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ECDSA-384", 75)
+    
+    if "NISTP521" in algo_clean or "P-521" in algo_clean or "P521" in algo_clean or "SECP521R1" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ECDSA-521", 70)
+    
+    # Default RSA sizes based on key length in algorithm name
+    if "RSA" in algo_clean:
+        if "4096" in algo_clean:
+            return ALGORITHM_RISK_WEIGHTS.get("RSA-4096", 75)
+        elif "3072" in algo_clean:
+            return ALGORITHM_RISK_WEIGHTS.get("RSA-3072", 80)
+        else:
+            # Default to RSA-2048 for bare "RSA"
+            return ALGORITHM_RISK_WEIGHTS.get("RSA-2048", 90)
+    
+    # DH/DHE variants
+    if "DH" in algo_clean or "DIFFIE" in algo_clean:
+        if "4096" in algo_clean:
+            return 70
+        elif "3072" in algo_clean:
+            return 75
+        else:
+            return ALGORITHM_RISK_WEIGHTS.get("DH-2048", 80)
+    
+    # Default: return medium risk for completely unknown algorithm
+    return 50
 
 
 # ─────────────────────────────────────────────────────────────────────────────

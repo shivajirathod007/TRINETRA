@@ -226,7 +226,7 @@ export default function AssetInventoryPage() {
 
   const { data: rawAssets = [], isLoading, refetch } = useQuery({
     queryKey: ['assets-inventory', activeScanId],
-    queryFn: () => assetsApi.list({ scan_id: activeScanId, limit: 500 }),
+    queryFn: () => assetsApi.list({ scan_id: activeScanId }),
     enabled: !!activeScanId,
     staleTime: 60_000,
     refetchOnWindowFocus: false,

@@ -28,12 +28,12 @@ export default function DashboardPage() {
   // Filter + sort
   let filtered: AssetSummary[] = assets
   if (filterRisk !== 'ALL')   filtered = filtered.filter(a => a.risk_level === filterRisk)
-  if (filterType !== 'ALL')   filtered = filtered.filter(a => a.asset_type === filterType)
-  if (filterShadow)           filtered = filtered.filter(a => a.is_shadow_asset)
+  if (filterType !== 'ALL')   filtered = filtered.filter(a => a.type === filterType)
+  if (filterShadow)           filtered = filtered.filter(a => a.discovery === 'Shadow')
 
   filtered = [...filtered].sort((a, b) => {
     const dir = sortDir === 'desc' ? -1 : 1
-    if (sortBy === 'score')  return dir * ((b.quantum_exposure_score ?? 0) - (a.quantum_exposure_score ?? 0))
+    if (sortBy === 'score')  return dir * ((b.score ?? 0) - (a.score ?? 0))
     if (sortBy === 'expiry') return dir * ((a.cert_expiry_days ?? 999) - (b.cert_expiry_days ?? 999))
     return dir * a.fqdn.localeCompare(b.fqdn)
   })
@@ -46,7 +46,7 @@ export default function DashboardPage() {
         subtitle={`Domain: ${activeDomain}`}
         action={
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-gray-500">Elite-PQC Ready: {stats.safe_count}</span>
+            <span className="text-gray-500">PQC Ready: {stats.pqc_ready}</span>
             <span className="text-gray-600">|</span>
             <span className="text-gray-500">Critical: {stats.critical_count}</span>
           </div>
@@ -68,10 +68,10 @@ export default function DashboardPage() {
               { label: 'Critical', count: stats.critical_count, color: RISK_COLORS.CRITICAL },
               { label: 'High',     count: stats.high_count,     color: RISK_COLORS.HIGH },
               { label: 'Medium',   count: stats.medium_count,   color: RISK_COLORS.MEDIUM },
-              { label: 'Low',      count: stats.low_count,      color: RISK_COLORS.LOW },
-              { label: 'Safe',     count: stats.safe_count,     color: RISK_COLORS.SAFE },
+              { label: 'Low',      count: stats.low_count ?? 0,      color: RISK_COLORS.LOW },
+              { label: 'Safe',     count: stats.safe,     color: RISK_COLORS.SAFE },
             ].map(item => {
-              const maxCount = Math.max(stats.critical_count, stats.high_count, stats.medium_count, stats.low_count, stats.safe_count, 1)
+              const maxCount = Math.max(stats.critical_count, stats.high_count, stats.medium_count, stats.low_count ?? 0, stats.safe, 1)
               const heightPct = (item.count / maxCount) * 100
               return (
                 <div key={item.label} className="flex flex-col items-center gap-1 flex-1">
@@ -88,7 +88,7 @@ export default function DashboardPage() {
         {/* Shadow assets */}
         <div className="card h-64">
           <div className="section-title">Shadow Asset Discovery</div>
-          <div className="text-3xl font-bold text-yellow-400 mt-4">{stats.shadow_assets_found}</div>
+          <div className="text-3xl font-bold text-yellow-400 mt-4">{stats.shadow_count}</div>
           <div className="text-sm text-gray-400 mt-1">discovered via CT logs</div>
           <p className="text-xs text-gray-500 mt-3">
             Assets found in Certificate Transparency logs but not in the bank's known inventory.

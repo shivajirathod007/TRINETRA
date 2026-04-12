@@ -172,7 +172,7 @@ def update_asset_scan_result_sync(asset_id: str, scan_data: dict) -> None:
             "cert_algorithm", "cert_key_length", "cert_expiry", "cert_expiry_days",
             "cert_issuer", "cert_subject", "cert_sha256", "cert_is_self_signed",
             "ocsp_stapling", "hsts_enabled", "hsts_max_age",
-            "jwt_algorithm", "auth_type", "cors_policy", "graphql_introspection",
+            "jwt_algorithm", "auth_type", "cors_policy", "http_server_software", "graphql_introspection",
             "vpn_type",
             "ssh_host_key_algorithm", "ssh_kex_methods", "ssh_server_version",
             "ai_detections", "ai_fallback_used", "detection_sources",

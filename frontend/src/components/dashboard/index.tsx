@@ -35,8 +35,8 @@ export function RiskPieChart({ stats }: { stats: DashboardStats }) {
     { name: 'Critical', value: stats.critical_count, color: RISK_COLORS.CRITICAL },
     { name: 'High',     value: stats.high_count,     color: RISK_COLORS.HIGH },
     { name: 'Medium',   value: stats.medium_count,   color: RISK_COLORS.MEDIUM },
-    { name: 'Low',      value: stats.low_count,      color: RISK_COLORS.LOW },
-    { name: 'Safe',     value: stats.safe_count,     color: RISK_COLORS.SAFE },
+    { name: 'Low',      value: stats.low_count ?? 0,      color: RISK_COLORS.LOW },
+    { name: 'Safe',     value: stats.safe,     color: RISK_COLORS.SAFE },
   ].filter(d => d.value > 0)
 
   return (
@@ -99,7 +99,7 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
-                    {asset.is_shadow_asset && (
+                    {asset.discovery === 'Shadow' && (
                       <span className="text-yellow-400 text-xs" title="Shadow asset">👻</span>
                     )}
                     <span className="font-mono text-xs text-gray-300">{truncateUrl(asset.fqdn, 35)}</span>
@@ -107,11 +107,11 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
                 </td>
                 <td className="px-4 py-3">
                   <span className="text-xs text-gray-400">
-                    {ASSET_TYPE_ICON[asset.asset_type]} {ASSET_TYPE_LABEL[asset.asset_type]}
+                    {ASSET_TYPE_ICON[asset.type]} {ASSET_TYPE_LABEL[asset.type]}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <ScoreBadge score={asset.quantum_exposure_score} size="sm" />
+                  <ScoreBadge score={asset.score} size="sm" />
                 </td>
                 <td className="px-4 py-3">
                   <RiskBadge level={asset.risk_level} size="sm" />
@@ -120,7 +120,7 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
                   <CertBadge tier={asset.quantum_safe_status as any} />
                 </td>
                 <td className="px-4 py-3">
-                  <HNDLDeadline deadline={asset.hndl_deadline} />
+                  <span className="text-xs text-gray-400">—</span>
                 </td>
                 <td className="px-4 py-3">
                   <AlgorithmTag algorithm={asset.cert_algorithm} />

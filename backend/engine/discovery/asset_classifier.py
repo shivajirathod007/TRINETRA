@@ -78,16 +78,23 @@ class AssetClassifier:
             is_shadow = pr.fqdn in shadow_fqdns
             tasks.append(self._classify_one(pr, is_shadow))
 
-        results_nested = await asyncio.gather(*tasks, return_exceptions=False)
+        # return_exceptions=True prevents one bad host from aborting all 214 others
+        results_nested = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Flatten — one PortScanResult may yield multiple assets (different ports)
         classified: list[ClassifiedAsset] = []
-        for result_list in results_nested:
-            classified.extend(result_list)
+        errors = 0
+        for result in results_nested:
+            if isinstance(result, Exception):
+                errors += 1
+                log.warning("asset_classify_one_failed", error=str(result))
+                continue
+            classified.extend(result)
 
         log.info(
             "asset_classification_complete",
             total=len(classified),
+            errors=errors,
             types={t: sum(1 for a in classified if a.asset_type == t)
                    for t in set(a.asset_type for a in classified)},
         )

@@ -39,10 +39,14 @@ def scan_single_asset(self, scan_id: str, asset_data: dict) -> dict:
         result = asyncio.run(_run_all_scanners(scan_id, asset_data))
         _persist_scan_result(asset_id, scan_id, result)
         
-        # Spawn new UI assets for discovered endpoints
-        endpoints = result.get("score_breakdown", {}).get("endpoints_scanned", [])
-        if endpoints:
-            _persist_endpoints_as_assets(scan_id, asset_data, endpoints, result)
+        # Removed: We no longer spawn new DB assets for discovered API endpoints.
+        # This was polluting the database and causing inflated, identical counts for
+        # Total Assets, TLS certificates, Critical Risks, etc.
+        # The endpoints are already stored in `score_breakdown.endpoints_scanned`
+        # and the frontend unpacks them natively for the APIs tab.
+        # endpoints = result.get("score_breakdown", {}).get("endpoints_scanned", [])
+        # if endpoints:
+        #     _persist_endpoints_as_assets(scan_id, asset_data, endpoints, result)
 
         log.info(
             "asset_scan_complete",
@@ -158,6 +162,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     api_result = None
     vpn_result = None
     ssh_result = None
+    smtp_result = None
 
     tasks = []
     task_names = []
@@ -216,9 +221,11 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
                 vpn_result = res[0] if res else None
             elif name == "ssh":
                 ssh_result = res if res and not res.error else None
+            elif name == "smtp":
+                smtp_result = res if res and not res.error else None
 
     # ── Extract primary algorithm ─────────────────────────────────────────────
-    primary_algorithm = _extract_primary_algorithm(tls_result, cert_info, ssh_result, port)
+    primary_algorithm = _extract_primary_algorithm(tls_result, cert_info, ssh_result, smtp_result, port)
     key_exchange = tls_result.key_exchange if tls_result else None
     jwt_algorithm = api_result.jwt_algorithm if api_result else None
 
@@ -226,6 +233,8 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     cert_expiry_days = 365
     if cert_info and cert_info.days_until_expiry is not None:
         cert_expiry_days = max(0, cert_info.days_until_expiry)
+    elif smtp_result and smtp_result.cert_expiry_days is not None:
+        cert_expiry_days = max(0, smtp_result.cert_expiry_days)
 
     log.info(
         "scanner_results_summary",
@@ -354,6 +363,8 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
         jwt_algorithm=jwt_algorithm,
         data_sensitivity_tier=data_sensitivity_tier,
         custom_override_status=custom_override_status,
+        http_server_software=api_result.response_headers_raw.get("Server") if api_result and api_result.response_headers_raw else None,
+        ssh_host_key=ssh_result.host_key_algorithm if ssh_result else None,
     )
 
     hndl_result = HNDLEngine().calculate(
@@ -462,6 +473,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
         "jwt_algorithm": jwt_algorithm,
         "auth_type": api_result.auth_type if api_result else None,
         "cors_policy": api_result.cors_policy if api_result else None,
+        "http_server_software": api_result.response_headers_raw.get("Server") if api_result and api_result.response_headers_raw else None,
         "graphql_introspection": api_result.graphql_introspection if api_result else None,
         # VPN
         "vpn_type": vpn_result.vpn_type if vpn_result else vpn_type,
@@ -521,7 +533,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
     }
 
 
-def _extract_primary_algorithm(tls_result, cert_info, ssh_result, port: int) -> str:
+def _extract_primary_algorithm(tls_result, cert_info, ssh_result, smtp_result, port: int) -> str:
     """
     Returns the most quantum-relevant algorithm detected.
     Priority: cert signature > TLS KEX > SSH host key > fallback.
@@ -546,6 +558,9 @@ def _extract_primary_algorithm(tls_result, cert_info, ssh_result, port: int) -> 
 
     if ssh_result and ssh_result.host_key_algorithm:
         return ssh_result.host_key_algorithm
+
+    if smtp_result and smtp_result.cert_algorithm:
+        return smtp_result.cert_algorithm
 
     # Conservative fallback — RSA-2048 is the most common legacy algorithm
     return "RSA-2048"

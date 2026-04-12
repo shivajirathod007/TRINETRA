@@ -40,7 +40,7 @@ async def _latest_scan_id_for_domain(db: AsyncSession, domain: str):
 async def list_assets(
     scan_id: Optional[str] = None,
     domain: Optional[str] = None,
-    limit: int = 500,
+    limit: Optional[int] = None,
     db: AsyncSession = Depends(get_db),
 ):
     """List scanned assets, optionally filtered by scan_id or domain."""
@@ -59,7 +59,8 @@ async def list_assets(
     else:
         return []
 
-    assets = assets[:limit]
+    if limit is not None:
+        assets = assets[:limit]
     return [
         {
             "id": str(a.id),
@@ -81,7 +82,7 @@ async def list_assets(
             "cert_sha256": a.cert_sha256,
             "cert_expiry": a.cert_expiry.strftime("%d %b %Y") if a.cert_expiry else None,
             "cert_expiry_days": a.cert_expiry_days if a.cert_expiry_days is not None else (
-                (a.cert_expiry.replace(tzinfo=None) - __import__('datetime').datetime.utcnow()).days
+                (a.cert_expiry.replace(tzinfo=None) - datetime.utcnow()).days
                 if a.cert_expiry else None
             ),
             "scan_timestamp": a.scan_timestamp.strftime("%d %b %Y") if a.scan_timestamp else "—",
@@ -138,6 +139,7 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
         "jwt_algorithm": a.jwt_algorithm,
         "auth_type": a.auth_type,
         "cors_policy": a.cors_policy,
+        "http_server_software": a.http_server_software,
         "graphql_introspection": a.graphql_introspection,
         "vpn_type": a.vpn_type,
         "ssh_host_key_algorithm": a.ssh_host_key_algorithm,
@@ -170,13 +172,13 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
                 "weight": "40%",
             },
             "hndl_timeline": {
-                "raw": round(score_breakdown.get("hndl_timeline", 0), 1) if score_breakdown.get("hndl_timeline") is not None else 0,
-                "weighted": round(score_breakdown.get("hndl_timeline", 0) * 0.40, 1) if score_breakdown.get("hndl_timeline") is not None else 0,
+                "raw": int((score_breakdown.get("hndl_timeline") or 0.0) * 10) / 10.0,
+                "weighted": int(((score_breakdown.get("hndl_timeline") or 0.0) * 0.40) * 10) / 10.0,
                 "weight": "40%",
             },
             "public_exposure": {
-                "raw": round(score_breakdown.get("public_exposure", 0), 1) if score_breakdown.get("public_exposure") is not None else 0,
-                "weighted": round(score_breakdown.get("public_exposure", 0) * 0.20, 1) if score_breakdown.get("public_exposure") is not None else 0,
+                "raw": int((score_breakdown.get("public_exposure") or 0.0) * 10) / 10.0,
+                "weighted": int(((score_breakdown.get("public_exposure") or 0.0) * 0.20) * 10) / 10.0,
                 "weight": "20%",
             },
         },
@@ -185,7 +187,7 @@ async def get_asset_detail(asset_id: str, db: AsyncSession = Depends(get_db)):
         "data_classification": {
             "sensitivity_tier": a.data_sensitivity_tier or "static",
             "sensitivity_source": a.data_sensitivity_tier_source or "auto_detected",
-            "shelf_life_years": round(data_shelf_life_years, 2) if data_shelf_life_years is not None else 0,
+            "shelf_life_years": int((data_shelf_life_years or 0.0) * 100) / 100.0,
             "override_reason": a.sensitivity_override_reason,
         },
         "sensitivity_tier_impact": sensitivity_tier_impact,

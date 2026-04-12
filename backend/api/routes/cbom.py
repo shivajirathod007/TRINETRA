@@ -52,19 +52,35 @@ async def list_cbom(
         if a.cbom_entry and isinstance(a.cbom_entry, dict):
             comp = a.cbom_entry.get("component") or a.cbom_entry
             url = comp.get("url") or comp.get("name") or a.asset_url
+            
+            comp_tls = comp.get("tls") or {}
+            comp_cert = comp.get("certificate") or {}
+            
+            tls_val = comp_tls.get("highest_version", "—") if isinstance(comp_tls, dict) else comp_tls
+            cipher_val = comp_tls.get("active_cipher_suite", "—") if isinstance(comp_tls, dict) else "—"
+            kx_val = comp_tls.get("key_exchange", "—") if isinstance(comp_tls, dict) else "—"
+            
+            cert_val = comp_cert.get("signature_algorithm", "—") if isinstance(comp_cert, dict) else comp_cert
+            issuer_val = comp_cert.get("issuer_org", "—") if isinstance(comp_cert, dict) else "—"
+            expiry_str = comp_cert.get("not_after") if isinstance(comp_cert, dict) else None
+            if expiry_str and len(expiry_str) >= 10:
+                expiry_str = expiry_str[:10]
+            else:
+                expiry_str = "—"
+
             components.append({
                 "url": url,
                 "name": comp.get("name", url),
-                "tls": a.tls_version_active or comp.get("tls", "—"),
-                "cipher": a.cipher_suite_active or comp.get("cipher", "—"),
-                "kx": a.key_exchange or comp.get("key_exchange", "—"),
-                "key_exchange": a.key_exchange,
-                "cert": a.cert_algorithm or comp.get("cert_algorithm", "—"),
-                "cert_algorithm": a.cert_algorithm,
-                "expiry": a.cert_expiry.isoformat()[:10] if a.cert_expiry else (comp.get("cert_expiry") or "—"),
+                "tls": a.tls_version_active or tls_val,
+                "cipher": a.cipher_suite_active or cipher_val,
+                "kx": a.key_exchange or kx_val,
+                "key_exchange": a.key_exchange or kx_val,
+                "cert": a.cert_algorithm or cert_val,
+                "cert_algorithm": a.cert_algorithm or cert_val,
+                "expiry": a.cert_expiry.isoformat()[:10] if a.cert_expiry else expiry_str,
                 "cert_expiry": a.cert_expiry.isoformat()[:10] if a.cert_expiry else None,
-                "issuer": a.cert_issuer or comp.get("cert_issuer", "—"),
-                "cert_issuer": a.cert_issuer,
+                "issuer": a.cert_issuer or issuer_val,
+                "cert_issuer": a.cert_issuer or issuer_val,
                 # status = PQC classification (QUANTUM_VULNERABLE / PQC_READY / FULLY_QUANTUM_SAFE)
                 "status": a.quantum_safe_status or "UNKNOWN",
                 "risk_level": a.risk_level or "UNKNOWN",

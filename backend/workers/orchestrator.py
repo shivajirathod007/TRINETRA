@@ -139,8 +139,10 @@ def _run_discovery_sync(scan_id: str, domain: str, scan_scope: str = "root_only"
 
         # ── Step 2: DNS Resolution ────────────────────────────────────────────
         resolver = DNSResolver()
+        # Seed known assets with the root domain to prevent it from being flagged as a shadow asset
+        known_assets = {domain}
         try:
-            live_assets, dead_assets = await resolver.resolve_all(ct_entries)
+            live_assets, dead_assets = await resolver.resolve_all(ct_entries, known_assets=known_assets)
         except Exception as exc:
             log.warning("dns_resolution_error", scan_id=scan_id, error=str(exc))
             live_assets, dead_assets = [], []
@@ -249,8 +251,33 @@ def _run_discovery_sync(scan_id: str, domain: str, scan_scope: str = "root_only"
         try:
             classified = await classifier.classify_all(port_results, shadow_fqdns)
         except Exception as exc:
-            log.warning("asset_classification_error", scan_id=scan_id, error=str(exc))
+            log.error("asset_classification_error", scan_id=scan_id, error=str(exc), exc_info=exc)
             classified = []
+
+        # If classification returned nothing but we have port results, synthesize minimal assets
+        # so the scan doesn't abort entirely
+        if not classified and port_results:
+            log.warning(
+                "asset_classification_empty_fallback",
+                scan_id=scan_id,
+                msg="Classifier returned no assets; falling back to synthesizing from port results",
+                port_result_count=len(port_results),
+            )
+            from engine.discovery.asset_classifier import ClassifiedAsset
+            for pr in port_results:
+                is_shadow = pr.fqdn in shadow_fqdns
+                port = 443 if pr.has_https else (22 if pr.has_ssh else 443)
+                schema = "https" if port == 443 else "ssh"
+                classified.append(ClassifiedAsset(
+                    fqdn=pr.fqdn,
+                    ip_address=pr.ip_address or pr.fqdn,
+                    port=port,
+                    asset_type="web_portal",
+                    asset_url=f"{schema}://{pr.fqdn}" if port in (80, 443) else f"{schema}://{pr.fqdn}:{port}",
+                    is_shadow_asset=is_shadow,
+                    needs_tls_scan=True,
+                    needs_api_scan=True,
+                ))
 
         # ── Persist assets to DB ──────────────────────────────────────────────
         asset_dicts = []
