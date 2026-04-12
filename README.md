@@ -1,6 +1,13 @@
 # TRINETRA — Quantum Exposure Intelligence Platform
 
+
 > **"Find every cryptographic weakness before a quantum computer does."**
+
+<div align="center">
+  <h3><strong>📺 <a href="#">Watch the Pitch / Demo Video</a></strong></h3>
+
+</div>
+
 
 TRINETRA is an enterprise-grade post-quantum cryptography (PQC) readiness scanner built for financial institutions. It discovers every public-facing asset of a target domain, performs deep cryptographic analysis across TLS, certificates, APIs, VPNs, SSH, and email, and produces a machine-verifiable **Cryptographic Bill of Materials (CBOM)** with NIST-aligned migration plans and signed PQC readiness certificates.
 
@@ -53,7 +60,21 @@ TRINETRA answers all four questions in a single scan.
 
 ---
 
+
+## 🛠 Tech Stack
+
+**Frontend:** React 18, Vite, Typescript, TailwindCSS, Recharts  
+**Backend:** FastAPI (Async), Python 3.10+, SQLAlchemy, Alembic  
+**Scanning Engine:** SSLyze, pyca/cryptography, httpx (Async), Paramiko, Custom DNS/CT pipeline  
+**AI & Intelligence:** Custom DistilBERT model (NLP), Local Ollama Mistral 7B (On-prem JARSH logic--finetunned)  
+**Task Queues & async pipeline:** Celery, Redis 7, Asyncio  
+**Database:** PostgreSQL 16 (Async pipeline)  
+**Deployment:** Docker, Docker Compose
+
+---
+
 ## Architecture
+
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -685,7 +706,16 @@ docker compose exec api alembic upgrade head
 ## Team
 
 **Team ZeroHour** — Built for the PNB Quantum Security Hackathon
+- **Shivaji Rathod** — Lead, Architecture, Cyeber Sec (Github:- https://github.com/shivajirathod007, LinkedIn:- [www.linkedin.com/in/shivaji-rathod007](https://www.linkedin.com/in/shivaji-rathod007/))
+- **Sharddha Jagtap** — Backend & AI Integration (GitHub:- https://github.com/shraddha-1210 LinkedIn:- https://www.linkedin.com/in/shraddha-jagtap-3bb07a291/)
+- **Shivam Potpalliwar** — Frontend Designer & researcher (GitHub:- https://github.com/ShivamInnovates LinkedIn:- https://www.linkedin.com/in/shivam-potpalliwar-6855452b8/)
 
+- **Abhinay Thorat** — Frontend Designer & Backend (LinkedIn:- https://www.linkedin.com/in/abhinay-thorat-a406642ba/)
+---
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 ---
 
 *TRINETRA — Sanskrit for "three-eyed" — sees what others miss.*
