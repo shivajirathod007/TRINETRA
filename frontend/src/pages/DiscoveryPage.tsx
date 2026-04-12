@@ -54,7 +54,7 @@ function EmptyRow({ cols }: { cols: number }) {
 
 // ─── Table components ─────────────────────────────────────────────────────────
 
-function DomainsTable({ company, data }: { company: string; data: any[] }) {
+function DomainsTable({ company, data, onRowClick }: { company: string; data: any[]; onRowClick?: (id: string) => void }) {
   return (
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
@@ -66,7 +66,8 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
           <tr key={i} className="border-b transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-divider)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            onMouseLeave={e => (e.currentTarget.style.background = '')}
+            onClick={() => data[i].id && onRowClick?.(data[i].id)}>
             <td className="px-4 py-3 font-mono text-secondary text-xs">{row.date}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: '#818cf8' }}>{row.domain}</td>
             <td className="px-4 py-3 text-secondary text-xs capitalize">{row.type?.replace(/_/g, ' ')}</td>
@@ -89,7 +90,7 @@ function DomainsTable({ company, data }: { company: string; data: any[] }) {
   );
 }
 
-function SSLTable({ company, data }: { company: string; data: any[] }) {
+function SSLTable({ company, data, onRowClick }: { company: string; data: any[]; onRowClick?: (id: string) => void }) {
   return (
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
@@ -100,9 +101,10 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
-          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+          <tr key={i} className="border-b transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-divider)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            onMouseLeave={e => (e.currentTarget.style.background = '')}
+            onClick={() => data[i].id && onRowClick?.(data[i].id)}>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: '#818cf8' }}>{row.tls_version}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{row.algorithm}</td>
@@ -116,7 +118,7 @@ function SSLTable({ company, data }: { company: string; data: any[] }) {
   );
 }
 
-function IPTable({ company, data }: { company: string; data: any[] }) {
+function IPTable({ company, data, onRowClick }: { company: string; data: any[]; onRowClick?: (id: string) => void }) {
   return (
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
@@ -127,9 +129,10 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={6} /> : data.map((row, i) => (
-          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+          <tr key={i} className="border-b transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-divider)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            onMouseLeave={e => (e.currentTarget.style.background = '')}
+            onClick={() => data[i].id && onRowClick?.(data[i].id)}>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
             <td className="px-4 py-3 font-mono font-medium" style={{ color: '#818cf8' }}>{row.ip}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{row.port ?? '—'}</td>
@@ -143,7 +146,7 @@ function IPTable({ company, data }: { company: string; data: any[] }) {
   );
 }
 
-function SoftwareTable({ company, data }: { company: string; data: any[] }) {
+function SoftwareTable({ company, data, onRowClick }: { company: string; data: any[]; onRowClick?: (id: string) => void }) {
   return (
     <table className="w-full text-sm">
       <thead><tr style={{ background: 'var(--surface-card)' }}>
@@ -154,9 +157,10 @@ function SoftwareTable({ company, data }: { company: string; data: any[] }) {
       </tr></thead>
       <tbody>
         {data.length === 0 ? <EmptyRow cols={7} /> : data.map((row, i) => (
-          <tr key={i} className="border-b transition-colors" style={{ borderColor: 'var(--border-divider)' }}
+          <tr key={i} className="border-b transition-colors cursor-pointer group" style={{ borderColor: 'var(--border-divider)' }}
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-            onMouseLeave={e => (e.currentTarget.style.background = '')}>
+            onMouseLeave={e => (e.currentTarget.style.background = '')}
+            onClick={() => data[i].id && onRowClick?.(data[i].id)}>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.date}</td>
             <td className="px-4 py-3 font-semibold capitalize" style={{ color: 'var(--text-primary)' }}>{row.type?.replace(/_/g, ' ')}</td>
             <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{row.tlsVersion ?? '—'}</td>
@@ -223,15 +227,25 @@ function buildGraph(assets: any[], rootDomain: string): { nodes: FNode[]; edges:
     n.type = a.type || 'web_portal';
     n.isShadow = !!a.is_shadow_asset || a.discovery === 'Shadow';
 
-    // find parent: strip leftmost label
-    const parts = fqdn.split('.');
-    const rootParts = root.split('.');
-    let parentId = root;
-    if (parts.length > rootParts.length + 1) {
-      parentId = parts.slice(1).join('.');
-      getOrCreate(parentId);
+    // recursively connect to parents up to root
+    let curr = fqdn;
+    while (curr && curr !== root) {
+      if (!curr.endsWith('.' + root) && !curr.endsWith(root)) break;
+      const parts = curr.split('.');
+      const rootParts = root.split('.');
+      
+      let nextParentId = root;
+      if (parts.length > rootParts.length + 1) {
+        nextParentId = parts.slice(1).join('.');
+        getOrCreate(nextParentId);
+      }
+      
+      const edgeId = `${nextParentId}->${curr}`;
+      if (!edges.find(e => e.source === nextParentId && e.target === curr)) {
+        edges.push({ source: nextParentId, target: curr });
+      }
+      curr = nextParentId;
     }
-    edges.push({ source: parentId, target: fqdn });
   }
 
   return { nodes: Array.from(nodeMap.values()), edges };
@@ -399,7 +413,7 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
               {nonRoot.map((node, i) => {
                 const col = nodeColor(node.risk);
                 const isHov = hovered?.id === node.id;
-                const r = isHov ? 10 : node.risk === 'CRITICAL' ? 8 : 5;
+                const r = isHov ? 18 : node.risk === 'CRITICAL' ? 14 : 9;
                 return (
                   <g key={node.id} style={{ cursor: 'pointer' }}
                     onMouseEnter={e => {
@@ -412,8 +426,8 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
                       if (rect) setTooltip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
                     }}>
                     {node.isShadow && (
-                      <circle cx={node.x} cy={node.y} r={r + 4}
-                        fill="none" stroke="#f97316" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5">
+                      <circle cx={node.x} cy={node.y} r={r + 5}
+                        fill="none" stroke="#f97316" strokeWidth="1.2" strokeDasharray="3 2" opacity="0.5">
                         <animateTransform attributeName="transform" type="rotate"
                           from={`0 ${node.x} ${node.y}`} to={`360 ${node.x} ${node.y}`}
                           dur="8s" repeatCount="indefinite"/>
@@ -534,16 +548,28 @@ export default function DiscoveryPage() {
   const navigate = useNavigate();
 
   const company = activeDomain ? activeDomain.split('.')[0].toUpperCase() : '—';
+  const rootDomain = activeDomain ? activeDomain.toLowerCase() : '';
 
   const filteredAssets = useMemo(() => {
-    if (statusFilter === 'All') return assets;
-    return assets.filter((a: any) =>
-      statusFilter === 'Shadow' ? a.discovery === 'Shadow' : a.discovery === 'Known'
-    );
-  }, [assets, statusFilter]);
+    let result = assets;
+    if (statusFilter !== 'All') {
+      result = result.filter((a: any) =>
+        statusFilter === 'Shadow' 
+          ? (a.discovery === 'Shadow' || !!a.is_shadow_asset)
+          : (a.discovery === 'Known' || !a.is_shadow_asset)
+      );
+    }
+    // Safety check: ensure root domain itself is always Known
+    return result.map((a: any) => {
+        const isRoot = a.fqdn?.toLowerCase() === rootDomain || a.url?.includes(rootDomain) && a.url.split('//').pop().split('/')[0] === rootDomain;
+        if (isRoot) return { ...a, discovery: 'Known', is_shadow_asset: false };
+        return a;
+    });
+  }, [assets, statusFilter, rootDomain]);
 
   const domainsData = useMemo(() =>
     filteredAssets.map((a: any) => ({
+      id: a.id,
       date: a.scan_timestamp ?? '—',
       domain: a.url ?? '—',
       type: a.type ?? '—',
@@ -576,7 +602,10 @@ export default function DiscoveryPage() {
       })), [filteredAssets]);
 
   const softwareData = useMemo(() =>
-    filteredAssets.map((a: any) => ({
+    filteredAssets
+      .filter((a: any) => a.cipher_suite || a.type === 'web_portal' || a.type === 'api_endpoint')
+      .map((a: any) => ({
+      id: a.id,
       date: a.scan_timestamp ?? '—',
       type: a.type ?? '—',
       tlsVersion: a.tls_version ?? '—',
@@ -594,8 +623,16 @@ export default function DiscoveryPage() {
 
   const STATUS_COUNTS: Record<StatusFilter, number> = {
     'All':    assets.length,
-    'Shadow': assets.filter((a: any) => a.discovery === 'Shadow').length,
-    'Known':  assets.filter((a: any) => a.discovery === 'Known').length,
+    'Shadow': assets.filter((a: any) => {
+        const isRoot = a.fqdn?.toLowerCase() === rootDomain || a.url?.includes(rootDomain) && a.url.split('//').pop().split('/')[0] === rootDomain;
+        if (isRoot) return false;
+        return a.discovery === 'Shadow' || a.is_shadow_asset;
+    }).length,
+    'Known':  assets.filter((a: any) => {
+        const isRoot = a.fqdn?.toLowerCase() === rootDomain || a.url?.includes(rootDomain) && a.url.split('//').pop().split('/')[0] === rootDomain;
+        if (isRoot) return true;
+        return a.discovery === 'Known' && !a.is_shadow_asset;
+    }).length,
   };
 
   const handleInitiate = async (e: React.FormEvent) => {
@@ -813,10 +850,10 @@ export default function DiscoveryPage() {
           </div>
         ) : (
           <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 420 }}>
-            {category === 'Domains'            && <DomainsTable  company={company} data={pagedTableData} />}
-            {category === 'SSL'                && <SSLTable      company={company} data={pagedTableData} />}
-            {category === 'IP Address/Subnets' && <IPTable       company={company} data={pagedTableData} />}
-            {category === 'Software'           && <SoftwareTable company={company} data={pagedTableData} />}
+            {category === 'Domains'            && <DomainsTable  company={company} data={pagedTableData} onRowClick={id => navigate('/asset/'+id)} />}
+            {category === 'SSL'                && <SSLTable      company={company} data={pagedTableData} onRowClick={id => navigate('/asset/'+id)} />}
+            {category === 'IP Address/Subnets' && <IPTable       company={company} data={pagedTableData} onRowClick={id => navigate('/asset/'+id)} />}
+            {category === 'Software'           && <SoftwareTable company={company} data={pagedTableData} onRowClick={id => navigate('/asset/'+id)} />}
           </div>
         )}
         {!isLoading && (
