@@ -144,8 +144,8 @@ export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
   return (
     <div className="flex items-start justify-between mb-5">
       <div>
-        <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</h2>
-        {subtitle && <p className="text-sm mt-0.5" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
+        <h2 className="text-2xl font-bold font-outfit" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>{title}</h2>
+        {subtitle && <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{subtitle}</p>}
       </div>
       {action && <div className="flex items-center gap-2 flex-shrink-0 ml-4">{action}</div>}
     </div>

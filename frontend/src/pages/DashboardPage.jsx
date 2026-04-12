@@ -286,8 +286,8 @@ const DashboardPage = () => {
             {/* Header */}
             <div className="flex justify-between items-center mb-2">
                 <div className="flex flex-col">
-                    <h1 className="text-2xl font-bold font-mono" style={{ color: 'var(--text-primary)' }}>Dashboard</h1>
-                    <div className="text-sm font-outfit font-bold mt-1" style={{ color: 'var(--primary-indigo)' }}>Welcome, {user?.split('@')[0] || 'Analyst'}</div>
+                    <h1 className="text-3xl font-bold font-outfit" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Dashboard</h1>
+                    <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Welcome, {user?.split('@')[0] || 'Analyst'}</p>
                 </div>
                 <div className="text-sm font-mono flex items-center gap-2 flex-wrap" style={{ color: 'var(--text-secondary)' }}>
                     {/* View mode toggle */}

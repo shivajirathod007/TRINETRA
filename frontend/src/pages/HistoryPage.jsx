@@ -112,15 +112,19 @@ const HistoryPage = () => {
         <div className="flex flex-col gap-6">
 
             {/* Header */}
-            <div className="flex justify-between items-center bg-surface-card p-4 rounded-lg border">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    <Clock size={24} className="text-primary-indigo" />
-                    <h1 className="text-xl font-bold">Scan History &amp; Trends</h1>
-                    {isLoading && <RefreshCw size={14} className="animate-spin text-secondary" />}
+                    <div>
+                        <h1 className="text-3xl font-bold font-outfit" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Scan History & Trends</h1>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Track all scans and monitoring activity</p>
+                    </div>
                 </div>
-                <button className="action-btn">
-                    <Download size={14} /> Export Report
-                </button>
+                <div className="flex items-center gap-2">
+                    {isLoading && <RefreshCw size={14} className="animate-spin text-secondary" />}
+                    <button className="action-btn">
+                        <Download size={14} /> Export Report
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 lg-grid-cols-3 gap-6">

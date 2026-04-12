@@ -85,11 +85,10 @@ const RulesPage = () => {
     return (
         <div className="p-6">
             <div className="mb-8">
-                <h1 className="text-2xl font-bold text-primary flex items-center gap-3">
-                    <Settings className="text-secondary" />
+                <h1 className="text-3xl font-bold font-outfit" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>
                     Manual Rules & Protocols Override
                 </h1>
-                <p className="text-secondary mt-2 opacity-80">
+                <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
                     Define custom rules to override PQC readiness classifications during scans.
                 </p>
             </div>

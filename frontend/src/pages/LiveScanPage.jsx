@@ -248,8 +248,8 @@ const LiveScanPage = () => {
                         <Terminal className="text-primary-indigo" size={20} />
                     </div>
                     <div className="min-w-0">
-                        <h1 className="text-xl font-bold truncate" style={{ color: 'var(--text-primary)', filter: 'contrast(1.2)' }}>Active Reconnaissance</h1>
-                        <p className="text-xs font-mono truncate" style={{ color: 'var(--text-secondary)' }}>Target: <span style={{ color: '#818cf8' }}>{domain}</span> | Mode: Deep Inspection</p>
+                        <h1 className="text-3xl font-bold font-outfit truncate" style={{ color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Active Reconnaissance</h1>
+                        <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>Target: <span style={{ color: '#818cf8' }}>{domain}</span> | Mode: Deep Inspection</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
