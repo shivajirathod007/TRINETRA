@@ -49,7 +49,7 @@ async def create_scheduled_scan(
         raise HTTPException(status_code=422, detail=str(exc))
 
     repo = ScheduledScanRepository(db)
-    record = await repo.create(data, next_run_at)
+    record = await repo.create(data, next_run_at, scheduled_time)  # Pass parsed time
     await db.commit()
     await db.refresh(record)
     return ScheduledScanResponse.model_validate(record)

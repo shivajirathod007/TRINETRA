@@ -130,4 +130,52 @@ export const certApi = {
     api.get<PQCCertificate[]>(`/certificates/scan/${scanId}`).then(r => r.data),
 }
 
+// ── Reports API ───────────────────────────────────────────────────────────────
+
+export interface ReportRequest {
+  report_type: string
+  scan_id?: string | null
+  asset_filter: string
+  sections: string[]
+  delivery_method: string
+  email?: string | null
+  save_path?: string | null
+  format: string
+  include_charts: boolean
+  period: string
+}
+
+export interface ScheduleReportRequest {
+  report_type: string
+  frequency: string
+  asset_filter: string
+  sections: string[]
+  delivery_method: string
+  email?: string | null
+  save_path?: string | null
+  schedule_date: string
+  schedule_time: string
+  timezone: string
+  enabled: boolean
+}
+
+export interface ReportResponse {
+  success: boolean
+  message: string
+  report_id?: string | null
+  download_url?: string | null
+  file_path?: string | null
+}
+
+export const reportsApi = {
+  generate: (request: ReportRequest) =>
+    api.post<ReportResponse>('/reports/generate', request).then(r => r.data),
+
+  schedule: (request: ScheduleReportRequest) =>
+    api.post<ReportResponse>('/reports/schedule', request).then(r => r.data),
+
+  download: (reportId: string) =>
+    `/api/v1/reports/download/${reportId}`,
+}
+
 export default api

@@ -315,11 +315,11 @@ class ScheduledScanRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self, data: ScheduledScanCreate, next_run_at: datetime) -> ScheduledScan:
+    async def create(self, data: ScheduledScanCreate, next_run_at: datetime, scheduled_time: datetime.time) -> ScheduledScan:
         scan = ScheduledScan(
             domain=data.domain,
             frequency=data.frequency,
-            scheduled_time=data.scheduled_time,
+            scheduled_time=scheduled_time,  # Use the parsed time object
             day_of_week=data.day_of_week,
             day_of_month=data.day_of_month,
             one_time_date=data.one_time_date,
