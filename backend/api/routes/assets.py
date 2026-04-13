@@ -97,6 +97,9 @@ async def list_assets(
                 "shelf_life_years": round(a.score_breakdown.get("data_shelf_life_years", 0), 2) if a.score_breakdown and a.score_breakdown.get("data_shelf_life_years") is not None else 0,
                 "override_reason": a.sensitivity_override_reason,
             },
+            "score_breakdown": {
+                "endpoints_scanned": a.score_breakdown.get("endpoints_scanned", []) if a.score_breakdown else []
+            },
         }
         for a in assets
     ]

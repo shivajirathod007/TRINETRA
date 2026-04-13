@@ -120,8 +120,30 @@ const DashboardPage = () => {
     const activeAssets = viewMode === 'all' ? [] : assets;
     const activeCerts = viewMode === 'all' ? [] : certs;
 
+    // ── Unpack endpoints from assets for accurate counts and table view ─────
+    const unpackedDashAssets = React.useMemo(() => {
+        const result = [];
+        for (const a of activeAssets) {
+            result.push(a);
+            
+            const endpoints = a.score_breakdown?.endpoints_scanned;
+            if (Array.isArray(endpoints) && endpoints.length > 0) {
+                for (const ep of endpoints) {
+                    result.push({
+                        ...a,
+                        id: `${a.id}-${ep}`,
+                        url: `${a.url}${ep}`,
+                        type: 'api_route',
+                        discovery: 'API Inspector',
+                    });
+                }
+            }
+        }
+        return result;
+    }, [activeAssets]);
+
     // ── Filtered assets for search and filter toolbar ──────────────────────
-    const filteredDashAssets = activeAssets.filter(a => {
+    const filteredDashAssets = unpackedDashAssets.filter(a => {
         // Filter by search text
         if (assetSearch && !a.url?.toLowerCase().includes(assetSearch.toLowerCase())) {
             return false;
@@ -129,7 +151,8 @@ const DashboardPage = () => {
         // Filter by asset type
         if (assetFilter !== 'ALL') {
             if (assetFilter === 'web' && !WEB_APP_TYPES.has(a.type)) return false;
-            if (assetFilter === 'api' && !API_TYPES.has(a.type)) return false;
+            // Include `api_route` in the 'api' filter
+            if (assetFilter === 'api' && !API_TYPES.has(a.type) && a.type !== 'api_route') return false;
             if (assetFilter === 'server' && !SERVER_TYPES.has(a.type)) return false;
             if (assetFilter === 'shadow' && a.discovery !== 'Shadow') return false;
         }
@@ -137,9 +160,9 @@ const DashboardPage = () => {
     });
 
     // ── Derived KPI counts from actual backend asset_type values ────────────
-    const webApps   = activeAssets.filter(a => WEB_APP_TYPES.has(a.type)).length;
-    const apis      = activeAssets.filter(a => API_TYPES.has(a.type)).length;
-    const servers   = activeAssets.filter(a => SERVER_TYPES.has(a.type)).length;
+    const webApps   = unpackedDashAssets.filter(a => WEB_APP_TYPES.has(a.type)).length;
+    const apis      = unpackedDashAssets.filter(a => API_TYPES.has(a.type) || a.type === 'api_route').length;
+    const servers   = unpackedDashAssets.filter(a => SERVER_TYPES.has(a.type)).length;
     const shadowAssets = activeAssets.filter(a => a.discovery === 'Shadow');
     const shadowCount = shadowAssets.length;
 
