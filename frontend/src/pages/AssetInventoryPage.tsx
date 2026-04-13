@@ -235,7 +235,7 @@ export default function AssetInventoryPage() {
   const assets: any[] = rawAssets as any[];
 
   // ── Derived tab datasets ──────────────────────────────────────────────────
-  const baseHostAssets = useMemo(() => assets.filter(a => 
+  const baseHostAssets = useMemo(() => assets.filter(a =>
     a.type !== 'api_endpoint' && a.type !== 'api_route'
   ), [assets]);
 
@@ -305,10 +305,10 @@ export default function AssetInventoryPage() {
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Assets',  value: assets.length,    color: '#6366f1', icon: <Globe size={18} />,         sub: 'discovered' },
-          { label: 'SSL / TLS',     value: sslAssets.length, color: '#06b6d4', icon: <Shield size={18} />,        sub: 'certificates' },
-          { label: 'Critical Risk', value: criticalCount,    color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
-          { label: 'Shadow Assets', value: shadowCount,      color: '#f97316', icon: <Server size={18} />,        sub: 'unmanaged' },
+          { label: 'Total Assets', value: assets.length, color: '#6366f1', icon: <Globe size={18} />, sub: 'discovered' },
+          { label: 'SSL / TLS', value: sslAssets.length, color: '#06b6d4', icon: <Shield size={18} />, sub: 'certificates' },
+          { label: 'Critical Risk', value: criticalCount, color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
+          { label: 'Shadow Assets', value: shadowCount, color: '#f97316', icon: <Server size={18} />, sub: 'unmanaged' },
         ].map(k => (
           <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
             style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>

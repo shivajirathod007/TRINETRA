@@ -25,25 +25,25 @@ const RISK_COLORS = {
 
 // Backend asset_type enum → human label mappings (must match AssetClassifier output)
 const ASSET_TYPE_LABELS = {
-    web_portal:     '🌐 Web Portal',
-    api_endpoint:   '⚡ API Endpoint',
-    vpn_gateway:    '🔒 VPN Gateway',
-    ssh_endpoint:   '💻 SSH',
-    smtp_mta:       '📧 Email (SMTP)',
-    staging:        '🧪 Staging',
-    shadow_asset:   '👻 Shadow',
+    web_portal: '🌐 Web Portal',
+    api_endpoint: '⚡ API Endpoint',
+    vpn_gateway: '🔒 VPN Gateway',
+    ssh_endpoint: '💻 SSH',
+    smtp_mta: '📧 Email (SMTP)',
+    staging: '🧪 Staging',
+    shadow_asset: '👻 Shadow',
     mobile_backend: '📱 Mobile',
     // legacy aliases (kept for backward compat)
-    web_application:    '🌐 Web App',
-    api_public:         '⚡ API',
-    api_authenticated:  '⚡ API (Auth)',
-    server:             '🖥 Server',
+    web_application: '🌐 Web App',
+    api_public: '⚡ API',
+    api_authenticated: '⚡ API (Auth)',
+    server: '🖥 Server',
 };
 
 // Asset type categories for KPI counting — uses actual backend constants
 const WEB_APP_TYPES = new Set(['web_portal', 'web_application', 'staging']);
-const API_TYPES     = new Set(['api_endpoint', 'api_public', 'api_authenticated', 'mobile_backend']);
-const SERVER_TYPES  = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway']);
+const API_TYPES = new Set(['api_endpoint', 'api_public', 'api_authenticated', 'mobile_backend']);
+const SERVER_TYPES = new Set(['server', 'ssh_endpoint', 'smtp_mta', 'vpn_gateway']);
 
 const DashboardPage = () => {
     const [sortField, setSortField] = useState('score');
@@ -142,6 +142,7 @@ const DashboardPage = () => {
         return result;
     }, [activeAssets]);
 
+
     // ── Filtered assets for search and filter toolbar ──────────────────────
     const filteredDashAssets = unpackedDashAssets.filter(a => {
         // Filter by search text
@@ -197,10 +198,10 @@ const DashboardPage = () => {
     }).length;
 
     const expiryBuckets = [
-        { name: '0–30 Days',  min: 0,  max: 30,  color: 'bg-status-critical', hex: '#EF4444' },
-        { name: '30–60 Days', min: 30, max: 60,  color: 'bg-status-high',     hex: '#F97316' },
-        { name: '60–90 Days', min: 60, max: 90,  color: 'bg-status-medium',   hex: '#EAB308' },
-        { name: '>90 Days',   min: 90, max: null, color: 'bg-status-safe',    hex: '#22C55E' },
+        { name: '0–30 Days', min: 0, max: 30, color: 'bg-status-critical', hex: '#EF4444' },
+        { name: '30–60 Days', min: 30, max: 60, color: 'bg-status-high', hex: '#F97316' },
+        { name: '60–90 Days', min: 60, max: 90, color: 'bg-status-medium', hex: '#EAB308' },
+        { name: '>90 Days', min: 90, max: null, color: 'bg-status-safe', hex: '#22C55E' },
     ];
 
     const expiryTimelineData = expiryBuckets.map(bucket => ({
@@ -225,20 +226,20 @@ const DashboardPage = () => {
 
     const kpis = viewMode === 'all'
         ? [
-            { label: 'Total Scans',     value: activeStats.total_scans ?? 0,    icon: Activity,   color: 'text-primary-indigo' },
-            { label: 'Total Assets',    value: totalAssets,                      icon: Server,     color: 'text-primary', note: 'across all scans' },
-            { label: 'Critical',        value: activeStats.critical_count ?? 0,  icon: ShieldAlert,color: 'text-status-critical' },
-            { label: 'High Risk',       value: activeStats.high_count ?? 0,      icon: ShieldAlert,color: 'text-status-high' },
-            { label: 'Shadow Assets',   value: activeStats.shadow_count ?? 0,    icon: Server,     color: 'text-status-medium' },
-            { label: 'Avg Risk Score',  value: activeStats.exposure_score ?? 0,  icon: Activity,   color: 'text-status-safe' },
+            { label: 'Total Scans', value: activeStats.total_scans ?? 0, icon: Activity, color: 'text-primary-indigo' },
+            { label: 'Total Assets', value: totalAssets, icon: Server, color: 'text-primary', note: 'across all scans' },
+            { label: 'Critical', value: activeStats.critical_count ?? 0, icon: ShieldAlert, color: 'text-status-critical' },
+            { label: 'High Risk', value: activeStats.high_count ?? 0, icon: ShieldAlert, color: 'text-status-high' },
+            { label: 'Shadow Assets', value: activeStats.shadow_count ?? 0, icon: Server, color: 'text-status-medium' },
+            { label: 'Avg Risk Score', value: activeStats.exposure_score ?? 0, icon: Activity, color: 'text-status-safe' },
         ]
         : [
-            { label: 'Total Assets',    value: totalAssets,        icon: Server,     color: 'text-primary' },
-            { label: 'Public Web Apps', value: webApps,            icon: AppWindow,  color: 'text-status-safe' },
-            { label: 'APIs',            value: apis,               icon: Cpu,        color: 'text-primary-indigo' },
-            { label: 'Servers',         value: servers,            icon: Server,     color: 'text-secondary' },
-            { label: 'Expiring Certs',  value: expiringCertsCount, icon: Key,        color: 'text-status-high' },
-            { label: 'High Risk Assets',value: highRiskAssets,     icon: ShieldAlert,color: 'text-status-critical' },
+            { label: 'Total Assets', value: totalAssets, icon: Server, color: 'text-primary' },
+            { label: 'Public Web Apps', value: webApps, icon: AppWindow, color: 'text-status-safe' },
+            { label: 'APIs', value: apis, icon: Cpu, color: 'text-primary-indigo' },
+            { label: 'Servers', value: servers, icon: Server, color: 'text-secondary' },
+            { label: 'Expiring Certs', value: expiringCertsCount, icon: Key, color: 'text-status-high' },
+            { label: 'High Risk Assets', value: highRiskAssets, icon: ShieldAlert, color: 'text-status-critical' },
         ];
 
     // ── Risk distribution ─────────────────────────────────────────────────
@@ -280,7 +281,7 @@ const DashboardPage = () => {
                         </div>
                         <h2 className="text-2xl font-bold font-outfit text-primary mb-3">Welcome to TRINETRA</h2>
                         <p className="text-secondary leading-relaxed mb-8">
-                            Your workspace is ready. <br/>
+                            Your workspace is ready. <br />
                             Initiate the first intelligence scan against your external perimeter to activate the enterprise cryptographic exposure engine.
                         </p>
                         <Link
@@ -436,8 +437,8 @@ const DashboardPage = () => {
                             style={isCritical
                                 ? { borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }
                                 : isWarning
-                                ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.04)' }
-                                : { borderColor: `${hexColor}20`, background: `${hexColor}06` }}>
+                                    ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.04)' }
+                                    : { borderColor: `${hexColor}20`, background: `${hexColor}06` }}>
                             <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                                 style={{ background: `${hexColor}18`, color: hexColor }}>
                                 <Icon size={16} />
@@ -551,226 +552,226 @@ const DashboardPage = () => {
 
                 {/* Cryptographic Asset Map Table — single scan mode */}
                 {viewMode === 'scan' && (
-                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
-                    {/* Toolbar */}
-                    <div className="px-5 py-3 border-b flex flex-wrap gap-2 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
-                        <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                            Cryptographic Asset Map
-                            <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
-                                {filteredDashAssets.length}
+                    <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                        {/* Toolbar */}
+                        <div className="px-5 py-3 border-b flex flex-wrap gap-2 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
+                                Cryptographic Asset Map
+                                <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+                                    {filteredDashAssets.length}
+                                </span>
                             </span>
-                        </span>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            {/* Search */}
-                            <div className="relative">
-                                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
-                                <input
-                                    type="text"
-                                    value={assetSearch}
-                                    onChange={e => setAssetSearch(e.target.value)}
-                                    placeholder="Search URL or type…"
-                                    className="text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none w-44"
-                                    style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
-                                />
-                            </div>
-                            {/* Risk filter */}
-                            <div className="flex items-center gap-1">
-                                {['ALL','CRITICAL','HIGH','SHADOW'].map(f => (
-                                    <button key={f} onClick={() => setAssetFilter(f)}
-                                        className="px-2 py-1 text-[10px] font-bold rounded-md border transition-all"
-                                        style={assetFilter === f
-                                            ? { background: 'var(--primary-indigo)', color: 'white', borderColor: 'var(--primary-indigo)' }
-                                            : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
-                                        {f}
-                                    </button>
-                                ))}
-                            </div>
-                            <button className="action-btn text-xs" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
-                                Sort: {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={12} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Row limit slider */}
-                    <div className="px-5 py-2 flex items-center gap-3 border-b" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
-                        <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Show rows:</span>
-                        <input type="range" min={5} max={Math.max(5, filteredDashAssets.length)} step={5}
-                            value={assetRowLimit}
-                            onChange={e => setAssetRowLimit(Number(e.target.value))}
-                            className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
-                            style={{ accentColor: 'var(--primary-indigo)' }} />
-                        <span className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0" style={{ color: 'var(--primary-indigo)' }}>
-                            {Math.min(assetRowLimit, filteredDashAssets.length)} / {filteredDashAssets.length}
-                        </span>
-                    </div>
-
-                    <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 380 }}>
-                        {assetsLoading ? (
-                            <div className="flex items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
-                                <RefreshCw size={18} className="animate-spin mr-2" /> Loading assets...
-                            </div>
-                        ) : filteredDashAssets.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: 'var(--text-secondary)' }}>
-                                <Server size={28} className="opacity-30" />
-                                <p className="text-sm">No assets match the filter.</p>
-                            </div>
-                        ) : (
-                            <table className="data-table">
-                                <thead>
-                                    <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>URL</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Type</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Tier</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Status</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Discovery</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }} />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredDashAssets.slice(0, assetRowLimit).map(asset => (
-                                        <tr key={asset.id}
-                                            style={{ borderColor: 'var(--border-divider)' }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-                                            onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                                            <td className="font-mono font-medium cursor-pointer transition-colors"
-                                                style={{ color: '#818cf8', maxWidth: 240 }}
-                                                onClick={() => navigate(`/asset/${asset.id}`)}
-                                                title={asset.url}>
-                                                <span className="block truncate">{asset.url}</span>
-                                            </td>
-                                            <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
-                                                {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
-                                            </td>
-                                            <td>
-                                                <SensitivityBadge tier={asset.data_sensitivity_tier || 'static'} source={asset.data_sensitivity_tier_source} />
-                                            </td>
-                                            <td><ThreatBadge level={asset.risk_level} /></td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold text-xs w-7" style={{ color: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : 'var(--text-primary)' }}>{asset.score ?? 0}</span>
-                                                    <div className="w-16 rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
-                                                        <div className="h-full rounded-full" style={{
-                                                            width: `${asset.score ?? 0}%`,
-                                                            backgroundColor: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
-                                                        }} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                {asset.discovery === 'Shadow' ? (
-                                                    <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--status-high)' }}>
-                                                        <AlertTriangle size={11} /> Shadow
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Known</span>
-                                                )}
-                                            </td>
-                                            <td className="text-right">
-                                                <button onClick={() => navigate(`/asset/${asset.id}`)} style={{ color: 'var(--text-secondary)' }}>
-                                                    <ChevronRight size={16} />
-                                                </button>
-                                            </td>
-                                        </tr>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                {/* Search */}
+                                <div className="relative">
+                                    <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
+                                    <input
+                                        type="text"
+                                        value={assetSearch}
+                                        onChange={e => setAssetSearch(e.target.value)}
+                                        placeholder="Search URL or type…"
+                                        className="text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none w-44"
+                                        style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                {/* Risk filter */}
+                                <div className="flex items-center gap-1">
+                                    {['ALL', 'CRITICAL', 'HIGH', 'SHADOW'].map(f => (
+                                        <button key={f} onClick={() => setAssetFilter(f)}
+                                            className="px-2 py-1 text-[10px] font-bold rounded-md border transition-all"
+                                            style={assetFilter === f
+                                                ? { background: 'var(--primary-indigo)', color: 'white', borderColor: 'var(--primary-indigo)' }
+                                                : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
+                                            {f}
+                                        </button>
                                     ))}
-                                </tbody>
-                            </table>
+                                </div>
+                                <button className="action-btn text-xs" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
+                                    Sort: {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={12} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Row limit slider */}
+                        <div className="px-5 py-2 flex items-center gap-3 border-b" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Show rows:</span>
+                            <input type="range" min={5} max={Math.max(5, filteredDashAssets.length)} step={5}
+                                value={assetRowLimit}
+                                onChange={e => setAssetRowLimit(Number(e.target.value))}
+                                className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
+                                style={{ accentColor: 'var(--primary-indigo)' }} />
+                            <span className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0" style={{ color: 'var(--primary-indigo)' }}>
+                                {Math.min(assetRowLimit, filteredDashAssets.length)} / {filteredDashAssets.length}
+                            </span>
+                        </div>
+
+                        <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 380 }}>
+                            {assetsLoading ? (
+                                <div className="flex items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
+                                    <RefreshCw size={18} className="animate-spin mr-2" /> Loading assets...
+                                </div>
+                            ) : filteredDashAssets.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: 'var(--text-secondary)' }}>
+                                    <Server size={28} className="opacity-30" />
+                                    <p className="text-sm">No assets match the filter.</p>
+                                </div>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>URL</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Type</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Tier</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Status</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Discovery</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }} />
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredDashAssets.slice(0, assetRowLimit).map(asset => (
+                                            <tr key={asset.id}
+                                                style={{ borderColor: 'var(--border-divider)' }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                                                <td className="font-mono font-medium cursor-pointer transition-colors"
+                                                    style={{ color: '#818cf8', maxWidth: 240 }}
+                                                    onClick={() => navigate(`/asset/${asset.id}`)}
+                                                    title={asset.url}>
+                                                    <span className="block truncate">{asset.url}</span>
+                                                </td>
+                                                <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                                                    {ASSET_TYPE_LABELS[asset.type] ?? asset.type}
+                                                </td>
+                                                <td>
+                                                    <SensitivityBadge tier={asset.data_sensitivity_tier || 'static'} source={asset.data_sensitivity_tier_source} />
+                                                </td>
+                                                <td><ThreatBadge level={asset.risk_level} /></td>
+                                                <td>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold text-xs w-7" style={{ color: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : 'var(--text-primary)' }}>{asset.score ?? 0}</span>
+                                                        <div className="w-16 rounded-full h-1.5 overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
+                                                            <div className="h-full rounded-full" style={{
+                                                                width: `${asset.score ?? 0}%`,
+                                                                backgroundColor: (asset.score ?? 0) >= 75 ? 'var(--status-critical)' : (asset.score ?? 0) >= 50 ? 'var(--status-high)' : (asset.score ?? 0) >= 25 ? 'var(--status-medium)' : 'var(--status-safe)'
+                                                            }} />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {asset.discovery === 'Shadow' ? (
+                                                        <span className="text-xs font-semibold flex items-center gap-1" style={{ color: 'var(--status-high)' }}>
+                                                            <AlertTriangle size={11} /> Shadow
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Known</span>
+                                                    )}
+                                                </td>
+                                                <td className="text-right">
+                                                    <button onClick={() => navigate(`/asset/${asset.id}`)} style={{ color: 'var(--text-secondary)' }}>
+                                                        <ChevronRight size={16} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
+                        {/* Footer */}
+                        {filteredDashAssets.length > assetRowLimit && (
+                            <div className="px-5 py-2 border-t text-xs flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
+                                <span>Showing {Math.min(assetRowLimit, filteredDashAssets.length)} of {filteredDashAssets.length} assets</span>
+                                <button onClick={() => setAssetRowLimit(r => Math.min(r + 10, filteredDashAssets.length))}
+                                    className="font-semibold transition-colors" style={{ color: 'var(--primary-indigo)' }}>
+                                    Show more ↓
+                                </button>
+                            </div>
                         )}
                     </div>
-                    {/* Footer */}
-                    {filteredDashAssets.length > assetRowLimit && (
-                        <div className="px-5 py-2 border-t text-xs flex items-center justify-between" style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
-                            <span>Showing {Math.min(assetRowLimit, filteredDashAssets.length)} of {filteredDashAssets.length} assets</span>
-                            <button onClick={() => setAssetRowLimit(r => Math.min(r + 10, filteredDashAssets.length))}
-                                className="font-semibold transition-colors" style={{ color: 'var(--primary-indigo)' }}>
-                                Show more ↓
-                            </button>
-                        </div>
-                    )}
-                </div>
                 )}
 
                 {/* All Scans breakdown table */}
                 {viewMode === 'all' && (
-                <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
-                    <div className="p-4 border-b flex items-center justify-between" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-divider)' }}>
-                        <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Scan History — Risk Breakdown</h2>
-                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{scansBreakdown.length} most recent scans</span>
-                    </div>
-                    <div className="table-container flex-1">
-                        {aggregateLoading ? (
-                            <div className="flex items-center justify-center h-full text-secondary">
-                                <RefreshCw size={18} className="animate-spin mr-2" /> Loading...
-                            </div>
-                        ) : scansBreakdown.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
-                                <Server size={32} className="opacity-30" />
-                                <p className="text-sm">No completed scans yet.</p>
-                            </div>
-                        ) : (
-                            <table className="data-table">
-                                <thead>
-                                    <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Domain</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Date</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Assets</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Critical</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>High</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
-                                        <th style={{ borderColor: 'var(--border-divider)' }} />
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {scansBreakdown.map(scan => (
-                                        <tr key={scan.scan_id}
-                                            className="cursor-pointer"
-                                            style={{ borderColor: 'var(--border-divider)' }}
-                                            onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
-                                            onMouseLeave={e => (e.currentTarget.style.background = '')}
-                                            onClick={() => {
-                                                const found = recentScans.find(s => s.scan_id === scan.scan_id);
-                                                if (found) { setActiveScan(found.scan_id, found.domain); setViewMode('scan'); }
-                                            }}>
-                                            <td className="font-mono font-medium text-primary-indigo">{scan.domain}</td>
-                                            <td className="text-secondary text-xs font-mono">
-                                                {scan.completed_at ? new Date(scan.completed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
-                                            </td>
-                                            <td className="font-mono">{scan.assets}</td>
-                                            <td>
-                                                <span className={`font-mono font-bold ${scan.critical > 0 ? 'text-status-critical' : 'text-status-safe'}`}>
-                                                    {scan.critical}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <span className={`font-mono font-bold text-xs ${(scan.high ?? 0) > 0 ? 'text-status-high' : 'text-secondary'}`}>
-                                                    {scan.high ?? 0}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-mono font-bold w-8"
-                                                        style={{ color: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)' }}>
-                                                        {scan.score}
-                                                    </span>
-                                                    <div className="w-20 bg-surface-card rounded-full h-1.5 overflow-hidden">
-                                                        <div className="h-full rounded-full"
-                                                            style={{
-                                                                width: `${scan.score}%`,
-                                                                backgroundColor: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)'
-                                                            }} />
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="text-right">
-                                                <ChevronRight size={16} className="text-secondary" />
-                                            </td>
+                    <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                        <div className="p-4 border-b flex items-center justify-between" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-divider)' }}>
+                            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Scan History — Risk Breakdown</h2>
+                            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{scansBreakdown.length} most recent scans</span>
+                        </div>
+                        <div className="table-container flex-1">
+                            {aggregateLoading ? (
+                                <div className="flex items-center justify-center h-full text-secondary">
+                                    <RefreshCw size={18} className="animate-spin mr-2" /> Loading...
+                                </div>
+                            ) : scansBreakdown.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center h-full text-secondary gap-2">
+                                    <Server size={32} className="opacity-30" />
+                                    <p className="text-sm">No completed scans yet.</p>
+                                </div>
+                            ) : (
+                                <table className="data-table">
+                                    <thead>
+                                        <tr style={{ background: 'var(--surface-card)', position: 'sticky', top: 0, zIndex: 1 }}>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Domain</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Date</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Assets</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Critical</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>High</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }}>Risk Score</th>
+                                            <th style={{ borderColor: 'var(--border-divider)' }} />
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        )}
+                                    </thead>
+                                    <tbody>
+                                        {scansBreakdown.map(scan => (
+                                            <tr key={scan.scan_id}
+                                                className="cursor-pointer"
+                                                style={{ borderColor: 'var(--border-divider)' }}
+                                                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                                                onMouseLeave={e => (e.currentTarget.style.background = '')}
+                                                onClick={() => {
+                                                    const found = recentScans.find(s => s.scan_id === scan.scan_id);
+                                                    if (found) { setActiveScan(found.scan_id, found.domain); setViewMode('scan'); }
+                                                }}>
+                                                <td className="font-mono font-medium text-primary-indigo">{scan.domain}</td>
+                                                <td className="text-secondary text-xs font-mono">
+                                                    {scan.completed_at ? new Date(scan.completed_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}
+                                                </td>
+                                                <td className="font-mono">{scan.assets}</td>
+                                                <td>
+                                                    <span className={`font-mono font-bold ${scan.critical > 0 ? 'text-status-critical' : 'text-status-safe'}`}>
+                                                        {scan.critical}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className={`font-mono font-bold text-xs ${(scan.high ?? 0) > 0 ? 'text-status-high' : 'text-secondary'}`}>
+                                                        {scan.high ?? 0}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-mono font-bold w-8"
+                                                            style={{ color: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)' }}>
+                                                            {scan.score}
+                                                        </span>
+                                                        <div className="w-20 bg-surface-card rounded-full h-1.5 overflow-hidden">
+                                                            <div className="h-full rounded-full"
+                                                                style={{
+                                                                    width: `${scan.score}%`,
+                                                                    backgroundColor: scan.score >= 75 ? 'var(--status-critical)' : scan.score >= 50 ? 'var(--status-high)' : 'var(--status-safe)'
+                                                                }} />
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="text-right">
+                                                    <ChevronRight size={16} className="text-secondary" />
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            )}
+                        </div>
                     </div>
-                </div>
                 )}
 
                 {/* Algorithm Breakdown (live from backend) */}
