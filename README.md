@@ -1,17 +1,10 @@
 # TRINETRA — Quantum Exposure Intelligence Platform
 
 
-
 > **"Find every cryptographic weakness before a quantum computer does."**
 
 <div align="center">
-  <h3><strong>📺 <a href="#">Watch the Pitch / Demo Video</a></strong></h3>
-
-</div>
-
-
-<div align="center">
-  <h3><strong>📺 <a href="#">Watch the Pitch / Demo Video</a></strong></h3>
+  <h3><strong>📺 <a href="https://drive.google.com/file/d/1LPlKyv6cbAyb0BZyAdMONuz3OCm26A8c/view?usp=sharing">Watch the Pitch / Demo Video</a></strong></h3>
 
 </div>
 
@@ -80,21 +73,7 @@ TRINETRA answers all four questions in a single scan.
 
 ---
 
-
-## 🛠 Tech Stack
-
-**Frontend:** React 18, Vite, Typescript, TailwindCSS, Recharts  
-**Backend:** FastAPI (Async), Python 3.10+, SQLAlchemy, Alembic  
-**Scanning Engine:** SSLyze, pyca/cryptography, httpx (Async), Paramiko, Custom DNS/CT pipeline  
-**AI & Intelligence:** Custom DistilBERT model (NLP), Local Ollama Mistral 7B (On-prem JARSH logic--finetunned)  
-**Task Queues & async pipeline:** Celery, Redis 7, Asyncio  
-**Database:** PostgreSQL 16 (Async pipeline)  
-**Deployment:** Docker, Docker Compose
-
----
-
 ## Architecture
-
 
 
 ```
@@ -102,14 +81,9 @@ TRINETRA answers all four questions in a single scan.
 │                              L1 — INPUT                                     │
 │        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
 │                                           │ (Scheduled Scans)               │
-│                              L1 — INPUT                                     │
-│        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
-│                                           │ (Scheduled Scans)               │
 └─────────────────────────┬───────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L2 — DISCOVERY                                    │
-│                                                                             │
 │                           L2 — DISCOVERY                                    │
 │                                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
@@ -125,29 +99,18 @@ TRINETRA answers all four questions in a single scan.
 │  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                             │
 │      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
-│  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
 └─────────────────────────┬───────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────────────────┐
 │                         L3 — DEEP SCAN (Async Pipeline per asset)           │
 │                                                                             │
-│                         L3 — DEEP SCAN (Async Pipeline per asset)           │
-│                                                                             │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
-│  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
 │  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
 │  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
 │  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
 │  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
 │  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
 │  └────────────────┘  └────────────────┘  └────────────────┘                 │
-│                                                                             │
 │                                                                             │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
 │  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
@@ -158,13 +121,9 @@ TRINETRA answers all four questions in a single scan.
 │  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
 │                                                                             │
 │              Per-asset raw result aggregator — PostgreSQL scan store        │
-│                                                                             │
-│              Per-asset raw result aggregator — PostgreSQL scan store        │
 └─────────────────────────┬───────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                          L4 — ANALYSIS                                      │
-│                                                                             │
 │                          L4 — ANALYSIS                                      │
 │                                                                             │
 │  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
@@ -180,18 +139,9 @@ TRINETRA answers all four questions in a single scan.
 │  │  FIPS 203/204/205 references     │  │  3 tiers: Vulnerable/Ready/Safe  │ │
 │  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
 │  └──────────────────────────────────┘  └──────────────────────────────────┘ │
-│                                                                             │
-│  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
-│  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
-│  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
-│  │  FIPS 203/204/205 references     │  │  3 tiers: Vulnerable/Ready/Safe  │ │
-│  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
-│  └──────────────────────────────────┘  └──────────────────────────────────┘ │
 └─────────────────────────┬───────────────────────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L5 — OUTPUT                                       │
-│                                                                             │
 │                           L5 — OUTPUT                                       │
 │                                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
@@ -200,9 +150,6 @@ TRINETRA answers all four questions in a single scan.
 │  │  Recharts        │  │  GRC-compatible  │  │  Regulator-presentable   │   │
 │  │  Color-coded map │  │  CycloneDX 1.6   │  │  TRN-YYYY-XXXX IDs       │   │
 │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-│                                                                             │
-│     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
-│     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
 │                                                                             │
 │     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
 │     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
@@ -265,71 +212,8 @@ The TRINETRA engine has been completely overhauled from sequential Celery-based 
 ![Reporting](img/REPORTING.png)
 *Generate GRC-compatible PDF reports and CycloneDX 1.6 CBOM exports.*
 
-### Architectural Enhancements
-The TRINETRA engine has been completely overhauled from sequential Celery-based processing into a highly concurrent asynchronous architecture:
-- **Asyncio Parallelization:** Replaced sequential operations with a concurrent `asyncio` model, processing multiple domains and assets simultaneously.
-- **Adaptive Timeouts & Incremental Scanning:** Reduced redundant operations by intelligently skipping unchanged assets and gracefully timing out unresponsive subdomains.
-- **Batched ML Inference & Persistence:** Batched DistilBERT inference and database persistence to drastically drop the scan time (e.g., from 17 minutes to ~1.3 minutes for 1,000 assets).
-- **Manual Rules Engine:** Users can now set manual heuristic rules directly from the inventory.
-
----
-
-
-## Feature Showcase
-
-**1. Home Page**
-![Home Page](img/HOME_PAGE.png)
-*TRINETRA landing experience showcasing the overall mission.*
-
-**2. Risk Dashboard**
-![Risk Dashboard](img/DASHBOARD.png)
-*The central command center providing an organizational risk score, asset map, and risk distribution charts.*
-
-**3. Public Asset Discovery**
-![Asset Discovery](img/ASSEST_DISCOVERY.png)
-*Visualizing the organization's Live Topology Graph and identifying shadow assets across the domain.*
-
-**4. Asset Inventory & Classifications**
-![Asset Inventory](img/ASSEST_INVENTORY.png)
-*Detailed inventory of all public-facing assets, categorized by type and sensitivity tier with manual rule overrides.*
-
-**5. Cryptographic Bill of Materials (CBOM)**
-![CBOM](img/CBOM.png)
-*Operations center displaying cryptographic assets and NIST-aligned migration plans.*
-
-![Advanced CBOM](img/CBOMv2.png)
-*Deep dive into extracted cryptographic features, including HTTP server software, SSH host keys, and deep SSL analysis.*
-
-**6. Schedule & Automate Scans**
-![Schedule Scan](img/SCHDULE_SCAN.png)
-*Configure incremental scanning schedules and manual rules to continuously monitor new and existing assets.*
-
-**7. Posture of PQC**
-![Posture of PQC](img/PQC.png)
-*Migration readiness timeline tracking the step-by-step transition to post-quantum cryptography.*
-
-**8. Cyber Rating & QARS**
-![Cyber Rating](img/cyberRATING.png)
-*Visual breakdown of the Quantum-Adjusted Risk Score (QARS) for each asset.*
-
-**9. Scan History**
-![Scan History](img/SCAN_HISTORY.png)
-*Tracking historical scan results to monitor cryptographic agility improvements over time.*
-
-**10. Integrated Reporting**
-![Reporting](img/REPORTING.png)
-*Generate GRC-compatible PDF reports and CycloneDX 1.6 CBOM exports.*
-
 ## Unique Selling Points
 
-### USP 1 — How Our System Finds Assets & Public Asset Discovery
-Most scanners only check known ports on known IPs. TRINETRA uses a multi-layered discovery pipeline to map the complete public-facing asset landscape:
-
-1. **CT Log Mining (Shadow Asset Discovery):** Queries **Certificate Transparency logs** (crt.sh, Certspotter, HackerTarget) to find every subdomain a bank has ever registered — including deprecated ones.
-2. **Active Crawler & API Inspector:** Moves beyond random scanning by employing a structured crawler that discovers and concurrently scans relevant paths (e.g., `robots.txt`, `sitemap.xml`, API routes).
-3. **Live Topology Graphing:** Maps out the relationship and exposure level of discovered assets to create a visual topology (as seen in the Asset Discovery tab).
-
-*Scheitle et al., ACM IMC 2018: CT log data reveals 30–40% more subdomains than DNS enumeration alone.*
 ### USP 1 — How Our System Finds Assets & Public Asset Discovery
 Most scanners only check known ports on known IPs. TRINETRA uses a multi-layered discovery pipeline to map the complete public-facing asset landscape:
 
@@ -440,9 +324,7 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 ---
 
 ## JARSH — AI Chatbot & Security Assistant
-## JARSH — AI Chatbot & Security Assistant
 
-**JARSH** is an intelligent floating chatbot integrated into the TRINETRA dashboard... that helps users understand their security posture, analyze scan results, and plan mitigation strategies.
 **JARSH** is an intelligent floating chatbot integrated into the TRINETRA dashboard... that helps users understand their security posture, analyze scan results, and plan mitigation strategies.
 
 ### Features
@@ -487,7 +369,6 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 
 1. Open the TRINETRA dashboard at `http://localhost:3000`
 2. Click the **[AI-Enabled] JARSH** button in the **bottom-right corner**
-2. Click the **[AI-Enabled] JARSH** button in the **bottom-right corner**
 3. Ask questions about your security posture:
    - *"What algorithms did you detect in my latest scan?"*
    - *"Is my organization quantum-vulnerable?"*
@@ -505,10 +386,6 @@ We are actively **refining the Ollama Mistral 7B model** (or latest available ve
 - **Knowledge Integration:** All CBOM patterns, scoring formulas, and classification schemas embedded in model context
 
 **Expected Improvements:**
-- [V] Better understanding of hybrid cipher suites (X25519Kyber768, P256-ML-KEM-768)
-- [V] Accurate NIST compliance recommendations
-- [V] Penetration-testing-aware mitigation strategies
-- [V] Zero dependency on external LLM APIs — fully air-gapped capable
 - [V] Better understanding of hybrid cipher suites (X25519Kyber768, P256-ML-KEM-768)
 - [V] Accurate NIST compliance recommendations
 - [V] Penetration-testing-aware mitigation strategies
@@ -601,9 +478,7 @@ Score = (Algorithm Risk × 0.40) + (HNDL Timeline × 0.40) + (Public Exposure ×
 | Tier | Color | Condition |
 |------|-------|-----------|
 | `QUANTUM_VULNERABLE` | [Critical] Red | RSA, ECDSA, ECDHE, DHE, NTLM detected |
-| `QUANTUM_VULNERABLE` | [Critical] Red | RSA, ECDSA, ECDHE, DHE, NTLM detected |
 | `PQC_READY` | 🟡 Amber | Hybrid mode: X25519Kyber768, P256-ML-KEM-768 |
-| `FULLY_QUANTUM_SAFE` | [Safe] Green | Pure NIST PQC: ML-KEM-768, ML-DSA-65, SPHINCS+ |
 | `FULLY_QUANTUM_SAFE` | [Safe] Green | Pure NIST PQC: ML-KEM-768, ML-DSA-65, SPHINCS+ |
 
 ### Asset Types
@@ -768,81 +643,6 @@ npm run dev
 | `CT_LOG_TIMEOUT_SECONDS` | `30` | Timeout for CT log queries |
 | `DNS_CONCURRENCY` | `20` | Parallel DNS resolution limit |
 | `PORT_SCAN_TIMEOUT` | `3` | TCP connect timeout (seconds) |
-| `SMTP_HOST` | `smtp.gmail.com` | SMTP server for email reports |
-| `SMTP_PORT` | `587` | SMTP port (587 for TLS, 465 for SSL) |
-| `SMTP_USER` | — | SMTP username/email address |
-| `SMTP_PASSWORD` | — | SMTP password or app-specific password |
-| `SMTP_FROM_EMAIL` | — | From email address for reports |
-
-### Email Setup for Automated Reports
-
-TRINETRA includes a comprehensive reporting system that can automatically email professional PDF/CSV/JSON reports to stakeholders. To enable email functionality:
-
-**1. Configure SMTP credentials in `.env`:**
-
-```bash
-# Gmail Example
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
-SMTP_FROM_EMAIL=your-email@gmail.com
-```
-
-**2. Provider-Specific Setup:**
-
-**Gmail:**
-- Enable 2-Factor Authentication on your Google account
-- Generate an [App Password](https://myaccount.google.com/apppasswords)
-- Use the 16-character app password (not your regular password)
-
-**Outlook/Office 365:**
-```bash
-SMTP_HOST=smtp.office365.com
-SMTP_PORT=587
-SMTP_USER=your-email@outlook.com
-SMTP_PASSWORD=your-password
-```
-
-**SendGrid:**
-```bash
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASSWORD=your-sendgrid-api-key
-```
-
-**AWS SES:**
-```bash
-SMTP_HOST=email-smtp.us-east-1.amazonaws.com
-SMTP_PORT=587
-SMTP_USER=your-ses-smtp-username
-SMTP_PASSWORD=your-ses-smtp-password
-```
-
-**3. Report Features:**
-
-Once configured, the Reporting page (`http://localhost:3000/reporting`) provides:
-
-- **Professional PDF Reports** — TRINETRA-branded reports with logo, color-coded risk sections, and detailed asset inventories
-- **Schedule Reports** — Automated daily, weekly, monthly, or bi-weekly report generation
-- **On-Demand Reports** — Generate reports instantly with custom sections and filters
-- **Multiple Formats** — PDF (professional layout), CSV (Excel-ready), JSON (API-friendly)
-- **Delivery Options:**
-  - Email: Send directly to stakeholders with HTML email template
-  - Save: Store reports in specified file paths
-  - Download: Generate and download immediately via browser
-
-**4. Troubleshooting:**
-
-If emails aren't sending:
-- Check backend logs: `docker compose logs api --tail=50`
-- Verify SMTP credentials are correct
-- Ensure firewall allows outbound connections on port 587
-- For Gmail, confirm app password is used (not regular password)
-- Test SMTP connection: `curl http://localhost:8000/api/v1/health`
-
-See `EMAIL_SETUP_GUIDE.txt` for detailed provider-specific instructions and troubleshooting steps.
 
 ---
 
