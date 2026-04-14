@@ -76,85 +76,85 @@ TRINETRA answers all four questions in a single scan.
 ## Architecture
 
 
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              L1 — INPUT                                     │
-│        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
-│                                           │ (Scheduled Scans)               │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L2 — DISCOVERY                                    │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-│  │  CT Log Miner    │  │  DNS Resolver    │  │  Port Scanner            │   │
-│  │  crt.sh · RFC    │  │  dnspython       │  │  socket · 443/8443/22    │   │
-│  │  6962 · 4 source │  │  A/CNAME/MX      │  │  /25/587/1194            │   │
-│  │  fallback chain  │  │  liveness check  │  │                          │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
-│  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                         L3 — DEEP SCAN (Async Pipeline per asset)           │
-│                                                                             │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
-│  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
-│  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
-│  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
-│  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
-│  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
-│  └────────────────┘  └────────────────┘  └────────────────┘                 │
-│                                                                             │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
-│  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
-│  │  httpx async   │  │  paramiko      │  │  DistilBERT fine-tuned         │ │
-│  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
-│  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
-│  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
-│  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
-│                                                                             │
-│              Per-asset raw result aggregator — PostgreSQL scan store        │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                          L4 — ANALYSIS                                      │
-│                                                                             │
-│  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
-│  │  CBOM Generator      │  │  HNDL Engine         │  │  Exposure Scorer │   │
-│  │  CycloneDX 1.6 JSON  │  │  Mosca's theorem     │  │  QARS formula    │   │
-│  │  IBM CBOM spec       │  │  Deadline per asset  │  │  0–100 per asset │   │
-│  │  OWASP compatible    │  │  CRQC timeline       │  │  CARAF framework │   │
-│  └──────────────────────┘  └──────────────────────┘  └──────────────────┘   │
-│                                                                             │
-│  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
-│  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
-│  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
-│  │  FIPS 203/204/205 references     │  │  3 tiers: Vulnerable/Ready/Safe  │ │
-│  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
-│  └──────────────────────────────────┘  └──────────────────────────────────┘ │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L5 — OUTPUT                                       │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-│  │  Risk Dashboard  │  │  CBOM Export     │  │  PQC Certificates        │   │
-│  │  React 18        │  │  JSON · XML · PDF│  │  Per-asset signed JSON   │   │
-│  │  Recharts        │  │  GRC-compatible  │  │  Regulator-presentable   │   │
-│  │  Color-coded map │  │  CycloneDX 1.6   │  │  TRN-YYYY-XXXX IDs       │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-│                                                                             │
-│     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
-│     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
-└─────────────────────────────────────────────────────────────────────────────┘
-```
+                  ```
+                  ┌─────────────────────────────────────────────────────────────────────────────┐
+                  │                              L1 — INPUT                                     │
+                  │        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
+                  │                                           │ (Scheduled Scans)               │
+                  └─────────────────────────┬───────────────────────────────────────────────────┘
+                                            │
+                  ┌─────────────────────────▼───────────────────────────────────────────────────┐
+                  │                           L2 — DISCOVERY                                    │
+                  │                                                                             │
+                  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
+                  │  │  CT Log Miner    │  │  DNS Resolver    │  │  Port Scanner            │   │
+                  │  │  crt.sh · RFC    │  │  dnspython       │  │  socket · 443/8443/22    │   │
+                  │  │  6962 · 4 source │  │  A/CNAME/MX      │  │  /25/587/1194            │   │
+                  │  │  fallback chain  │  │  liveness check  │  │                          │   │
+                  │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
+                  │                                                                             │
+                  │  ┌──────────────────────────────────────────────────────────────────────┐   │
+                  │  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
+                  │  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
+                  │  └──────────────────────────────────────────────────────────────────────┘   │
+                  │                                                                             │
+                  │      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
+                  └─────────────────────────┬───────────────────────────────────────────────────┘
+                                            │
+                  ┌─────────────────────────▼───────────────────────────────────────────────────┐
+                  │                         L3 — DEEP SCAN (Async Pipeline per asset)           │
+                  │                                                                             │
+                  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
+                  │  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
+                  │  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
+                  │  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
+                  │  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
+                  │  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
+                  │  └────────────────┘  └────────────────┘  └────────────────┘                 │
+                  │                                                                             │
+                  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
+                  │  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
+                  │  │  httpx async   │  │  paramiko      │  │  DistilBERT fine-tuned         │ │
+                  │  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
+                  │  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
+                  │  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
+                  │  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
+                  │                                                                             │
+                  │              Per-asset raw result aggregator — PostgreSQL scan store        │
+                  └─────────────────────────┬───────────────────────────────────────────────────┘
+                                            │
+                  ┌─────────────────────────▼───────────────────────────────────────────────────┐
+                  │                          L4 — ANALYSIS                                      │
+                  │                                                                             │
+                  │  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
+                  │  │  CBOM Generator      │  │  HNDL Engine         │  │  Exposure Scorer │   │
+                  │  │  CycloneDX 1.6 JSON  │  │  Mosca's theorem     │  │  QARS formula    │   │
+                  │  │  IBM CBOM spec       │  │  Deadline per asset  │  │  0–100 per asset │   │
+                  │  │  OWASP compatible    │  │  CRQC timeline       │  │  CARAF framework │   │
+                  │  └──────────────────────┘  └──────────────────────┘  └──────────────────┘   │
+                  │                                                                             │
+                  │  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
+                  │  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
+                  │  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
+                  │  │  FIPS 203/204/205 references     │  │  3 tiers: Vulnerable/Ready/Safe  │ │
+                  │  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
+                  │  └──────────────────────────────────┘  └──────────────────────────────────┘ │
+                  └─────────────────────────┬───────────────────────────────────────────────────┘
+                                            │
+                  ┌─────────────────────────▼───────────────────────────────────────────────────┐
+                  │                           L5 — OUTPUT                                       │
+                  │                                                                             │
+                  │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
+                  │  │  Risk Dashboard  │  │  CBOM Export     │  │  PQC Certificates        │   │
+                  │  │  React 18        │  │  JSON · XML · PDF│  │  Per-asset signed JSON   │   │
+                  │  │  Recharts        │  │  GRC-compatible  │  │  Regulator-presentable   │   │
+                  │  │  Color-coded map │  │  CycloneDX 1.6   │  │  TRN-YYYY-XXXX IDs       │   │
+                  │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
+                  │                                                                             │
+                  │     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
+                  │     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
+                  └─────────────────────────────────────────────────────────────────────────────┘
+                  ```
 
 
 ### Architectural Enhancements
