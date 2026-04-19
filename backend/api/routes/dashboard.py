@@ -89,6 +89,16 @@ async def get_dashboard_aggregate(db: AsyncSession = Depends(get_db), current_us
     )
     total_assets = total_assets_result.scalar() or 0
 
+    # Add embedded API endpoints count
+    breakdowns = await db.execute(
+        select(ScannedAsset.score_breakdown)
+        .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
+        .where(ScanJob.status == "COMPLETED")
+    )
+    for (b,) in breakdowns.all():
+        if b and isinstance(b, dict):
+            total_assets += len(b.get("endpoints_scanned", []))
+
     shadow_result = await db.execute(
         select(func.count(ScannedAsset.id))
         .join(ScanJob, ScannedAsset.scan_job_id == ScanJob.id)
@@ -212,6 +222,15 @@ async def get_dashboard_summary(domain: str, scan_id: Optional[str] = None, db: 
                     .where(ScannedAsset.scan_job_id == uid)
                 )
                 actual_asset_count = count_result.scalar() or 0
+
+                # Add embedded API endpoints count
+                breakdowns = await db.execute(
+                    select(ScannedAsset.score_breakdown)
+                    .where(ScannedAsset.scan_job_id == uid)
+                )
+                for (b,) in breakdowns.all():
+                    if b and isinstance(b, dict):
+                        actual_asset_count += len(b.get("endpoints_scanned", []))
 
                 # Recompute risk counts from actual asset rows
                 risk_result = await db.execute(

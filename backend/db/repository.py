@@ -254,6 +254,15 @@ class ScanRepository:
         )
         actual_asset_count = count_result.scalar() or latest_scan.assets_scanned or 0
 
+        # Add embedded API endpoints count
+        breakdowns = await self.db.execute(
+            select(ScannedAsset.score_breakdown)
+            .where(ScannedAsset.scan_job_id == latest_scan.id)
+        )
+        for (b,) in breakdowns.all():
+            if b and isinstance(b, dict):
+                actual_asset_count += len(b.get("endpoints_scanned", []))
+
         # Recompute risk counts from actual asset rows (more accurate than scan_job counters)
         risk_result = await self.db.execute(
             select(ScannedAsset.risk_level, func.count(ScannedAsset.id).label("cnt"))

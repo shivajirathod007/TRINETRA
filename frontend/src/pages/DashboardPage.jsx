@@ -218,7 +218,7 @@ const DashboardPage = () => {
     // Total assets — always use actual fetched assets array length for accuracy
     const totalAssets = viewMode === 'all'
         ? (activeStats.total_assets ?? 0)
-        : activeAssets.length;
+        : unpackedDashAssets.length;
 
     const highRiskAssets = viewMode === 'all'
         ? (activeStats.critical_count ?? 0) + (activeStats.high_count ?? 0)

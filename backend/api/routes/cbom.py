@@ -68,7 +68,7 @@ async def list_cbom(
             else:
                 expiry_str = "—"
 
-            components.append({
+            main_comp = {
                 "url": url,
                 "name": comp.get("name", url),
                 "tls": a.tls_version_active or tls_val,
@@ -88,9 +88,9 @@ async def list_cbom(
                 "quantum_exposure_score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
                 "is_shadow": a.is_shadow_asset,
                 "type": a.asset_type,
-            })
+            }
         else:
-            components.append({
+            main_comp = {
                 "url": a.asset_url,
                 "name": a.asset_url,
                 "tls": a.tls_version_active or "—",
@@ -110,7 +110,20 @@ async def list_cbom(
                 "quantum_exposure_score": round(a.quantum_exposure_score, 0) if a.quantum_exposure_score is not None else 0,
                 "is_shadow": a.is_shadow_asset,
                 "type": a.asset_type,
-            })
+            }
+        components.append(main_comp)
+        
+        endpoints = []
+        if isinstance(a.score_breakdown, dict):
+            endpoints = a.score_breakdown.get("endpoints_scanned", [])
+        for ep in endpoints:
+            ep_comp = main_comp.copy()
+            ep_url = main_comp["url"].rstrip("/") + "/" + ep.lstrip("/")
+            ep_comp["url"] = ep_url
+            ep_comp["name"] = ep_url
+            ep_comp["type"] = "api_route"
+            components.append(ep_comp)
+
         if a.cert_algorithm:
             algo_counter[a.cert_algorithm] += 1
         if a.tls_version_active:
@@ -153,7 +166,7 @@ async def list_cbom(
         "organization_summary": {
             "domain": domain or "",
             "organization_quantum_exposure_score": org_score,
-            "total_assets_scanned": len(assets),
+            "total_assets_scanned": len(components),
             "pqc_distribution": pqc_counts,
             "risk_distribution": risk_counts,
             "shadow_assets_found": sum(1 for a in assets if a.is_shadow_asset),
