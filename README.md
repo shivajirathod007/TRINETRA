@@ -4,7 +4,8 @@
 > **"Find every cryptographic weakness before a quantum computer does."**
 
 <div align="center">
-  <h3><strong>📺 <a href="https://drive.google.com/file/d/1LPlKyv6cbAyb0BZyAdMONuz3OCm26A8c/view?usp=sharing">Watch the Pitch / Demo Video</a></strong></h3>
+  <h3><strong>📺 <a href="https://drive.google.com/file/d/12ivyOwy1gowhOoXnHNwV_Eoo-zEEUBzI/view?usp=sharing">Watch the Pitch / Demo Video(short- 1min)</a></strong></h3>
+  <h3><strong>📺 <a href="https://drive.google.com/file/d/1LPlKyv6cbAyb0BZyAdMONuz3OCm26A8c/view?usp=sharing">Watch the Pitch / Demo Video(Detailed-23min)</a></strong></h3>
 
 </div>
 
