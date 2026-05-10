@@ -67,7 +67,7 @@ TRINETRA answers all four questions in a single scan.
 **Frontend:** React 18, Vite, Typescript, TailwindCSS, Recharts  
 **Backend:** FastAPI (Async), Python 3.10+, SQLAlchemy, Alembic  
 **Scanning Engine:** SSLyze, pyca/cryptography, httpx (Async), Paramiko, Custom DNS/CT pipeline  
-**AI & Intelligence:** Custom DistilBERT model (NLP), Local Ollama Mistral 7B (On-prem JARSH logic--finetunned)  
+**AI & Intelligence:** Custom DistilBERT model (NLP), Local Ollama Phi3-mini (On-prem JARSH logic — fine-tuned)  
 **Task Queues & async pipeline:** Celery, Redis 7, Asyncio  
 **Database:** PostgreSQL 16 (Async pipeline)  
 **Deployment:** Docker, Docker Compose
@@ -146,7 +146,7 @@ TRINETRA answers all four questions in a single scan.
 │                                                                             │
 │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
 │  │  Risk Dashboard  │  │  CBOM Export     │  │  JARSH AI Assistant      │   │
-│  │  React 18        │  │  JSON · XML · PDF│  │  Mistral 7B / Ollama     │   │
+│  │  React 18        │  │  JSON · XML · PDF│  │  Phi3-mini / Ollama       │   │
 │  │  Recharts        │  │  GRC-compatible  │  │  Context-aware Guidance  │   │
 │  │  Color-coded map │  │  CycloneDX 1.6   │  │  Mitigation Chatbot      │   │
 │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
@@ -354,7 +354,7 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 - Fallback to detailed templates for high-risk queries
 
 **Phase 2 (Refining):** On-Premises LLM Integration
-- Local **Ollama** deployment with **Mistral 7B** model (or available variant)
+- Local **Ollama** deployment with **Phi3-mini** model
 - **Fine-tuned for quantum cryptography domain** — trained on PQC standards, NIST documentation, and cryptographic attack vectors
 - Zero data exfiltration — all responses generated locally
 - Sub-100ms latency on inference
@@ -377,10 +377,10 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 
 ### Ollama Model Refinement
 
-We are actively **refining the Ollama Mistral 7B model** (or latest available version) for better on-premises responses:
+We are actively **refining the Ollama Phi3-mini model** for better on-premises responses:
 
 - **Fine-tuning Dataset:** NIST PQC standards (FIPS 203, 204, 205), quantum computing attack papers (Shor's, Grover's algorithms), migration guides, and TRINETRA scan patterns
-- **Quantization:** Q5_K_M format for optimal performance on 8GB VRAM systems with sub-1s response times
+- **Quantization:** Q4_K_M format for optimal performance on low-VRAM systems (4GB+) with sub-1s response times
 - **Prompt Engineering:** Specialized system prompts for cryptographic reasoning and risk assessment
 - **Knowledge Integration:** All CBOM patterns, scoring formulas, and classification schemas embedded in model context
 
