@@ -77,83 +77,83 @@ TRINETRA answers all four questions in a single scan.
 ## Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              L1 — INPUT                                     │
-│        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
-│                                           │ (Scheduled Scans)               │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L2 — DISCOVERY                                    │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-│  │  CT Log Miner    │  │  DNS Resolver    │  │  Port Scanner            │   │
-│  │  crt.sh · RFC    │  │  dnspython       │  │  socket · 443/8443/22    │   │
-│  │  6962 · 4 source │  │  A/CNAME/MX      │  │  /25/587/1194            │   │
-│  │  fallback chain  │  │  liveness check  │  │                          │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-│                                                                             │
-│  ┌──────────────────────────────────────────────────────────────────────┐   │
-│  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
-│  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
-│  └──────────────────────────────────────────────────────────────────────┘   │
-│                                                                             │
-│      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                         L3 — DEEP SCAN (Async Pipeline per asset)           │
-│                                                                             │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
-│  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
-│  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
-│  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
-│  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
-│  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
-│  └────────────────┘  └────────────────┘  └────────────────┘                 │
-│                                                                             │
-│  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
-│  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
-│  │  httpx async   │  │  paramiko      │  │  DistilBERT fine-tuned         │ │
-│  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
-│  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
-│  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
-│  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
-│                                                                             │
-│              Per-asset raw result aggregator — PostgreSQL scan store        │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                          L4 — ANALYSIS & INTELLIGENCE                       │
-│                                                                             │
-│  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
-│  │  CBOM Generator      │  │  HNDL Engine         │  │  Exposure Scorer │   │
-│  │  CycloneDX 1.6 JSON  │  │  Mosca's theorem     │  │  QARS formula    │   │
-│  │  IBM CBOM spec       │  │  Deadline per asset  │  │  0–100 per asset │   │
-│  │  OWASP compatible    │  │  CRQC timeline       │  │  CARAF framework │   │
-│  └──────────────────────┘  └──────────────────────┘  └──────────────────┘   │
-│                                                                             │
-│  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
-│  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
-│  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
-│  │  FIPS 203/204/205 references     │  │  3 tiers: Vuln/Ready/Safe        │ │
-│  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
-│  └──────────────────────────────────┘  └──────────────────────────────────┘ │
-└─────────────────────────┬───────────────────────────────────────────────────┘
-                          │
-┌─────────────────────────▼───────────────────────────────────────────────────┐
-│                           L5 — OUTPUT & PRESENTATION                        │
-│                                                                             │
-│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-│  │  Risk Dashboard  │  │  CBOM Export     │  │  JARSH AI Assistant      │   │
-│  │  React 18        │  │  JSON · XML · PDF│  │  Phi3-mini / Ollama       │   │
-│  │  Recharts        │  │  GRC-compatible  │  │  Context-aware Guidance  │   │
-│  │  Color-coded map │  │  CycloneDX 1.6   │  │  Mitigation Chatbot      │   │
-│  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-│                                                                             │
-│     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
-│     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
-└─────────────────────────────────────────────────────────────────────────────┘
+        ┌─────────────────────────────────────────────────────────────────────────────┐
+        │                              L1 — INPUT                                     │
+        │        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
+        │                                           │ (Scheduled Scans)               │
+        └─────────────────────────┬───────────────────────────────────────────────────┘
+                                  │
+        ┌─────────────────────────▼───────────────────────────────────────────────────┐
+        │                           L2 — DISCOVERY                                    │
+        │                                                                             │
+        │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
+        │  │  CT Log Miner    │  │  DNS Resolver    │  │  Port Scanner            │   │
+        │  │  crt.sh · RFC    │  │  dnspython       │  │  socket · 443/8443/22    │   │
+        │  │  6962 · 4 source │  │  A/CNAME/MX      │  │  /25/587/1194            │   │
+        │  │  fallback chain  │  │  liveness check  │  │                          │   │
+        │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
+        │                                                                             │
+        │  ┌──────────────────────────────────────────────────────────────────────┐   │
+        │  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
+        │  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
+        │  └──────────────────────────────────────────────────────────────────────┘   │
+        │                                                                             │
+        │      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
+        └─────────────────────────┬───────────────────────────────────────────────────┘
+                                  │
+        ┌─────────────────────────▼───────────────────────────────────────────────────┐
+        │                         L3 — DEEP SCAN (Async Pipeline per asset)           │
+        │                                                                             │
+        │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
+        │  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
+        │  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
+        │  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
+        │  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
+        │  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
+        │  └────────────────┘  └────────────────┘  └────────────────┘                 │
+        │                                                                             │
+        │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
+        │  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
+        │  │  httpx async   │  │  paramiko      │  │  DistilBERT fine-tuned         │ │
+        │  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
+        │  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
+        │  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
+        │  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
+        │                                                                             │
+        │              Per-asset raw result aggregator — PostgreSQL scan store        │
+        └─────────────────────────┬───────────────────────────────────────────────────┘
+                                  │
+        ┌─────────────────────────▼───────────────────────────────────────────────────┐
+        │                          L4 — ANALYSIS & INTELLIGENCE                       │
+        │                                                                             │
+        │  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
+        │  │  CBOM Generator      │  │  HNDL Engine         │  │  Exposure Scorer │   │
+        │  │  CycloneDX 1.6 JSON  │  │  Mosca's theorem     │  │  QARS formula    │   │
+        │  │  IBM CBOM spec       │  │  Deadline per asset  │  │  0–100 per asset │   │
+        │  │  OWASP compatible    │  │  CRQC timeline       │  │  CARAF framework │   │
+        │  └──────────────────────┘  └──────────────────────┘  └──────────────────┘   │
+        │                                                                             │
+        │  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
+        │  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
+        │  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
+        │  │  FIPS 203/204/205 references     │  │  3 tiers: Vuln/Ready/Safe        │ │
+        │  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
+        │  └──────────────────────────────────┘  └──────────────────────────────────┘ │
+        └─────────────────────────┬───────────────────────────────────────────────────┘
+                                  │
+        ┌─────────────────────────▼───────────────────────────────────────────────────┐
+        │                           L5 — OUTPUT & PRESENTATION                        │
+        │                                                                             │
+        │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
+        │  │  Risk Dashboard  │  │  CBOM Export     │  │  JARSH AI Assistant      │   │
+        │  │  React 18        │  │  JSON · XML · PDF│  │  Phi3-mini / Ollama      │   │
+        │  │  Recharts        │  │  GRC-compatible  │  │  Context-aware Guidance  │   │
+        │  │  Color-coded map │  │  CycloneDX 1.6   │  │  Mitigation Chatbot      │   │
+        │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
+        │                                                                             │
+        │     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
+        │     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
+        └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Architectural Enhancements
@@ -213,12 +213,165 @@ The TRINETRA engine has been completely overhauled from sequential Celery-based 
 
 ## Unique Selling Points
 
-### USP 1 — How Our System Finds Assets & Public Asset Discovery
-Most scanners only check known ports on known IPs. TRINETRA uses a multi-layered discovery pipeline to map the complete public-facing asset landscape:
+### USP 1 — Asset Discovery: How TRINETRA Finds Every Endpoint
 
-1. **CT Log Mining (Shadow Asset Discovery):** Queries **Certificate Transparency logs** (crt.sh, Certspotter, HackerTarget) to find every subdomain a bank has ever registered — including deprecated ones.
-2. **Active Crawler & API Inspector:** Moves beyond random scanning by employing a structured crawler that discovers and concurrently scans relevant paths (e.g., `robots.txt`, `sitemap.xml`, API routes).
-3. **Live Topology Graphing:** Maps out the relationship and exposure level of discovered assets to create a visual topology (as seen in the Asset Discovery tab).
+Most scanners only check known ports on known IPs. TRINETRA runs a **4-stage discovery pipeline** that finds every public-facing surface — including subdomains the bank's own team has forgotten.
+
+---
+
+#### Stage 1 — Certificate Transparency (CT) Log Mining
+
+Every TLS certificate ever issued for a domain is publicly logged (RFC 6962). TRINETRA mines these logs to extract every subdomain that has ever existed, including:
+- Decommissioned services still reachable on the network
+- Internal staging environments accidentally exposed publicly
+- Shadow assets not tracked in the bank's CMDB
+
+**4-source fallback chain** (never returns empty):
+
+| Priority | Source | Method | Notes |
+|----------|--------|--------|-------|
+| 1 | **crt.sh** | `?.domain` wildcard query, JSON deduplicated | Primary — most complete CT index |
+| 2 | **Certspotter** | `/v1/issuances?include_subdomains=true` | Real-time CT stream, independent infrastructure |
+| 3 | **HackerTarget** | Passive DNS hostsearch API | CSV format, no auth required |
+| 4 | **Root domain** | Direct fallback | Guarantees ≥ 1 asset always exists |
+
+**Why most implementations miss ~30% of assets:**  
+The `name_value` field in crt.sh responses is **newline-separated** — a single certificate can list multiple SANs (Subject Alternative Names). Naive parsers only read the first name. TRINETRA correctly splits and processes every SAN in every certificate record.
+
+**Retry policy:** Exponential back-off on `429`, `500`, `502`, `503`, `504` — up to 4 attempts with 3–30 second wait windows.
+
+**Input normalisation** handles any format the user pastes:
+```
+https://pnb.bank.in/path?q=1  →  pnb.bank.in
+HTTPS://PNB.BANK.IN            →  pnb.bank.in
+pnb.bank.in:443                →  pnb.bank.in
+www.pnb.bank.in                →  pnb.bank.in
+```
+
+---
+
+#### Stage 2 — Active DNS Resolution
+
+CT log entries are **historical** — they prove a domain *was* active, not that it *is*. Every discovered FQDN is validated live via async DNS resolution:
+
+```
+CT Log Entry (fqdn)
+        │
+        ├─── Resolve A record  ──→  IP address (live ✓)
+        │         │
+        │         └─ NXDOMAIN   ──→  Dead asset (logged, not scanned)
+        │
+        └─── Resolve CNAME ──→ Follow chain ──→ Resolve A record
+```
+
+- **Concurrency:** Configurable semaphore (default: 20 parallel DNS queries) prevents rate-limiting
+- **CNAME chain following:** Correctly handles CDN-fronted assets (`api.bank.in → bank.azureedge.net → 1.2.3.4`)
+- **Shadow asset detection:** FQDNs not in the bank's confirmed asset list are flagged `is_shadow_asset=True`
+- **MX record resolution:** Mail servers are discovered separately and fed to the SMTP scanner
+- **DNSSEC check:** DS record presence detected at the parent zone
+
+**Output:** `(live_assets[], dead_assets[])` — only live assets proceed to port scanning.
+
+---
+
+#### Stage 3 — Port Scanning
+
+Each live IP is probed across **11 ports** with async TCP connect:
+
+| Port | Protocol | Dispatches Scanner |
+|------|----------|-------------------|
+| `443` | HTTPS | TLS + Certificate + API + DistilBERT AI |
+| `80` | HTTP | API Inspector |
+| `8443`, `4433`, `10443` | HTTPS-alt | TLS + Certificate + VPN Detector |
+| `22` | SSH | SSH Probe (host key, KEX methods) |
+| `25`, `587` | SMTP / Submission | SMTP TLS Scanner |
+| `993` | IMAPS | TLS Scanner |
+| `1194`, `943` | OpenVPN | VPN Detector |
+
+All 11 ports are probed **simultaneously** per host using `asyncio.gather`. A configurable semaphore prevents overwhelming the network.
+
+**Result flags derived automatically:**
+```python
+has_https  = any port in {443, 8443, 4433, 10443} is open
+has_ssh    = port 22 is open
+has_smtp   = any port in {25, 587} is open
+has_vpn_ports = any VPN port is open
+```
+
+---
+
+#### Stage 4 — Asset Classification
+
+Each open port gets an HTTP fingerprint (HEAD → fallback GET) and is classified into one of **8 asset types** that determine which deep-scan workers are dispatched.
+
+**Fingerprinting collects:**
+- HTTP status code, `Server` header, `Content-Type`, `X-Powered-By`
+- Response body preview (first 500 chars)
+- All response headers
+- Final redirect URL (after following redirects)
+
+**Classification decision tree:**
+
+```
+Open port on live asset
+        │
+        ├── Port 8443 / 4433 / 10443 / 443 / 80  (HTTP/HTTPS)
+        │       │
+        │       ├── VPN fingerprint match?  ──→  vpn_gateway
+        │       │     (path patterns, response headers, body keywords, port-specific)
+        │       │     Cisco AnyConnect   : /+CSCOE+/logon.html
+        │       │     Fortinet FortiGate : /remote/login
+        │       │     Palo Alto GP       : /global-protect/login.esp
+        │       │     OpenVPN            : port 1194 banner
+        │       │
+        │       └── Web type detection
+        │             │
+        │             ├── FQDN segments contain {staging,uat,test,dev,qa,preprod,sit}
+        │             │       ──→  staging
+        │             │
+        │             ├── FQDN segments contain {mobile,mapi,mbanking}
+        │             │       ──→  mobile_backend
+        │             │
+        │             ├── FQDN segments contain {api,gateway,oauth,sso,graphql,
+        │             │   rest,token,oidc,idp,services,…} (exact segment match)
+        │             │       ──→  api_endpoint
+        │             │
+        │             ├── FQDN contains api., -api., .gateway., oauth., auth. (substring)
+        │             │       ──→  api_endpoint
+        │             │
+        │             ├── Content-Type: application/json or application/xml
+        │             │       ──→  api_endpoint
+        │             │
+        │             ├── Response body starts with { or [  (JSON body)
+        │             │       ──→  api_endpoint
+        │             │
+        │             ├── FQDN contains banking portal keywords
+        │             │   {ibanking,netbanking,kyc,retail,corp,nri,…}
+        │             │       ──→  web_portal
+        │             │
+        │             └── Default  ──→  web_portal
+        │
+        ├── Port 22  ──→  ssh_endpoint
+        │
+        └── Port 25 / 587  ──→  smtp_mta
+```
+
+**Shadow asset flag** is carried through from DNS resolution — any classified asset whose FQDN was not in the bank's known asset list is marked `is_shadow_asset=True` regardless of type.
+
+**Scanner dispatch per asset type:**
+
+| Asset Type | TLS | Cert | VPN | API | SSH | SMTP | AI |
+|------------|-----|------|-----|-----|-----|------|----|
+| `web_portal` | ✓ | ✓ | | ✓ | | | ✓ |
+| `api_endpoint` | ✓ | ✓ | | ✓ | | | ✓ |
+| `vpn_gateway` | ✓ | ✓ | ✓ | | | | |
+| `ssh_endpoint` | | | | | ✓ | | |
+| `smtp_mta` | | | | | | ✓ | |
+| `mobile_backend` | ✓ | ✓ | | ✓ | | | ✓ |
+| `staging` | ✓ | ✓ | | ✓ | | | ✓ |
+| `shadow_asset` | ✓ | ✓ | | ✓ | | | ✓ |
+
+---
 
 *Scheitle et al., ACM IMC 2018: CT log data reveals 30–40% more subdomains than DNS enumeration alone.*
 
