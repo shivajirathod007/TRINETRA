@@ -39,7 +39,6 @@ TRINETRA is a quantum exposure intelligence platform designed to discover crypto
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 - [Research Basis](#research-basis)
-- [Team](#team)
 
 ---
 
