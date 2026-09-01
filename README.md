@@ -1,30 +1,37 @@
-# TRINETRA — Quantum Exposure Intelligence Platform
-
-
-> **"Find every cryptographic weakness before a quantum computer does."**
-
 <div align="center">
-  <h3><strong>📺 <a href="https://drive.google.com/file/d/12ivyOwy1gowhOoXnHNwV_Eoo-zEEUBzI/view?usp=sharing">Watch the Pitch / Demo Video(short- 1min)</a></strong></h3>
-  <h3><strong>📺 <a href="https://drive.google.com/file/d/1LPlKyv6cbAyb0BZyAdMONuz3OCm26A8c/view?usp=sharing">Watch the Pitch / Demo Video(Detailed-23min)</a></strong></h3>
+
+# TRINETRA
+### Quantum Exposure Intelligence Platform
+
+**"Find every cryptographic weakness before a quantum computer does."**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB)](https://react.dev/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Async-009688)](https://fastapi.tiangolo.com/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED)](https://www.docker.com/)
+[![NIST PQC](https://img.shields.io/badge/NIST-FIPS%20203%2F204%2F205-critical)](https://csrc.nist.gov/projects/post-quantum-cryptography)
+
+**[Quick Demo (1 min)](https://drive.google.com/file/d/12ivyOwy1gowhOoXnHNwV_Eoo-zEEUBzI/view?usp=sharing)** &nbsp;•&nbsp; **[Full Walkthrough (23 min)](https://drive.google.com/file/d/1LPlKyv6cbAyb0BZyAdMONuz3OCm26A8c/view?usp=sharing)**
+
+### Project Overview
+TRINETRA is a quantum exposure intelligence platform designed to discover cryptographic weaknesses across digital assets, assess organizational risk, and support practical migration planning toward post-quantum cryptography.
 
 </div>
-
-
-TRINETRA is an enterprise-grade post-quantum cryptography (PQC) readiness scanner built for financial institutions. It discovers every public-facing asset of a target domain, performs deep cryptographic analysis across TLS, certificates, APIs, VPNs, SSH, and email, and produces a machine-verifiable **Cryptographic Bill of Materials (CBOM)** with NIST-aligned migration plans and signed PQC readiness certificates.
-
-Built for the **PNB Hackathon** by **Team ZeroHour**.
 
 ---
 
 ## Table of Contents
 
 - [Why TRINETRA](#why-trinetra)
-- [Architecture](#architecture)
-- [Unique Selling Points (USPs)](#unique-selling-points)
+- [High-Level Architecture](#high-level-architecture)
+- [Detailed Layer Architecture](#detailed-layer-architecture)
+- [Scan Pipeline (Sequence Flow)](#scan-pipeline-sequence-flow)
+- [Tech Stack](#tech-stack)
+- [Unique Selling Points](#unique-selling-points)
 - [System Components](#system-components)
-- [JARSH — AI Assistant](#JARSH--ai-security-assistant)
-- [Scan Pipeline](#scan-pipeline)
-- [Scoring Formula](#scoring-formula)
+- [JARSH — AI Security Assistant](#jarsh--ai-security-assistant)
+- [Scoring Formula](#scoring-formula-qars)
 - [Classification Schema](#classification-schema)
 - [API Reference](#api-reference)
 - [Quick Start](#quick-start)
@@ -32,20 +39,22 @@ Built for the **PNB Hackathon** by **Team ZeroHour**.
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 - [Research Basis](#research-basis)
+- [Team](#team)
 
 ---
 
 ## Why TRINETRA
 
-Cryptographically-Relevant Quantum Computers (CRQCs) are projected to arrive between 2028–2037. When they do, **every RSA, ECDSA, and ECDHE-protected system becomes retroactively decryptable** — including data intercepted today (Harvest Now, Decrypt Later attacks).
+Cryptographically-Relevant Quantum Computers (CRQCs) are projected to arrive between **2028–2037**. When they do, **every RSA, ECDSA, and ECDHE-protected system becomes retroactively decryptable** — including data intercepted today ("Harvest Now, Decrypt Later" attacks).
 
 Most banks have no idea:
-- How many subdomains they actually have (shadow assets)
-- Which ones use quantum-vulnerable cryptography
-- How much time they have before their data becomes exposed
-- What exactly needs to change and in what order
 
-TRINETRA answers all four questions in a single scan.
+- How many subdomains they actually have (shadow assets)
+-  Which ones use quantum-vulnerable cryptography
+- How much time they have before their data becomes exposed
+- What exactly needs to change, and in what order
+
+**TRINETRA answers all four questions in a single scan.**
 
 ### The Competition Gap
 
@@ -53,7 +62,7 @@ TRINETRA answers all four questions in a single scan.
 |---|---|---|
 | Asset discovery | Known ports only | CT log mining — finds forgotten subdomains |
 | TLS analysis | Preferred cipher only | All accepted ciphers — catches weak fallbacks |
-| API crypto detection | Header rules | DistilBERT NLP — finds RS256 in JSON bodies |
+| API crypto detection | Header rules | DistilBERT NLP — finds `RS256` inside JSON bodies |
 | Scoring formula | Arbitrary numbers | QARS formula (MDPI 2025) with Mosca's theorem |
 | Output | Score only | CBOM + migration plan + signed certificate |
 | VPN detection | None | Cisco AnyConnect, Fortinet, Palo Alto, OpenVPN |
@@ -61,186 +70,234 @@ TRINETRA answers all four questions in a single scan.
 
 ---
 
+## High-Level Architecture
 
-## 🛠 Tech Stack
+```mermaid
+flowchart TB
+    USER[" Security Team / Bank Analyst"]
 
-**Frontend:** React 18, Vite, Typescript, TailwindCSS, Recharts  
-**Backend:** FastAPI (Async), Python 3.10+, SQLAlchemy, Alembic  
-**Scanning Engine:** SSLyze, pyca/cryptography, httpx (Async), Paramiko, Custom DNS/CT pipeline  
-**AI & Intelligence:** Custom DistilBERT model (NLP), Local Ollama Phi3-mini (On-prem JARSH logic — fine-tuned)  
-**Task Queues & async pipeline:** Celery, Redis 7, Asyncio  
-**Database:** PostgreSQL 16 (Async pipeline)  
-**Deployment:** Docker, Docker Compose
+    subgraph L1["L1 · INPUT"]
+        IN["Domain / IP / URL\nREST API · Batch CSV · Manual Rules\nScheduled Scans"]
+    end
+
+    subgraph L2["L2 · DISCOVERY"]
+        direction LR
+        CT["CT Log Miner\ncrt.sh · RFC 6962"]
+        DNS["DNS Resolver\nA / CNAME / MX"]
+        PORT["Port Scanner\n11 ports async"]
+        CLASS["Asset Classifier\n8 asset types"]
+        CT --> DNS --> PORT --> CLASS
+    end
+
+    subgraph L3["L3 · DEEP SCAN (per asset, async)"]
+        direction LR
+        TLS["TLS/SSL Scan\nSSLyze"]
+        CERT["Cert Analyzer\npyca"]
+        VPN["VPN Detector"]
+        API["API Inspector\nhttpx"]
+        SSH["SSH Probe\nparamiko"]
+        AI["AI Crypto Classifier\nDistilBERT"]
+    end
+
+    subgraph L4["L4 · ANALYSIS & INTELLIGENCE"]
+        direction LR
+        CBOM["CBOM Generator\nCycloneDX 1.6"]
+        HNDL["HNDL Engine\nMosca's theorem"]
+        QARS["Exposure Scorer\nQARS formula"]
+        PLAN["Migration Planner\nNIST SP 1800-38B"]
+        SIGN["Certificate Issuer\nHMAC-signed"]
+    end
+
+    subgraph L5["L5 · OUTPUT & PRESENTATION"]
+        direction LR
+        DASH["Risk Dashboard\nReact + Recharts"]
+        EXPORT["CBOM Export\nJSON · XML · PDF"]
+        JARSH["JARSH AI Assistant\nPhi3-mini / Ollama"]
+    end
+
+    STORE[("PostgreSQL 16\nScan Store")]
+    QUEUE[["Redis 7 + Celery\nTask Orchestration"]]
+
+    USER --> IN --> L2
+    L2 --> L3
+    L3 --> STORE
+    STORE --> L4
+    L4 --> L5
+    L5 --> USER
+
+    QUEUE -. orchestrates .-> L2
+    QUEUE -. orchestrates .-> L3
+    QUEUE -. orchestrates .-> L4
+
+    style L1 fill:#1e293b,color:#fff
+    style L2 fill:#0c4a6e,color:#fff
+    style L3 fill:#7c2d12,color:#fff
+    style L4 fill:#3730a3,color:#fff
+    style L5 fill:#14532d,color:#fff
+    style STORE fill:#334155,color:#fff
+    style QUEUE fill:#334155,color:#fff
+```
 
 ---
 
-## Architecture
+## Detailed Layer Architecture
 
-```text
-        ┌─────────────────────────────────────────────────────────────────────────────┐
-        │                              L1 — INPUT                                     │
-        │        Domain / IP / URL  ──────  REST API / Batch CSV / Manual Rules       │
-        │                                           │ (Scheduled Scans)               │
-        └─────────────────────────┬───────────────────────────────────────────────────┘
-                                  │
-        ┌─────────────────────────▼───────────────────────────────────────────────────┐
-        │                           L2 — DISCOVERY                                    │
-        │                                                                             │
-        │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-        │  │  CT Log Miner    │  │  DNS Resolver    │  │  Port Scanner            │   │
-        │  │  crt.sh · RFC    │  │  dnspython       │  │  socket · 443/8443/22    │   │
-        │  │  6962 · 4 source │  │  A/CNAME/MX      │  │  /25/587/1194            │   │
-        │  │  fallback chain  │  │  liveness check  │  │                          │   │
-        │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-        │                                                                             │
-        │  ┌──────────────────────────────────────────────────────────────────────┐   │
-        │  │  Asset Classifier — web_portal | api_endpoint | vpn_gateway |        │   │
-        │  │                     ssh_endpoint | smtp_mta | staging | shadow_asset │   │
-        │  └──────────────────────────────────────────────────────────────────────┘   │
-        │                                                                             │
-        │      Asyncio Event Loop (Parallel) — Asynchronous & batched processing      │
-        └─────────────────────────┬───────────────────────────────────────────────────┘
-                                  │
-        ┌─────────────────────────▼───────────────────────────────────────────────────┐
-        │                         L3 — DEEP SCAN (Async Pipeline per asset)           │
-        │                                                                             │
-        │  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐                 │
-        │  │  TLS/SSL Scan  │  │  Cert Analyzer │  │  VPN Detector  │                 │
-        │  │  SSLyze        │  │  pyca/crypto   │  │  banner + path │                 │
-        │  │  All versions  │  │  Full chain    │  │  fingerprint   │                 │
-        │  │  All ciphers   │  │  OCSP/SCT/SAN  │  │  Cisco/Forti/  │                 │
-        │  │  ROBOT/BEAST   │  │  Expiry/issuer │  │  PaloAlto/OVPN │                 │
-        │  └────────────────┘  └────────────────┘  └────────────────┘                 │
-        │                                                                             │
-        │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────────────┐ │
-        │  │  API Inspector │  │  SSH Probe     │  │  AI Crypto Classifier          │ │
-        │  │  httpx async   │  │  paramiko      │  │  DistilBERT fine-tuned         │ │
-        │  │  JWT/OAuth/    │  │  Host key algo │  │  Catches RS256 in JSON bodies  │ │
-        │  │  NTLM/CORS/    │  │  KEX methods   │  │  NTLM in WWW-Authenticate      │ │
-        │  │  GraphQL       │  │  Server banner │  │  Custom auth headers           │ │
-        │  └────────────────┘  └────────────────┘  └────────────────────────────────┘ │
-        │                                                                             │
-        │              Per-asset raw result aggregator — PostgreSQL scan store        │
-        └─────────────────────────┬───────────────────────────────────────────────────┘
-                                  │
-        ┌─────────────────────────▼───────────────────────────────────────────────────┐
-        │                          L4 — ANALYSIS & INTELLIGENCE                       │
-        │                                                                             │
-        │  ┌──────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐   │
-        │  │  CBOM Generator      │  │  HNDL Engine         │  │  Exposure Scorer │   │
-        │  │  CycloneDX 1.6 JSON  │  │  Mosca's theorem     │  │  QARS formula    │   │
-        │  │  IBM CBOM spec       │  │  Deadline per asset  │  │  0–100 per asset │   │
-        │  │  OWASP compatible    │  │  CRQC timeline       │  │  CARAF framework │   │
-        │  └──────────────────────┘  └──────────────────────┘  └──────────────────┘   │
-        │                                                                             │
-        │  ┌──────────────────────────────────┐  ┌──────────────────────────────────┐ │
-        │  │  PQC Migration Planner           │  │  Certificate Issuer              │ │
-        │  │  NIST SP 1800-38B step map       │  │  HMAC-signed JSON                │ │
-        │  │  FIPS 203/204/205 references     │  │  3 tiers: Vuln/Ready/Safe        │ │
-        │  │  Vendor-specific guidance        │  │  Tamper-evident · RBI-ready      │ │
-        │  └──────────────────────────────────┘  └──────────────────────────────────┘ │
-        └─────────────────────────┬───────────────────────────────────────────────────┘
-                                  │
-        ┌─────────────────────────▼───────────────────────────────────────────────────┐
-        │                           L5 — OUTPUT & PRESENTATION                        │
-        │                                                                             │
-        │  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────────────┐   │
-        │  │  Risk Dashboard  │  │  CBOM Export     │  │  JARSH AI Assistant      │   │
-        │  │  React 18        │  │  JSON · XML · PDF│  │  Phi3-mini / Ollama      │   │
-        │  │  Recharts        │  │  GRC-compatible  │  │  Context-aware Guidance  │   │
-        │  │  Color-coded map │  │  CycloneDX 1.6   │  │  Mitigation Chatbot      │   │
-        │  └──────────────────┘  └──────────────────┘  └──────────────────────────┘   │
-        │                                                                             │
-        │     FastAPI REST — /scan · /cbom · /certificates · /dashboard · /assets     │
-        │     Docker Compose — PostgreSQL 16 · Redis 7 · Celery workers · Flower      │
-        └─────────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph Discovery["L2 — Discovery Pipeline"]
+        A1["Stage 1\nCT Log Mining\ncrt.sh → Certspotter → HackerTarget → Root fallback"]
+        A2["Stage 2\nActive DNS Resolution\nA / CNAME chain / MX / DNSSEC\nlive vs dead classification"]
+        A3["Stage 3\nPort Scanning\n443·80·8443·4433·10443·22·25·587·993·1194·943"]
+        A4["Stage 4\nAsset Classification\nweb_portal · api_endpoint · vpn_gateway\nssh_endpoint · smtp_mta · mobile_backend\nstaging · shadow_asset"]
+        A1 --> A2 --> A3 --> A4
+    end
+
+    subgraph DeepScan["L3 — Deep Scan Workers (dispatched per asset type)"]
+        B1["TLS/SSL Scanner\nSSLyze — all versions/ciphers\nROBOT · BEAST detection"]
+        B2["Certificate Analyzer\npyca/cryptography\nFull chain · OCSP · SCT · SAN"]
+        B3["VPN Detector\nbanner + path fingerprinting"]
+        B4["API Inspector\nhttpx async\nJWT · OAuth · NTLM · CORS · GraphQL"]
+        B5["SSH Probe\nparamiko\nHost key algo · KEX methods"]
+        B6["SMTP TLS Scanner\nSTARTTLS negotiation"]
+        B7["AI Crypto Classifier\nDistilBERT fine-tuned\nRS256 in JSON · NTLM in headers"]
+    end
+
+    subgraph Analysis["L4 — Analysis & Intelligence"]
+        C1["CBOM Generator\nCycloneDX 1.6 · IBM CBOM spec"]
+        C2["HNDL Engine\nMosca's inequality\nCRQC deadline per asset"]
+        C3["Exposure Scorer\nQARS formula · CARAF"]
+        C4["PQC Migration Planner\nNIST SP 1800-38B · FIPS 203/204/205"]
+        C5["Certificate Issuer\nHMAC-signed JSON\nVULNERABLE / READY / SAFE"]
+    end
+
+    subgraph Output["L5 — Output & Presentation"]
+        D1["Risk Dashboard\nReact 18 + Recharts"]
+        D2["CBOM Export\nJSON · XML · PDF · GRC-compatible"]
+        D3["JARSH Assistant\nOllama Phi3-mini, on-prem"]
+    end
+
+    A4 --> B1 & B2 & B3 & B4 & B5 & B6 & B7
+    B1 & B2 & B3 & B4 & B5 & B6 & B7 --> RAW[("Per-asset raw result\nPostgreSQL scan store")]
+    RAW --> C1 & C2 & C3 & C4 & C5
+    C1 & C2 & C3 & C4 & C5 --> D1 & D2 & D3
+
+    style Discovery fill:#0c4a6e,color:#fff
+    style DeepScan fill:#7c2d12,color:#fff
+    style Analysis fill:#3730a3,color:#fff
+    style Output fill:#14532d,color:#fff
+    style RAW fill:#334155,color:#fff
 ```
 
 ### Architectural Enhancements
+
 The TRINETRA engine has been completely overhauled from sequential Celery-based processing into a highly concurrent asynchronous architecture:
-- **Asyncio Parallelization:** Replaced sequential operations with a concurrent `asyncio` model, processing multiple domains and assets simultaneously.
-- **Adaptive Timeouts & Incremental Scanning:** Reduced redundant operations by intelligently skipping unchanged assets and gracefully timing out unresponsive subdomains.
-- **Batched ML Inference & Persistence:** Batched DistilBERT inference and database persistence to drastically drop the scan time (e.g., from 17 minutes to ~1.3 minutes for 1,000 assets).
-- **Manual Rules Engine:** Users can now set manual heuristic rules directly from the inventory.
+
+- **Asyncio Parallelization** — replaced sequential operations with a concurrent `asyncio` model, processing multiple domains and assets simultaneously.
+- **Adaptive Timeouts & Incremental Scanning** — reduced redundant operations by intelligently skipping unchanged assets and gracefully timing out unresponsive subdomains.
+- **Batched ML Inference & Persistence** — batched DistilBERT inference and database writes, cutting scan time from **17 minutes to ~1.3 minutes** for 1,000 assets.
+- **Manual Rules Engine** — users can set manual heuristic rules directly from the inventory.
 
 ---
 
+## Scan Pipeline (Sequence Flow)
 
-## Feature Showcase
+```mermaid
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant API as FastAPI (202 Accepted)
+    participant Q as Celery + Redis
+    participant D as Discovery Engine
+    participant S as Deep Scan Workers
+    participant AI as DistilBERT Classifier
+    participant An as Analysis Engine
+    participant DB as PostgreSQL
 
-**1. Home Page**
-![Home Page](img/HOME_PAGE.png)
-*TRINETRA landing experience showcasing the overall mission.*
+    U->>API: POST /api/v1/scans/ (domain)
+    API-->>U: 202 Accepted + scan_id
+    API->>Q: enqueue orchestrator.run_full_scan
 
-**2. Risk Dashboard**
-![Risk Dashboard](img/DASHBOARD.png)
-*The central command center providing an organizational risk score, asset map, and risk distribution charts.*
+    Q->>D: CT Log Mining (crt.sh → fallback chain)
+    D->>D: DNS Resolution (live/dead + shadow asset flag)
+    D->>D: Port Scanning (11 ports, async)
+    D->>D: Asset Classification (8 types)
 
-**3. Public Asset Discovery**
-![Asset Discovery](img/ASSEST_DISCOVERY.png)
-*Visualizing the organization's Live Topology Graph and identifying shadow assets across the domain.*
+    Q->>S: Chord fan-out (up to 50 parallel asset scans)
+    par Per-asset deep scan
+        S->>S: TLS/SSL Scan (SSLyze)
+        S->>S: Certificate Analysis (pyca)
+        S->>S: VPN / SSH / SMTP probes
+        S->>AI: HTTP response bodies + headers
+        AI-->>S: Crypto pattern classification
+    end
+    S->>DB: Persist per-asset raw results
 
-**4. Asset Inventory & Classifications**
-![Asset Inventory](img/ASSEST_INVENTORY.png)
-*Detailed inventory of all public-facing assets, categorized by type and sensitivity tier with manual rule overrides.*
+    DB->>An: Aggregate scan results
+    An->>An: QARS Exposure Scoring
+    An->>An: HNDL Engine (Mosca's theorem)
+    An->>An: Migration Planning (NIST SP 1800-38B)
+    An->>An: CBOM Generation (CycloneDX 1.6)
+    An->>An: Sign PQC Certificates (HMAC)
+    An->>DB: Persist CBOM + certificates + org score
 
-**5. Cryptographic Bill of Materials (CBOM)**
-![CBOM](img/CBOM.png)
-*Operations center displaying cryptographic assets and NIST-aligned migration plans.*
+    Q-->>API: finalize_scan callback
+    U->>API: GET /api/v1/scans/{scan_id}/results
+    API-->>U: Full results, CBOM, certificates
+```
 
-![Advanced CBOM](img/CBOMv2.png)
-*Deep dive into extracted cryptographic features, including HTTP server software, SSH host keys, and deep SSL analysis.*
+---
 
-**6. Schedule & Automate Scans**
-![Schedule Scan](img/SCHDULE_SCAN.png)
-*Configure incremental scanning schedules and manual rules to continuously monitor new and existing assets.*
+## Tech Stack
 
-**7. Posture of PQC**
-![Posture of PQC](img/PQC.png)
-*Migration readiness timeline tracking the step-by-step transition to post-quantum cryptography.*
+| Layer | Technologies |
+|---|---|
+| **Frontend** | React 18, Vite, TypeScript, TailwindCSS, Recharts |
+| **Backend** | FastAPI (Async), Python 3.10+, SQLAlchemy, Alembic |
+| **Scanning Engine** | SSLyze, pyca/cryptography, httpx (Async), Paramiko, custom DNS/CT pipeline |
+| **AI & Intelligence** | Custom fine-tuned DistilBERT (NLP), local Ollama Phi3-mini (on-prem JARSH) |
+| **Task Queues** | Celery, Redis 7, Asyncio |
+| **Database** | PostgreSQL 16 (async pipeline) |
+| **Deployment** | Docker, Docker Compose |
 
-**8. Cyber Rating & QARS**
-![Cyber Rating](img/cyberRATING.png)
-*Visual breakdown of the Quantum-Adjusted Risk Score (QARS) for each asset.*
-
-**9. Scan History**
-![Scan History](img/SCAN_HISTORY.png)
-*Tracking historical scan results to monitor cryptographic agility improvements over time.*
-
-**10. Integrated Reporting**
-![Reporting](img/REPORTING.png)
-*Generate GRC-compatible PDF reports and CycloneDX 1.6 CBOM exports.*
+---
 
 ## Unique Selling Points
 
-### USP 1 — Asset Discovery: How TRINETRA Finds Every Endpoint
+### USP 1 — Asset Discovery: Finding Every Endpoint
 
-Most scanners only check known ports on known IPs. TRINETRA runs a **4-stage discovery pipeline** that finds every public-facing surface — including subdomains the bank's own team has forgotten.
+A **4-stage discovery pipeline** finds every public-facing surface — including subdomains the bank's own team has forgotten.
 
----
+```mermaid
+flowchart LR
+    S1["Stage 1\nCT Log Mining\ncrt.sh → Certspotter\n→ HackerTarget → Root"] --> S2["Stage 2\nActive DNS Resolution\nlive vs dead"]
+    S2 --> S3["Stage 3\nPort Scanning\n11 ports, async"]
+    S3 --> S4["Stage 4\nAsset Classification\n8 types"]
+
+    style S1 fill:#0c4a6e,color:#fff
+    style S2 fill:#0c4a6e,color:#fff
+    style S3 fill:#0c4a6e,color:#fff
+    style S4 fill:#0c4a6e,color:#fff
+```
 
 #### Stage 1 — Certificate Transparency (CT) Log Mining
 
-Every TLS certificate ever issued for a domain is publicly logged (RFC 6962). TRINETRA mines these logs to extract every subdomain that has ever existed, including:
-- Decommissioned services still reachable on the network
-- Internal staging environments accidentally exposed publicly
-- Shadow assets not tracked in the bank's CMDB
+Every TLS certificate ever issued for a domain is publicly logged (RFC 6962). TRINETRA mines these logs to extract every subdomain that has ever existed, including decommissioned services, exposed staging environments, and shadow assets untracked in the bank's CMDB.
 
 **4-source fallback chain** (never returns empty):
 
 | Priority | Source | Method | Notes |
 |----------|--------|--------|-------|
 | 1 | **crt.sh** | `?.domain` wildcard query, JSON deduplicated | Primary — most complete CT index |
-| 2 | **Certspotter** | `/v1/issuances?include_subdomains=true` | Real-time CT stream, independent infrastructure |
+| 2 | **Certspotter** | `/v1/issuances?include_subdomains=true` | Real-time CT stream, independent infra |
 | 3 | **HackerTarget** | Passive DNS hostsearch API | CSV format, no auth required |
 | 4 | **Root domain** | Direct fallback | Guarantees ≥ 1 asset always exists |
 
-**Why most implementations miss ~30% of assets:**  
-The `name_value` field in crt.sh responses is **newline-separated** — a single certificate can list multiple SANs (Subject Alternative Names). Naive parsers only read the first name. TRINETRA correctly splits and processes every SAN in every certificate record.
+**Why most implementations miss ~30% of assets:** the `name_value` field in crt.sh responses is **newline-separated** — a single certificate can list multiple SANs. Naive parsers only read the first name; TRINETRA splits and processes every SAN in every certificate record.
 
-**Retry policy:** Exponential back-off on `429`, `500`, `502`, `503`, `504` — up to 4 attempts with 3–30 second wait windows.
+**Retry policy:** exponential back-off on `429/500/502/503/504` — up to 4 attempts, 3–30s wait windows.
 
-**Input normalisation** handles any format the user pastes:
+**Input normalisation** handles any pasted format:
+
 ```
 https://pnb.bank.in/path?q=1  →  pnb.bank.in
 HTTPS://PNB.BANK.IN            →  pnb.bank.in
@@ -248,37 +305,32 @@ pnb.bank.in:443                →  pnb.bank.in
 www.pnb.bank.in                →  pnb.bank.in
 ```
 
----
-
 #### Stage 2 — Active DNS Resolution
 
-CT log entries are **historical** — they prove a domain *was* active, not that it *is*. Every discovered FQDN is validated live via async DNS resolution:
+CT log entries are **historical** — they prove a domain *was* active, not that it *is*. Every discovered FQDN is validated live via async DNS resolution.
 
-```
-CT Log Entry (fqdn)
-        │
-        ├─── Resolve A record  ──→  IP address (live ✓)
-        │         │
-        │         └─ NXDOMAIN   ──→  Dead asset (logged, not scanned)
-        │
-        └─── Resolve CNAME ──→ Follow chain ──→ Resolve A record
+```mermaid
+flowchart TD
+    E["CT Log Entry (FQDN)"] --> R{"Resolve A record"}
+    R -->|"Success"| LIVE[" Live asset\n→ port scanning"]
+    R -->|"NXDOMAIN"| DEAD[" Dead asset\nlogged, not scanned"]
+    E --> CN{"Resolve CNAME"}
+    CN -->|"Follow chain"| R
 ```
 
-- **Concurrency:** Configurable semaphore (default: 20 parallel DNS queries) prevents rate-limiting
-- **CNAME chain following:** Correctly handles CDN-fronted assets (`api.bank.in → bank.azureedge.net → 1.2.3.4`)
-- **Shadow asset detection:** FQDNs not in the bank's confirmed asset list are flagged `is_shadow_asset=True`
-- **MX record resolution:** Mail servers are discovered separately and fed to the SMTP scanner
+- **Concurrency:** configurable semaphore (default 20 parallel DNS queries)
+- **CNAME chain following:** handles CDN-fronted assets (`api.bank.in → bank.azureedge.net → 1.2.3.4`)
+- **Shadow asset detection:** FQDNs not in the bank's confirmed asset list flagged `is_shadow_asset=True`
+- **MX resolution:** mail servers discovered separately, fed to the SMTP scanner
 - **DNSSEC check:** DS record presence detected at the parent zone
 
 **Output:** `(live_assets[], dead_assets[])` — only live assets proceed to port scanning.
 
----
-
 #### Stage 3 — Port Scanning
 
-Each live IP is probed across **11 ports** with async TCP connect:
+Each live IP is probed across **11 ports** with async TCP connect, all simultaneously via `asyncio.gather`:
 
-| Port | Protocol | Dispatches Scanner |
+| Port(s) | Protocol | Dispatches Scanner |
 |------|----------|-------------------|
 | `443` | HTTPS | TLS + Certificate + API + DistilBERT AI |
 | `80` | HTTP | API Inspector |
@@ -288,104 +340,51 @@ Each live IP is probed across **11 ports** with async TCP connect:
 | `993` | IMAPS | TLS Scanner |
 | `1194`, `943` | OpenVPN | VPN Detector |
 
-All 11 ports are probed **simultaneously** per host using `asyncio.gather`. A configurable semaphore prevents overwhelming the network.
-
-**Result flags derived automatically:**
-```python
-has_https  = any port in {443, 8443, 4433, 10443} is open
-has_ssh    = port 22 is open
-has_smtp   = any port in {25, 587} is open
-has_vpn_ports = any VPN port is open
-```
-
----
-
 #### Stage 4 — Asset Classification
 
-Each open port gets an HTTP fingerprint (HEAD → fallback GET) and is classified into one of **8 asset types** that determine which deep-scan workers are dispatched.
+Each open port gets an HTTP fingerprint (HEAD → fallback GET) and is classified into one of **8 asset types**.
 
-**Fingerprinting collects:**
-- HTTP status code, `Server` header, `Content-Type`, `X-Powered-By`
-- Response body preview (first 500 chars)
-- All response headers
-- Final redirect URL (after following redirects)
-
-**Classification decision tree:**
-
+```mermaid
+flowchart TD
+    P["Open port on live asset"] --> HTTP{"HTTP/HTTPS port?"}
+    HTTP -->|"Yes"| VPNCHK{"VPN fingerprint\nmatch?"}
+    VPNCHK -->|"Yes"| VPNG["vpn_gateway\nCisco / Fortinet / PaloAlto / OpenVPN"]
+    VPNCHK -->|"No"| WEB{"Web type detection"}
+    WEB -->|"staging/uat/test/dev/qa"| STG["staging"]
+    WEB -->|"mobile/mapi/mbanking"| MOB["mobile_backend"]
+    WEB -->|"api/gateway/oauth/sso/graphql..."| APIE["api_endpoint"]
+    WEB -->|"JSON Content-Type or body"| APIE
+    WEB -->|"ibanking/netbanking/kyc/retail..."| PORTAL["web_portal"]
+    WEB -->|"default"| PORTAL
+    HTTP -->|"No"| SSHP{"Port 22?"}
+    SSHP -->|"Yes"| SSHE["ssh_endpoint"]
+    SSHP -->|"No"| SMTPP{"Port 25/587?"}
+    SMTPP -->|"Yes"| SMTA["smtp_mta"]
 ```
-Open port on live asset
-        │
-        ├── Port 8443 / 4433 / 10443 / 443 / 80  (HTTP/HTTPS)
-        │       │
-        │       ├── VPN fingerprint match?  ──→  vpn_gateway
-        │       │     (path patterns, response headers, body keywords, port-specific)
-        │       │     Cisco AnyConnect   : /+CSCOE+/logon.html
-        │       │     Fortinet FortiGate : /remote/login
-        │       │     Palo Alto GP       : /global-protect/login.esp
-        │       │     OpenVPN            : port 1194 banner
-        │       │
-        │       └── Web type detection
-        │             │
-        │             ├── FQDN segments contain {staging,uat,test,dev,qa,preprod,sit}
-        │             │       ──→  staging
-        │             │
-        │             ├── FQDN segments contain {mobile,mapi,mbanking}
-        │             │       ──→  mobile_backend
-        │             │
-        │             ├── FQDN segments contain {api,gateway,oauth,sso,graphql,
-        │             │   rest,token,oidc,idp,services,…} (exact segment match)
-        │             │       ──→  api_endpoint
-        │             │
-        │             ├── FQDN contains api., -api., .gateway., oauth., auth. (substring)
-        │             │       ──→  api_endpoint
-        │             │
-        │             ├── Content-Type: application/json or application/xml
-        │             │       ──→  api_endpoint
-        │             │
-        │             ├── Response body starts with { or [  (JSON body)
-        │             │       ──→  api_endpoint
-        │             │
-        │             ├── FQDN contains banking portal keywords
-        │             │   {ibanking,netbanking,kyc,retail,corp,nri,…}
-        │             │       ──→  web_portal
-        │             │
-        │             └── Default  ──→  web_portal
-        │
-        ├── Port 22  ──→  ssh_endpoint
-        │
-        └── Port 25 / 587  ──→  smtp_mta
-```
-
-**Shadow asset flag** is carried through from DNS resolution — any classified asset whose FQDN was not in the bank's known asset list is marked `is_shadow_asset=True` regardless of type.
 
 **Scanner dispatch per asset type:**
 
 | Asset Type | TLS | Cert | VPN | API | SSH | SMTP | AI |
-|------------|-----|------|-----|-----|-----|------|----|
-| `web_portal` | ✓ | ✓ | | ✓ | | | ✓ |
-| `api_endpoint` | ✓ | ✓ | | ✓ | | | ✓ |
-| `vpn_gateway` | ✓ | ✓ | ✓ | | | | |
-| `ssh_endpoint` | | | | | ✓ | | |
-| `smtp_mta` | | | | | | ✓ | |
-| `mobile_backend` | ✓ | ✓ | | ✓ | | | ✓ |
-| `staging` | ✓ | ✓ | | ✓ | | | ✓ |
-| `shadow_asset` | ✓ | ✓ | | ✓ | | | ✓ |
+|------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| `web_portal` |  |  | |  | | |  |
+| `api_endpoint` |  |  | |  | | |  |
+| `vpn_gateway` |  |  |  | | | | |
+| `ssh_endpoint` | | | | |  | | |
+| `smtp_mta` | | | | | |  | |
+| `mobile_backend` |  |  | |  | | |  |
+| `staging` |  |  | |  | | |  |
+| `shadow_asset` |  |  | |  | | |  |
 
----
-
-*Scheitle et al., ACM IMC 2018: CT log data reveals 30–40% more subdomains than DNS enumeration alone.*
+> *Scheitle et al., ACM IMC 2018: CT log data reveals 30–40% more subdomains than DNS enumeration alone.*
 
 ### USP 2 — AI Crypto Pattern Classifier
-The deterministic TLS scanner checks what it knows about. The **DistilBERT NLP classifier** reads raw HTTP responses the way a human security analyst would — finding cryptographic references buried in:
-- `"alg": "RS256"` inside JSON response bodies
-- `sha256WithRSAEncryption` inside error messages
-- `WWW-Authenticate: NTLM` in response headers
-- `"x-signing-algorithm": "rsa-sha256"` in custom proprietary headers
-- RSA public key material accidentally exposed in debug endpoints
+
+The deterministic TLS scanner checks what it knows about. The **DistilBERT NLP classifier** reads raw HTTP responses the way a human security analyst would — finding cryptographic references buried in JSON bodies, error messages, `WWW-Authenticate` headers, custom proprietary headers, and debug endpoints.
 
 > *Sanh et al. 2019 (DistilBERT): 40% smaller than BERT with 97% accuracy.*
 
 ### USP 3 — HNDL Engine with Mosca's Theorem
+
 Every asset gets a concrete migration deadline, not just a score. The **HNDL (Harvest Now, Decrypt Later) Engine** implements Mosca's inequality:
 
 ```
@@ -395,16 +394,16 @@ If (data shelf life X) + (migration time Y) > (years to CRQC Z) → Act NOW
 Configurable CRQC scenarios: pessimistic (2028), moderate (2032), optimistic (2037).
 
 ### USP 4 — QARS Scoring Formula
+
 ```
 Score = (Algorithm Risk × 40%) + (HNDL Timeline × 40%) + (Public Exposure × 20%)
 ```
 
-Every factor has a calibrated lookup table. The weighted average produces a 0–100 score with a risk tier. Unlike competitor tools with arbitrary numbers, TRINETRA's formula is published and reproducible.
+Every factor has a calibrated lookup table. Unlike competitor tools with arbitrary numbers, TRINETRA's formula is published and reproducible.
 
 > *QARS paper: MDPI Electronics, August 2025. CARAF: Oxford Cybersecurity, 2021.*
 
 ### USP 5 — Data Sensitivity Tier
-Financial data has different shelf lives. A transaction record needs protection for 7 years (regulatory retention). An authentication token expires in hours. TRINETRA adjusts the HNDL urgency score based on the **data sensitivity tier** of each asset:
 
 | Tier | Shelf Life | Example |
 |------|-----------|---------|
@@ -413,24 +412,22 @@ Financial data has different shelf lives. A transaction record needs protection 
 | `static` | 0 years | Public web portals |
 
 ### USP 6 — VPN Detection
-Most teams skip VPN gateways entirely. TRINETRA fingerprints and scans:
-- Cisco AnyConnect (`/+CSCOE+/logon.html`)
-- Fortinet FortiGate SSL VPN (`/remote/login`)
-- Palo Alto GlobalProtect (`/global-protect/login.esp`)
-- OpenVPN (port 1194 UDP banner)
 
-VPN gateways typically have the worst scores — managed by network teams, running vendor defaults from 2015.
+Most teams skip VPN gateways entirely. TRINETRA fingerprints and scans Cisco AnyConnect, Fortinet FortiGate, Palo Alto GlobalProtect, and OpenVPN. VPN gateways typically have the worst scores — managed by network teams, running vendor defaults from 2015.
 
 ### USP 7 — SSH Host Key Audit (NIST SP 1800-38B)
-Most teams don't touch SSH. TRINETRA extracts host key algorithm (ssh-rsa vs Ed25519), KEX methods (diffie-hellman-group14 vs curve25519 vs mlkem768), and server version string — the gap in NIST SP 1800-38B that most competing tools miss.
+
+Extracts host key algorithm (`ssh-rsa` vs `Ed25519`), KEX methods (`diffie-hellman-group14` vs `curve25519` vs `mlkem768`), and server version string — a gap most competing tools miss.
 
 ### USP 8 — Signed PQC Readiness Certificates
-Every scanned asset gets a **TRINETRA CERTIFIED** HMAC-signed JSON certificate:
-- `QUANTUM_VULNERABLE` — Red — classical crypto only
-- `PQC_READY` — Amber — hybrid mode (classical + NIST PQC)
-- `FULLY_QUANTUM_SAFE` — Green — 100% NIST PQC, no classical fallback
 
-Certificates contain asset URL, scan date, detected algorithm, NIST standard reference, validity period, and tamper-evident signature. Presentable to RBI auditors directly.
+Every scanned asset gets a **TRINETRA CERTIFIED** HMAC-signed JSON certificate:
+
+-  `QUANTUM_VULNERABLE` — classical crypto only
+-  `PQC_READY` — hybrid mode (classical + NIST PQC)
+-  `FULLY_QUANTUM_SAFE` — 100% NIST PQC, no classical fallback
+
+Certificates contain asset URL, scan date, detected algorithm, NIST standard reference, validity period, and a tamper-evident signature — presentable to RBI auditors directly.
 
 ---
 
@@ -448,7 +445,7 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 | `engine/output/` | Certificate issuer, report generator |
 | `workers/` | Celery tasks — orchestrator, scan tasks, AI tasks, analysis tasks |
 | `db/` | SQLAlchemy models, repository layer, Alembic migrations |
-| `core/` | Config, constants (all scoring weights), security (HMAC signing) |
+| `core/` | Config, constants (scoring weights), security (HMAC signing) |
 
 ### Frontend (`frontend/`)
 
@@ -475,18 +472,9 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 
 ---
 
-## JARSH — AI Chatbot & Security Assistant
+## JARSH — AI Security Assistant
 
-**JARSH** is an intelligent floating chatbot integrated into the TRINETRA dashboard... that helps users understand their security posture, analyze scan results, and plan mitigation strategies.
-
-### Features
-
-- **Real-time Security Analysis** — Ask JARSH about any scanned asset, detected vulnerabilities, or cryptographic weaknesses
-- **Contextual Guidance** — Get tailored mitigation steps based on your specific scan results and risk tier (CRITICAL/HIGH/MEDIUM/LOW/SAFE)
-- **Quantum Threat Intelligence** — Understand quantum computing threats, PQC migration timelines, and NIST compliance paths
-- **Scan Interpretation** — JARSH explains what each algorithm means, why it's vulnerable, and what to migrate to
-- **Migration Planning** — Receive step-by-step hybrid adoption strategies (e.g., X25519Kyber768 transition planning)
-- **PQC Readiness Assessment** — Get personalized quantum-safe readiness scores and compliance checkpoints
+**JARSH** is an intelligent floating chatbot integrated into the TRINETRA dashboard, helping users understand their security posture, analyze scan results, and plan mitigation strategies.
 
 ### Capabilities
 
@@ -494,100 +482,36 @@ Certificates contain asset URL, scan date, detected algorithm, NIST standard ref
 |---|---|
 | General Queries | Questions about TRINETRA, PQC, quantum threats, and cryptography |
 | Scan Context | Ask about specific scan results, detected algorithms, exposure levels |
-| Mitigation Advice | Step-by-step guidance on moving from RSA/ECDSA to ML-KEM/ML-DSA |
-| Quantum Timeline | When your organization will be quantum-vulnerable based on Mosca's theorem |
-| PQC Readiness | Compliance status with NIST FIPS 203/204/205 and hybrid adoption strategies |
-| Asset Insights | Intelligence on shadow assets, high-risk endpoints, and remediation priorities |
+| Mitigation Advice | Step-by-step guidance moving from RSA/ECDSA to ML-KEM/ML-DSA |
+| Quantum Timeline | When your organization becomes quantum-vulnerable (Mosca's theorem) |
+| PQC Readiness | Compliance status with NIST FIPS 203/204/205 and hybrid adoption |
+| Asset Insights | Intelligence on shadow assets, high-risk endpoints, remediation priorities |
 
-### Technology Stack
+### Rollout Plan
 
-**Phase 1 (Current):** Template-based responses with context awareness
-- Intelligent routing based on user queries and scan context
-- Confidence scoring for response quality
-- Fallback to detailed templates for high-risk queries
+```mermaid
+flowchart LR
+    P1["Phase 1 · Current\nTemplate-based responses\nContext-aware routing"] --> P2["Phase 2 · Refining\nOn-prem Ollama Phi3-mini\nFine-tuned for PQC domain"]
+    P2 --> P3["Phase 3 · Roadmap\nRAG + ChromaDB\nSession memory per org"]
 
-**Phase 2 (Refining):** On-Premises LLM Integration
-- Local **Ollama** deployment with **Phi3-mini** model
-- **Fine-tuned for quantum cryptography domain** — trained on PQC standards, NIST documentation, and cryptographic attack vectors
-- Zero data exfiltration — all responses generated locally
-- Sub-100ms latency on inference
+    style P1 fill:#166534,color:#fff
+    style P2 fill:#92400e,color:#fff
+    style P3 fill:#1e3a8a,color:#fff
+```
 
-**Phase 3 (Roadmap):** RAG + Memory
-- Vector database (ChromaDB) indexing all CBOM reports
-- Session memory for multi-turn conversations
-- Persistent chat history per organization
+- **Phase 1 (Current):** template-based responses with confidence scoring and context awareness.
+- **Phase 2 (Refining):** local Ollama + Phi3-mini, fine-tuned on NIST PQC standards, Shor's/Grover's algorithm papers, and TRINETRA scan patterns; Q4_K_M quantization for 4GB+ VRAM; zero data exfiltration, sub-100ms inference.
+- **Phase 3 (Roadmap):** ChromaDB vector store indexing all CBOM reports, multi-turn session memory, persistent chat history per organization.
 
 ### How to Use
 
-1. Open the TRINETRA dashboard at `http://localhost:3000`
-2. Click the **[AI-Enabled] JARSH** button in the **bottom-right corner**
-3. Ask questions about your security posture:
-   - *"What algorithms did you detect in my latest scan?"*
-   - *"Is my organization quantum-vulnerable?"*
-   - *"What's the safest migration path from RSA-2048?"*
-   - *"How do I achieve PQC_READY status?"*
-   - *"What's trending in post-quantum cryptography?"*
-
-### Ollama Model Refinement
-
-We are actively **refining the Ollama Phi3-mini model** for better on-premises responses:
-
-- **Fine-tuning Dataset:** NIST PQC standards (FIPS 203, 204, 205), quantum computing attack papers (Shor's, Grover's algorithms), migration guides, and TRINETRA scan patterns
-- **Quantization:** Q4_K_M format for optimal performance on low-VRAM systems (4GB+) with sub-1s response times
-- **Prompt Engineering:** Specialized system prompts for cryptographic reasoning and risk assessment
-- **Knowledge Integration:** All CBOM patterns, scoring formulas, and classification schemas embedded in model context
-
-**Expected Improvements:**
-- [V] Better understanding of hybrid cipher suites (X25519Kyber768, P256-ML-KEM-768)
-- [V] Accurate NIST compliance recommendations
-- [V] Penetration-testing-aware mitigation strategies
-- [V] Zero dependency on external LLM APIs — fully air-gapped capable
+1. Open the dashboard at `http://localhost:3000`
+2. Click the **JARSH** button in the bottom-right corner
+3. Ask things like *"Is my organization quantum-vulnerable?"* or *"What's the safest migration path from RSA-2048?"*
 
 ---
 
-## Scan Pipeline
-
-```
-POST /api/v1/scans/  →  scan_id returned immediately (202 Accepted)
-         │
-         ▼
-  orchestrator.run_full_scan (Celery task)
-         │
-         ├── CT Log Mining (crt.sh → certspotter → hackertarget → root fallback)
-         │
-         ├── DNS Resolution (live/dead classification, shadow asset detection)
-         │
-         ├── Port Scanning (443, 8443, 4433, 10443, 80, 22, 25, 587, 1194)
-         │
-         ├── Asset Classification (web_portal | api_endpoint | vpn_gateway | ...)
-         │
-         └── Celery chord fan-out (up to 50 parallel asset scans)
-                  │
-                  ├── TLS Scanner (SSLyze — all versions, all ciphers, ROBOT/BEAST)
-                  ├── Certificate Analyzer (pyca — full chain, OCSP, SCT, SAN)
-                  ├── API Inspector (httpx — JWT, OAuth, NTLM, CORS, GraphQL)
-                  ├── VPN Detector (banner fingerprinting)
-                  ├── SSH Probe (paramiko — host key, KEX methods)
-                  ├── SMTP TLS Scanner (STARTTLS negotiation)
-                  └── AI Classifier (DistilBERT)
-                           │
-                           ▼
-                  Exposure Scorer (QARS formula)
-                  HNDL Engine (Mosca's theorem)
-                  Migration Planner (NIST SP 1800-38B)
-                  CBOM Generator (CycloneDX 1.6)
-                  Certificate Issuer (HMAC-signed)
-                           │
-                           ▼
-                  PostgreSQL (scan results persisted)
-                           │
-                           ▼
-                  Chord callback → finalize_scan → organization score
-```
-
----
-
-## Scoring Formula
+## Scoring Formula (QARS)
 
 ### QARS (Quantum-Adjusted Risk Score)
 
@@ -607,7 +531,7 @@ Score = (Algorithm Risk × 0.40) + (HNDL Timeline × 0.40) + (Public Exposure ×
 | ML-DSA-65 | 2 | NIST FIPS 204 — fully quantum-safe |
 | AES-256 | 10 | Grover: 128-bit effective — still safe |
 
-**HNDL Timeline (0–100):** Based on Mosca's inequality. Adjusted by data sensitivity tier.
+**HNDL Timeline (0–100):** based on Mosca's inequality, adjusted by data sensitivity tier.
 
 **Public Exposure (0–100):** `web_portal=100`, `vpn_gateway=85`, `shadow_asset=90`, `ssh_endpoint=70`
 
@@ -615,11 +539,11 @@ Score = (Algorithm Risk × 0.40) + (HNDL Timeline × 0.40) + (Public Exposure ×
 
 | Score | Tier | Action |
 |-------|------|--------|
-| 80–100 | CRITICAL | Immediate migration required |
-| 60–79 | HIGH | Urgent — within 6 months |
-| 40–59 | MEDIUM | Planned — within 18 months |
-| 20–39 | LOW | Monitor — within 3 years |
-| 0–19 | SAFE | No action required |
+| 80–100 |  CRITICAL | Immediate migration required |
+| 60–79 |  HIGH | Urgent — within 6 months |
+| 40–59 |  MEDIUM | Planned — within 18 months |
+| 20–39 |  LOW | Monitor — within 3 years |
+| 0–19 |  SAFE | No action required |
 
 ---
 
@@ -629,9 +553,9 @@ Score = (Algorithm Risk × 0.40) + (HNDL Timeline × 0.40) + (Public Exposure ×
 
 | Tier | Color | Condition |
 |------|-------|-----------|
-| `QUANTUM_VULNERABLE` | [Critical] Red | RSA, ECDSA, ECDHE, DHE, NTLM detected |
-| `PQC_READY` | 🟡 Amber | Hybrid mode: X25519Kyber768, P256-ML-KEM-768 |
-| `FULLY_QUANTUM_SAFE` | [Safe] Green | Pure NIST PQC: ML-KEM-768, ML-DSA-65, SPHINCS+ |
+| `QUANTUM_VULNERABLE` |  Red | RSA, ECDSA, ECDHE, DHE, NTLM detected |
+| `PQC_READY` |  Amber | Hybrid mode: X25519Kyber768, P256-ML-KEM-768 |
+| `FULLY_QUANTUM_SAFE` |  Green | Pure NIST PQC: ML-KEM-768, ML-DSA-65, SPHINCS+ |
 
 ### Asset Types
 
@@ -676,9 +600,10 @@ Full interactive docs: **http://localhost:8000/docs**
 ## Quick Start
 
 ### Prerequisites
+
 - Docker 24+ and Docker Compose v2
 - 4GB RAM minimum (DistilBERT model loads ~67MB into memory)
-- Ports 3000, 8000, 5432, 6379, 5555 available
+- Ports `3000, 8000, 5432, 6379, 5555` available
 
 ### 1. Clone and configure
 
@@ -687,8 +612,6 @@ git clone https://github.com/shivajirathod007/TRINETRA.git
 cd trinetra
 cp .env.example .env
 ```
-
-Edit `.env` to configure your environment variables.
 
 ### 2. Start all services
 
@@ -701,13 +624,8 @@ This starts: PostgreSQL, Redis, FastAPI backend, 2× Celery workers, Flower moni
 ### 3. Verify everything is running
 
 ```bash
-# Check all containers
 docker compose ps
-
-# Check API health
 curl http://localhost:8000/health
-
-# Check Redis + Celery connectivity
 curl http://localhost:8000/api/v1/health/queue
 ```
 
@@ -724,55 +642,31 @@ curl http://localhost:8000/api/v1/health/queue
 1. Open http://localhost:3000
 2. Navigate to **Asset Discovery**
 3. Enter a domain (e.g. `pnb.in` or `cloudflare.com`)
-4. Click **Scan Now**
-5. Watch real-time progress on the scan page
-6. Once complete, navigate to **CBOM** to see results
+4. Click **Scan Now** and watch real-time progress
+5. Once complete, navigate to **CBOM** to see results
 
-### Testing PQC Detection
-
-To verify PQC_READY detection works, scan `cloudflare.com` — Cloudflare has deployed X25519Kyber768 hybrid TLS on all edge servers since 2023.
+> **Testing PQC detection:** scan `cloudflare.com` — Cloudflare has deployed X25519Kyber768 hybrid TLS on all edge servers since 2023.
 
 ---
 
 ## Running Without Docker
 
-### 1. Start dependencies
-
 ```bash
-# PostgreSQL
-pg_ctl start  # or: brew services start postgresql
+# 1. Dependencies
+pg_ctl start          # or: brew services start postgresql
+redis-server           # or: brew services start redis
 
-# Redis
-redis-server  # or: brew services start redis
-```
-
-### 2. Backend
-
-```bash
+# 2. Backend
 cd backend
 pip install -r requirements.txt
-
-# Run migrations
 alembic upgrade head
-
-# Start API
 uvicorn api.main:app --reload --port 8000
-```
 
-### 3. Celery Worker (required for scans)
+# 3. Celery worker (required for scans)
+celery -A workers.celery_app worker -Q scans,discovery,analysis --loglevel=info --concurrency=4
 
-```bash
-cd backend
-celery -A workers.celery_app worker \
-  -Q scans,discovery,analysis \
-  --loglevel=info \
-  --concurrency=4
-```
-
-### 4. Frontend
-
-```bash
-cd frontend
+# 4. Frontend
+cd ../frontend
 npm install
 npm run dev
 ```
@@ -800,38 +694,38 @@ npm run dev
 
 ## Troubleshooting
 
-### Scans stay "Queued"
+<details>
+<summary><strong>Scans stay "Queued"</strong></summary>
 
 ```bash
-# Check Redis is reachable
 curl http://localhost:8000/api/v1/health/queue
-
-# Check worker logs
 docker compose logs worker --tail=50
-
-# Restart worker
 docker compose restart worker
 ```
+</details>
 
-### Scans get stuck at X%
+<details>
+<summary><strong>Scans get stuck at X%</strong></summary>
 
-- **0 live hosts found**: The target domain's subdomains resolved but nothing is listening on scanned ports. This is normal for domains with aggressive firewalls (e.g. cloudflare.com blocks port scanners). The scan will eventually time out and complete.
-- **Stuck at 20%**: Port scanning completed but asset classification found 0 HTTPS endpoints. Check if the domain uses non-standard ports.
-- **Worker crash**: Check `docker compose logs worker` for Python exceptions.
+- **0 live hosts found:** subdomains resolved but nothing is listening on scanned ports — normal for domains with aggressive firewalls (e.g. Cloudflare blocks port scanners). The scan will eventually time out and complete.
+- **Stuck at 20%:** port scanning completed but asset classification found 0 HTTPS endpoints — check if the domain uses non-standard ports.
+- **Worker crash:** check `docker compose logs worker` for Python exceptions.
+</details>
 
-### AI Classifier not working
+<details>
+<summary><strong>AI Classifier not working</strong></summary>
 
-The DistilBERT model weights are loaded from `backend/engine/ai/loaded_model/`. If the model files are missing, the AI step is skipped and only deterministic scanners run.
+DistilBERT model weights load from `backend/engine/ai/loaded_model/`. If the model files are missing, the AI step is skipped and only deterministic scanners run.
+</details>
 
-### Database connection errors
+<details>
+<summary><strong>Database connection errors</strong></summary>
 
 ```bash
-# Check PostgreSQL is healthy
 docker compose ps postgres
-
-# Run migrations manually
 docker compose exec api alembic upgrade head
 ```
+</details>
 
 ---
 
@@ -855,19 +749,14 @@ docker compose exec api alembic upgrade head
 
 ---
 
-## Team
-
-**Team ZeroHour** — Built for the PNB Quantum Security Hackathon
-- **Shivaji Rathod** — Lead, Architecture, Cyber Sec (Github:- https://github.com/shivajirathod007, LinkedIn:- [www.linkedin.com/in/shivaji-rathod007](https://www.linkedin.com/in/shivaji-rathod007/))
-- **Shraddha Jagtap** — Backend & AI Integration (GitHub:- https://github.com/shraddha-1210 LinkedIn:- https://www.linkedin.com/in/shraddha-jagtap-3bb07a291/)
-- **Shivam Potpalliwar** — Frontend Designer & researcher (GitHub:- https://github.com/ShivamInnovates LinkedIn:- https://www.linkedin.com/in/shivam-potpalliwar-6855452b8/)
-
-- **Abhinay Thorat** — Frontend Designer & Backend (LinkedIn:- https://www.linkedin.com/in/abhinay-thorat-a406642ba/)
----
-
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
 ---
 
+<div align="center">
+
 *TRINETRA — Sanskrit for "three-eyed" — sees what others miss.*
+
+</div>
