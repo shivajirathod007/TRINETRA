@@ -366,14 +366,14 @@ flowchart TD
 
 | Asset Type | TLS | Cert | VPN | API | SSH | SMTP | AI |
 |------------|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| `web_portal` |  |  | |  | | |  |
-| `api_endpoint` |  |  | |  | | |  |
-| `vpn_gateway` |  |  |  | | | | |
-| `ssh_endpoint` | | | | |  | | |
-| `smtp_mta` | | | | | |  | |
-| `mobile_backend` |  |  | |  | | |  |
-| `staging` |  |  | |  | | |  |
-| `shadow_asset` |  |  | |  | | |  |
+| `web_portal` | ✓ | ✓ |  | ✓ |  |  | ✓ |
+| `api_endpoint` | ✓ | ✓ |  | ✓ |  |  | ✓ |
+| `vpn_gateway` | ✓ | ✓ | ✓ |  |  |  |  |
+| `ssh_endpoint` |  |  |  |  | ✓ |  |  |
+| `smtp_mta` |  |  |  |  |  | ✓ |  |
+| `mobile_backend` | ✓ | ✓ |  | ✓ |  |  | ✓ |
+| `staging` | ✓ | ✓ |  | ✓ |  |  | ✓ |
+| `shadow_asset` | ✓ | ✓ |  | ✓ |  |  | ✓ |
 
 > *Scheitle et al., ACM IMC 2018: CT log data reveals 30–40% more subdomains than DNS enumeration alone.*
 
