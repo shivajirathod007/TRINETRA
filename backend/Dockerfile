@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies
 COPY requirements.txt .
+ENV PIP_DEFAULT_TIMEOUT=1000
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
