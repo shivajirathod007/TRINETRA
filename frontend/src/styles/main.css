@@ -282,6 +282,22 @@ a {
   display: none !important;
 }
 
+/* Landing page alternating section backgrounds */
+.landing-section-alt {
+  background: rgba(0, 0, 0, 0.12);
+}
+.light-theme .landing-section-alt {
+  background: rgba(99, 102, 241, 0.03);
+}
+
+/* Landing page footer */
+.landing-footer {
+  background: #04060d;
+}
+.light-theme .landing-footer {
+  background: rgba(248, 250, 255, 0.98);
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    NAVIGATION (landing page)
    ═══════════════════════════════════════════════════════════════════ */

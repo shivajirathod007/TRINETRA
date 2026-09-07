@@ -122,10 +122,10 @@ const Sidebar = () => {
         }}>
           <div style={{
             width: 26, height: 26, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #d97706, #7c3aed)',
+            background: 'linear-gradient(135deg, #4f46e5, #2563eb)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '11px', fontWeight: 800, color: '#fff', flexShrink: 0,
-            boxShadow: '0 2px 6px rgba(217,119,6,0.28)',
+            boxShadow: '0 2px 6px rgba(79,70,229,0.25)',
           }}>
             {initials}
           </div>

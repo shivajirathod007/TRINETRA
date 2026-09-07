@@ -333,7 +333,7 @@ export default function AssetInventoryPage() {
           <button key={t} onClick={() => { setTab(t); setRowLimit(15); }}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all border cursor-pointer font-outfit"
             style={tab === t
-              ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', borderColor: 'transparent', color: 'white' }
+              ? { background: 'linear-gradient(135deg, #4f46e5, #2563eb)', borderColor: 'transparent', color: 'white', boxShadow: '0 2px 8px rgba(79,70,229,0.25)' }
               : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
             {tabIcons[t]}
             <span>{t}</span>
@@ -367,7 +367,7 @@ export default function AssetInventoryPage() {
               <button key={r} onClick={() => { setRiskFilter(r); setRowLimit(15); }}
                 className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer"
                 style={riskFilter === r
-                  ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', borderColor: 'transparent', color: 'white', boxShadow: '0 2px 8px rgba(217,119,6,0.3)' }
+                  ? { background: 'linear-gradient(135deg, #4f46e5, #2563eb)', borderColor: 'transparent', color: 'white', boxShadow: '0 2px 8px rgba(79,70,229,0.25)' }
                   : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
                 {r}
               </button>
