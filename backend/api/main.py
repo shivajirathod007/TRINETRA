@@ -1,9 +1,27 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
+from core.logging import get_logger
+from engine.ai.llm_fallback import log_llm_fallback_config
 
 from api.routes import scan, dashboard, cbom, certificate, assets, chat, auth, rules, scheduled_scans, reports
+
+log = get_logger(__name__)
+
+
+def _warm_up_ai_classifier() -> None:
+    """
+    Load the DistilBERT classifier and run one throwaway prediction so the
+    ~67MB model is resident before the first real request, instead of adding
+    its load time to whichever user happens to arrive first.
+    """
+    from engine.ai.classifier import AIClassifier
+
+    classifier = AIClassifier()
+    classifier.predict("warm-up: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384")
+    log.info("ai_classifier_warmed_up", model_loaded=classifier.is_loaded)
 
 
 @asynccontextmanager
@@ -24,6 +42,26 @@ async def lifespan(app: FastAPI):
             )
         except Exception:
             pass  # DB may be down; routes will return 503 or []
+
+    # Log the LLM fallback configuration early so misconfigurations are visible
+    try:
+        log_llm_fallback_config()
+    except Exception as e:
+        log.warning("llm_fallback_config_log_failed", error=str(e))
+
+    # Warm up DistilBERT off the event loop so startup is not blocked
+    try:
+        await asyncio.to_thread(_warm_up_ai_classifier)
+    except Exception as e:
+        log.warning("ai_classifier_warmup_failed", error=str(e))
+
+    # Register JARSH's Ollama keep-alive here: __init__ runs at import time,
+    # where there is no event loop to schedule it on.
+    try:
+        asyncio.create_task(chat.jarsh_service._keep_model_alive())
+    except Exception as e:
+        log.warning("jarsh_keep_alive_registration_failed", error=str(e))
+
     yield
 
 
