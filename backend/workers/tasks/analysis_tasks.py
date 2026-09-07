@@ -63,12 +63,16 @@ def aggregate_scan_results(self, asset_results: list[dict], scan_id: str, domain
             shadow_count += 1
 
     import db.sync_db as sync_db
-    sync_db.finalize_scan_sync(
-        scan_id=scan_id,
-        organization_score=org_score,
-        risk_counts=risk_counts,
-        shadow_assets_found=shadow_count,
-    )
+    try:
+        sync_db.finalize_scan_sync(
+            scan_id=scan_id,
+            organization_score=org_score,
+            risk_counts=risk_counts,
+            shadow_assets_found=shadow_count,
+        )
+    except Exception as e:
+        log.error("scan_finalization_failed", scan_id=scan_id, error=str(e))
+        # Keep going to return the summary dict at least
 
     summary = {
         "scan_id": scan_id,

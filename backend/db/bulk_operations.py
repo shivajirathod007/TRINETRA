@@ -50,6 +50,7 @@ class BulkDatabaseWriter:
         if not asset_updates:
             return 0
 
+        conn = None
         try:
             conn = psycopg2.connect(self.db_url)
             conn.autocommit = False
@@ -165,6 +166,7 @@ class BulkDatabaseWriter:
         if not assets_data:
             return []
 
+        conn = None
         try:
             conn = psycopg2.connect(self.db_url)
 

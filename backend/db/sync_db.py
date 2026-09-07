@@ -12,14 +12,26 @@ log = get_logger(__name__)
 psycopg2.extras.register_uuid()
 
 
+from contextlib import contextmanager
+
 def get_sync_conn():
     """Resturns a synchronous psycopg2 connection."""
     return psycopg2.connect(settings.database_url_sync)
 
+@contextmanager
+def get_sync_session():
+    """Provides a connection that commits on success and closes unconditionally."""
+    conn = get_sync_conn()
+    try:
+        with conn:
+            yield conn
+    finally:
+        conn.close()
+
 
 def update_scan_status_sync(scan_id: str, status: str, current_stage: str = None, error_message: str = None) -> None:
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 updates = ["status = %s"]
                 params = [status]
@@ -52,7 +64,7 @@ def update_scan_status_sync(scan_id: str, status: str, current_stage: str = None
 
 def update_scan_progress_sync(scan_id: str, assets_discovered: int = None, assets_scanned: int = None, current_stage: str = None, shadow_assets_found: int = None) -> None:
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 updates = []
                 params = []
@@ -85,7 +97,7 @@ def update_scan_progress_sync(scan_id: str, assets_discovered: int = None, asset
 
 def finalize_scan_sync(scan_id: str, organization_score: float, risk_counts: dict, shadow_assets_found: int) -> None:
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 # Count actual scanned assets from DB for accuracy
                 cur.execute(
@@ -144,7 +156,7 @@ def finalize_scan_sync(scan_id: str, organization_score: float, risk_counts: dic
 def create_asset_sync(scan_job_id: str, fqdn: str, asset_url: str, asset_type: str, port: int = 443, ip_address: str = None, is_shadow_asset: bool = False, discovery_method: str = "ct_log_mining") -> str:
     asset_id = str(uuid.uuid4())
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     """
@@ -202,7 +214,7 @@ def update_asset_scan_result_sync(asset_id: str, scan_data: dict) -> None:
 
         params.append(asset_id)
 
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 query = f"UPDATE scanned_assets SET {', '.join(updates)} WHERE id = %s"
                 cur.execute(query, params)
@@ -224,7 +236,7 @@ def update_asset_scan_result_sync(asset_id: str, scan_data: dict) -> None:
 
 def mark_asset_failed_sync(asset_id: str, error: str, status: str = "FAILED") -> None:
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "UPDATE scanned_assets SET scan_status = %s, scan_error = %s WHERE id = %s",
@@ -252,7 +264,7 @@ def create_certificate_sync(cert_data: dict) -> str:
         placeholders = ", ".join(["%s"] * len(columns))
         col_str = ", ".join(columns)
         
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 query = f"INSERT INTO pqc_certificates ({col_str}) VALUES ({placeholders})"
                 cur.execute(query, values)
@@ -265,7 +277,7 @@ def create_certificate_sync(cert_data: dict) -> str:
 
 def get_active_scan_rules_sync() -> list[dict]:
     try:
-        with get_sync_conn() as conn:
+        with get_sync_session() as conn:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT match_type, pattern, override_status FROM custom_scan_rules WHERE is_active = true"

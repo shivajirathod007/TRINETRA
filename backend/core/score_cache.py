@@ -212,10 +212,22 @@ def with_score_cache(func):
             # Actual scoring logic
             return score_result
     """
+    import inspect
 
-    def wrapper(self, asset_url: str, algorithm: str, cert_expiry_days: int, **kwargs):
+    def wrapper(self, *args, **kwargs):
+        # Bind arguments to the function signature to handle positional args
+        sig = inspect.signature(func)
+        bound_args = sig.bind(self, *args, **kwargs)
+        bound_args.apply_defaults()
+        
+        args_dict = bound_args.arguments
+        
+        asset_url = args_dict.get("asset_url", "")
+        algorithm = args_dict.get("algorithm", "")
+        cert_expiry_days = args_dict.get("cert_expiry_days", 0)
+        data_sensitivity_tier = args_dict.get("data_sensitivity_tier", "static")
+
         # Build cache key
-        data_sensitivity_tier = kwargs.get("data_sensitivity_tier", "static")
         cache_key = make_cache_key(asset_url, algorithm, cert_expiry_days, data_sensitivity_tier)
 
         # Try cache first
@@ -225,7 +237,7 @@ def with_score_cache(func):
             return cached
 
         # Not in cache, call original function
-        result = func(self, asset_url, algorithm, cert_expiry_days, **kwargs)
+        result = func(self, *args, **kwargs)
 
         # Store in cache
         _score_cache.set(cache_key, result)

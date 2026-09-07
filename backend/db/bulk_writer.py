@@ -45,6 +45,7 @@ class BulkAssetWriter:
             log.warning("bulk_update_assets_empty_list")
             return
 
+        conn = None
         try:
             conn = psycopg2.connect(settings.database_url_sync)
             with conn:
@@ -62,6 +63,9 @@ class BulkAssetWriter:
                 error=str(e)
             )
             raise
+        finally:
+            if conn:
+                conn.close()
 
     @staticmethod
     def _execute_bulk_update(cur, asset_updates: List[Tuple[str, Dict[str, Any]]]) -> int:
@@ -232,6 +236,7 @@ class BulkAssetWriter:
         if not asset_data_list:
             return []
 
+        conn = None
         try:
             conn = psycopg2.connect(settings.database_url_sync)
             with conn:
@@ -250,6 +255,9 @@ class BulkAssetWriter:
                 error=str(e)
             )
             raise
+        finally:
+            if conn:
+                conn.close()
 
     @staticmethod
     def _execute_bulk_insert(cur, asset_data_list: List[Dict[str, Any]]) -> List[str]:

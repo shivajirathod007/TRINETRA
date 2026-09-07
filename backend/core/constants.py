@@ -166,6 +166,19 @@ def get_algorithm_risk(algorithm: str) -> int:
         else:
             # Default to RSA-2048 for bare "RSA"
             return ALGORITHM_RISK_WEIGHTS.get("RSA-2048", 90)
+            
+    # Handle bare PQC algorithm names
+    if "KYBER" in algo_clean or "ML-KEM" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ML-KEM-768", 2)
+        
+    if "DILITHIUM" in algo_clean or "ML-DSA" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("ML-DSA-65", 2)
+        
+    if "SPHINCS" in algo_clean or "SLH-DSA" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("SPHINCS+", 3)
+        
+    if "FALCON" in algo_clean:
+        return ALGORITHM_RISK_WEIGHTS.get("FALCON-512", 3)
     
     # DH/DHE variants
     if "DH" in algo_clean or "DIFFIE" in algo_clean:
@@ -284,6 +297,7 @@ EXPOSURE_SCORES: dict[str, int] = {
     "web_portal":           100,   # Customer-facing web portal
     "api_public":            95,   # Public API, no auth
     "api_authenticated":     80,   # Authenticated banking API
+    "api_endpoint":          85,   # Generic API endpoint
     "vpn_gateway":           85,   # Customer VPN gateway
     "shadow_asset":          90,   # Forgotten asset — highest concern
     "staging":               75,   # Staging/UAT publicly accessible
