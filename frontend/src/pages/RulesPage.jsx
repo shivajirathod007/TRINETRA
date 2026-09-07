@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Shield, Settings, AlertCircle, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Shield, Settings, AlertCircle, RefreshCw, Network } from 'lucide-react';
 import apiClient from '../api/client';
 
 const STATUS_STYLE = {
@@ -25,35 +25,37 @@ const RulesPage = () => {
   const [rules, setRules]             = useState([]);
   const [isLoading, setIsLoading]     = useState(true);
   const [error, setError]             = useState(null);
-  const [matchType, setMatchType]     = useState('HOSTNAME');
-  const [pattern, setPattern]         = useState('');
-  const [overrideStatus, setOverrideStatus] = useState('PQC_READY');
-  const [isSubmitting, setIsSubmitting]     = useState(false);
+  
+  // PQC Rule State
+  const [pqcMatchType, setPqcMatchType]     = useState('HOSTNAME');
+  const [pqcPattern, setPqcPattern]         = useState('');
+  const [pqcOverrideStatus, setPqcOverrideStatus] = useState('PQC_READY');
+  
+  // Port Rule State
+  const [portPattern, setPortPattern]         = useState('');
+  const [portService, setPortService] = useState('https');
+  const [customPortService, setCustomPortService] = useState('');
+
+  const [isSubmittingPqc, setIsSubmittingPqc]     = useState(false);
+  const [isSubmittingPort, setIsSubmittingPort]     = useState(false);
 
   useEffect(() => {
-    if (matchType === 'PROTOCOL') {
-      setPattern('TLSv1.2');
+    if (pqcMatchType === 'PROTOCOL') {
+      setPqcPattern('TLSv1.2');
     } else {
-      setPattern('');
+      setPqcPattern('');
     }
-    
-    if (matchType === 'PORT') {
-      setOverrideStatus('https');
-    } else {
-      setOverrideStatus('PQC_READY');
-    }
-  }, [matchType]);
+  }, [pqcMatchType]);
 
-  const getPlaceholder = () => {
+  const getPqcPlaceholder = () => {
     const map = {
       CIPHER_SUITE: 'e.g. TLS_AES_256_GCM_SHA384',
       IP_ADDRESS:   'e.g. 192.168.1.*',
-      PORT:         'e.g. 443',
       ALGORITHM:    'e.g. RSA-2048',
       VPN_PROTOCOL: 'e.g. OpenVPN',
       SSH_PROTOCOL: 'e.g. SSH-2.0-OpenSSH_*',
     };
-    return map[matchType] || 'e.g. *.internal.bank.com';
+    return map[pqcMatchType] || 'e.g. *.internal.bank.com';
   };
 
   const fetchRules = async () => {
@@ -71,18 +73,37 @@ const RulesPage = () => {
 
   useEffect(() => { fetchRules(); }, []);
 
-  const handleAddRule = async (e) => {
+  const handleAddPqcRule = async (e) => {
     e.preventDefault();
-    if (!pattern) return;
-    setIsSubmitting(true);
+    if (!pqcPattern) return;
+    setIsSubmittingPqc(true);
     try {
-      await apiClient.post('/rules/', { match_type: matchType, pattern, override_status: overrideStatus, is_active: true });
-      setPattern('');
+      await apiClient.post('/rules/', { match_type: pqcMatchType, pattern: pqcPattern, override_status: pqcOverrideStatus, is_active: true });
+      setPqcPattern('');
       await fetchRules();
     } catch (err) {
       setError(err.message || 'Failed to add rule');
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingPqc(false);
+    }
+  };
+
+  const handleAddPortRule = async (e) => {
+    e.preventDefault();
+    if (!portPattern) return;
+    setIsSubmittingPort(true);
+    
+    const finalService = portService === 'custom' ? customPortService.toLowerCase() : portService;
+    
+    try {
+      await apiClient.post('/rules/', { match_type: 'PORT', pattern: portPattern, override_status: finalService, is_active: true });
+      setPortPattern('');
+      setCustomPortService('');
+      await fetchRules();
+    } catch (err) {
+      setError(err.message || 'Failed to add port mapping');
+    } finally {
+      setIsSubmittingPort(false);
     }
   };
 
@@ -96,6 +117,9 @@ const RulesPage = () => {
     }
   };
 
+  const pqcRules = rules.filter(r => r.match_type !== 'PORT');
+  const portRules = rules.filter(r => r.match_type === 'PORT');
+
   return (
     <div className="flex flex-col gap-6">
       {/* Header */}
@@ -104,7 +128,7 @@ const RulesPage = () => {
           Manual Rules &amp; Override
         </h1>
         <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>
-          Define custom rules to override PQC readiness classifications during scans.
+          Define custom rules to override PQC readiness classifications and manually map non-standard ports.
         </p>
       </div>
 
@@ -116,19 +140,20 @@ const RulesPage = () => {
         </div>
       )}
 
+      {/* ── PQC OVERRIDES SECTION ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
-        {/* ── Add Rule form ── */}
+        
+        {/* Add PQC Rule form */}
         <div className="eterna-phase-card p-5 rounded-2xl h-fit">
           <div className="flex items-center gap-2.5 mb-5">
             <div className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)' }}>
-              <Plus size={16} aria-hidden="true" />
+              <Shield size={16} aria-hidden="true" />
             </div>
-            <h2 className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>Add New Rule</h2>
+            <h2 className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>Add PQC Override</h2>
           </div>
 
-          <form onSubmit={handleAddRule} className="space-y-4">
+          <form onSubmit={handleAddPqcRule} className="space-y-4">
             {/* Match Type */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
@@ -136,8 +161,8 @@ const RulesPage = () => {
                 Match Type
               </label>
               <select
-                value={matchType}
-                onChange={e => setMatchType(e.target.value)}
+                value={pqcMatchType}
+                onChange={e => setPqcMatchType(e.target.value)}
                 style={inputStyle}
                 onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-indigo)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-indigo-glow)'; }}
                 onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
@@ -146,7 +171,6 @@ const RulesPage = () => {
                 <option value="CIPHER_SUITE">Cipher Suite</option>
                 <option value="PROTOCOL">TLS Protocol Version</option>
                 <option value="IP_ADDRESS">IP Address</option>
-                <option value="PORT">Port Number</option>
                 <option value="ALGORITHM">Crypto Algorithm</option>
                 <option value="VPN_PROTOCOL">VPN Protocol</option>
                 <option value="SSH_PROTOCOL">SSH Protocol</option>
@@ -159,10 +183,10 @@ const RulesPage = () => {
                 style={{ color: 'var(--text-secondary)' }}>
                 Pattern
               </label>
-              {matchType === 'PROTOCOL' ? (
+              {pqcMatchType === 'PROTOCOL' ? (
                 <select
-                  value={pattern || 'TLSv1.2'}
-                  onChange={e => setPattern(e.target.value)}
+                  value={pqcPattern || 'TLSv1.2'}
+                  onChange={e => setPqcPattern(e.target.value)}
                   style={inputStyle}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-indigo)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-indigo-glow)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
@@ -174,77 +198,64 @@ const RulesPage = () => {
               ) : (
                 <input
                   type="text"
-                  value={pattern}
-                  onChange={e => setPattern(e.target.value)}
-                  placeholder={getPlaceholder()}
+                  value={pqcPattern}
+                  onChange={e => setPqcPattern(e.target.value)}
+                  placeholder={getPqcPlaceholder()}
                   style={{ ...inputStyle, fontFamily: 'var(--font-mono, monospace)' }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-indigo)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-indigo-glow)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
-                  required={matchType !== 'PROTOCOL'}
+                  required={pqcMatchType !== 'PROTOCOL'}
                 />
               )}
             </div>
 
-            {/* Override Status / Service Protocol */}
+            {/* Override Status */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
                 style={{ color: 'var(--text-secondary)' }}>
-                {matchType === 'PORT' ? 'Service Protocol' : 'Override Status'}
+                Override Status
               </label>
               <select
-                value={overrideStatus}
-                onChange={e => setOverrideStatus(e.target.value)}
+                value={pqcOverrideStatus}
+                onChange={e => setPqcOverrideStatus(e.target.value)}
                 style={inputStyle}
                 onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-indigo)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-indigo-glow)'; }}
                 onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                {matchType === 'PORT' ? (
-                  <>
-                    <option value="https">HTTPS</option>
-                    <option value="https-alt">HTTPS (Alt)</option>
-                    <option value="http">HTTP</option>
-                    <option value="ssh">SSH</option>
-                    <option value="smtp">SMTP</option>
-                    <option value="openvpn">OpenVPN</option>
-                  </>
-                ) : (
-                  <>
-                    <option value="PQC_READY">PQC Ready</option>
-                    <option value="FULLY_QUANTUM_SAFE">Fully Quantum Safe</option>
-                    <option value="VULNERABLE">Vulnerable</option>
-                    <option value="SAFE">Safe</option>
-                  </>
-                )}
+                <option value="PQC_READY">PQC Ready</option>
+                <option value="FULLY_QUANTUM_SAFE">Fully Quantum Safe</option>
+                <option value="VULNERABLE">Vulnerable</option>
+                <option value="SAFE">Safe</option>
               </select>
             </div>
 
             <button
               type="submit"
-              disabled={isSubmitting || !pattern}
+              disabled={isSubmittingPqc || !pqcPattern}
               className="eterna-btn-primary w-full py-2.5 text-sm font-bold"
             >
-              {isSubmitting ? (
+              {isSubmittingPqc ? (
                 <><RefreshCw size={13} className="animate-spin" aria-hidden="true" /> Adding…</>
               ) : (
-                <><Plus size={13} aria-hidden="true" /> Add Rule</>
+                <><Plus size={13} aria-hidden="true" /> Add Override</>
               )}
             </button>
           </form>
         </div>
 
-        {/* ── Rules table ── */}
+        {/* PQC Rules table */}
         <div className="lg:col-span-2 eterna-phase-card rounded-2xl overflow-hidden">
           <div className="px-5 py-3.5 border-b flex items-center justify-between"
             style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
             <div className="flex items-center gap-2">
               <Shield size={15} style={{ color: 'var(--primary-indigo)' }} aria-hidden="true" />
               <h2 className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>
-                Active Rules
+                Active PQC Overrides
               </h2>
               {!isLoading && (
                 <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full"
                   style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)', border: '1px solid rgba(99,102,241,0.25)' }}>
-                  {rules.length}
+                  {pqcRules.length}
                 </span>
               )}
             </div>
@@ -257,7 +268,7 @@ const RulesPage = () => {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr style={{ background: 'var(--surface-card)' }}>
-                  {['Match Type', 'Pattern', 'Status / Protocol', 'Actions'].map(h => (
+                  {['Match Type', 'Pattern', 'Override Status', 'Actions'].map(h => (
                     <th key={h}
                       className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
                       style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>
@@ -275,22 +286,19 @@ const RulesPage = () => {
                       Loading rules…
                     </td>
                   </tr>
-                ) : rules.length === 0 ? (
+                ) : pqcRules.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-4 py-14 text-center"
                       style={{ color: 'var(--text-secondary)' }}>
                       <div className="flex flex-col items-center gap-2 opacity-40">
                         <Settings size={28} aria-hidden="true" />
-                        <p className="text-sm">No custom rules defined yet.</p>
+                        <p className="text-sm">No PQC override rules defined yet.</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  rules.map(rule => {
-                    const isPort = rule.match_type === 'PORT';
-                    const s = isPort 
-                      ? { bg: 'rgba(99,102,241,0.10)', color: 'var(--primary-indigo)', border: 'rgba(99,102,241,0.25)' }
-                      : (STATUS_STYLE[rule.override_status] ?? STATUS_STYLE.PQC_READY);
+                  pqcRules.map(rule => {
+                    const s = STATUS_STYLE[rule.override_status] ?? STATUS_STYLE.PQC_READY;
                       
                     return (
                       <tr key={rule.id}
@@ -320,7 +328,6 @@ const RulesPage = () => {
                             onMouseEnter={e => { e.currentTarget.style.color = 'var(--status-critical)'; e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; }}
                             onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
                             title="Delete rule"
-                            aria-label={`Delete rule for ${rule.pattern}`}
                           >
                             <Trash2 size={15} aria-hidden="true" />
                           </button>
@@ -334,8 +341,189 @@ const RulesPage = () => {
           </div>
         </div>
       </div>
+
+      {/* ── PORT MAPPINGS SECTION ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 mt-4">
+        
+        {/* Add Port Rule form */}
+        <div className="eterna-phase-card p-5 rounded-2xl h-fit">
+          <div className="flex items-center gap-2.5 mb-5">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--status-safe)' }}>
+              <Network size={16} aria-hidden="true" />
+            </div>
+            <h2 className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>Map Custom Port</h2>
+          </div>
+
+          <form onSubmit={handleAddPortRule} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
+                style={{ color: 'var(--text-secondary)' }}>
+                Port Number
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="65535"
+                value={portPattern}
+                onChange={e => setPortPattern(e.target.value)}
+                placeholder="e.g. 8443"
+                style={{ ...inputStyle, fontFamily: 'var(--font-mono, monospace)' }}
+                onFocus={e => { e.currentTarget.style.borderColor = 'var(--status-safe)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.2)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
+                style={{ color: 'var(--text-secondary)' }}>
+                Service Protocol
+              </label>
+              <select
+                value={portService}
+                onChange={e => setPortService(e.target.value)}
+                style={inputStyle}
+                onFocus={e => { e.currentTarget.style.borderColor = 'var(--status-safe)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.2)'; }}
+                onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+              >
+                <option value="https">HTTPS</option>
+                <option value="https-alt">HTTPS (Alt)</option>
+                <option value="http">HTTP</option>
+                <option value="ssh">SSH</option>
+                <option value="smtp">SMTP</option>
+                <option value="openvpn">OpenVPN</option>
+                <option value="custom">Custom (Specify Below)</option>
+              </select>
+              
+              {portService === 'custom' && (
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    value={customPortService}
+                    onChange={e => setCustomPortService(e.target.value)}
+                    placeholder="e.g. mysql, rdp, myapp"
+                    style={{ ...inputStyle, fontFamily: 'var(--font-mono, monospace)' }}
+                    onFocus={e => { e.currentTarget.style.borderColor = 'var(--status-safe)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(16,185,129,0.2)'; }}
+                    onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmittingPort || !portPattern || (portService === 'custom' && !customPortService)}
+              className="w-full py-2.5 text-sm font-bold rounded-xl transition-all"
+              style={{
+                background: (isSubmittingPort || !portPattern || (portService === 'custom' && !customPortService)) ? 'var(--surface-border)' : 'var(--status-safe)',
+                color: (isSubmittingPort || !portPattern || (portService === 'custom' && !customPortService)) ? 'var(--text-secondary)' : '#fff',
+              }}
+            >
+              {isSubmittingPort ? (
+                <><RefreshCw size={13} className="animate-spin inline mr-2" aria-hidden="true" /> Adding…</>
+              ) : (
+                <><Plus size={13} className="inline mr-2" aria-hidden="true" /> Add Port</>
+              )}
+            </button>
+          </form>
+        </div>
+
+        {/* Port Rules table */}
+        <div className="lg:col-span-2 eterna-phase-card rounded-2xl overflow-hidden">
+          <div className="px-5 py-3.5 border-b flex items-center justify-between"
+            style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+            <div className="flex items-center gap-2">
+              <Network size={15} style={{ color: 'var(--status-safe)' }} aria-hidden="true" />
+              <h2 className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>
+                Active Port Mappings
+              </h2>
+              {!isLoading && (
+                <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(16,185,129,0.12)', color: 'var(--status-safe)', border: '1px solid rgba(16,185,129,0.25)' }}>
+                  {portRules.length}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr style={{ background: 'var(--surface-card)' }}>
+                  {['Match Type', 'Port Number', 'Service Protocol', 'Actions'].map(h => (
+                    <th key={h}
+                      className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
+                      style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-10 text-center text-sm"
+                      style={{ color: 'var(--text-secondary)' }}>
+                      <RefreshCw size={18} className="animate-spin inline mr-2" aria-hidden="true" />
+                      Loading rules…
+                    </td>
+                  </tr>
+                ) : portRules.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-14 text-center"
+                      style={{ color: 'var(--text-secondary)' }}>
+                      <div className="flex flex-col items-center gap-2 opacity-40">
+                        <Network size={28} aria-hidden="true" />
+                        <p className="text-sm">No custom port mappings defined.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  portRules.map(rule => (
+                    <tr key={rule.id}
+                      className="border-b group"
+                      style={{ borderColor: 'var(--border-divider)', transition: 'background 0.12s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                      <td className="px-4 py-3 text-sm"
+                        style={{ color: 'var(--text-secondary)' }}>
+                        PORT
+                      </td>
+                      <td className="px-4 py-3 font-mono text-sm font-bold"
+                        style={{ color: 'var(--text-primary)' }}>
+                        {rule.pattern}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase border"
+                          style={{ background: 'rgba(16,185,129,0.10)', borderColor: 'rgba(16,185,129,0.25)', color: 'var(--status-safe)' }}>
+                          {rule.override_status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleDeleteRule(rule.id)}
+                          className="p-1.5 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                          style={{ color: 'var(--text-secondary)' }}
+                          onMouseEnter={e => { e.currentTarget.style.color = 'var(--status-critical)'; e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'transparent'; }}
+                          title="Delete rule"
+                        >
+                          <Trash2 size={15} aria-hidden="true" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default RulesPage;
+

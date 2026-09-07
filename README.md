@@ -128,6 +128,12 @@ The TRINETRA engine has been completely overhauled from sequential Celery-based 
 - **Batched ML Inference & Persistence** — batched DistilBERT inference and database writes, cutting scan time from **17 minutes to ~1.3 minutes** for 1,000 assets.
 - **Manual Rules Engine** — users can set manual heuristic rules directly from the inventory.
 
+### Recent Fixes
+- **Dynamic Port Rule Fixes**: Enhanced the manual rules engine to dynamically inject custom `PORT` rules into the scanner without incorrectly overriding the core quantum risk status of assets.
+- **VPN Classification Accuracy**: Fixed VPN port fingerprinting to correctly parse mapping overrides for custom OpenVPN ports (beyond just hardcoded ports).
+- **Database Connection Management**: Upgraded `sync_db.py` context managers for safe transaction handling under heavy concurrent loads to eliminate connection pooling exhaustion during Celery bulk operations.
+- **ML Fallback Stability**: Secured the DistilBERT inference pipeline to safely degrade to a regex pattern-matching engine when model weights are missing or LLM API keys (like Groq) are absent, preventing runtime crashes.
+
 ---
 
 ## Scan Pipeline (Sequence Flow)
