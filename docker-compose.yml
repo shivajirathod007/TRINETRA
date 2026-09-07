@@ -53,7 +53,7 @@ services:
       - APP_ENV=development
       - DEBUG=true
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - OLLAMA_MODEL=jarsh-phi3
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3:mini}
     env_file:
       - .env
     ports:
@@ -81,7 +81,7 @@ services:
       - DATABASE_URL_SYNC=postgresql://trinetra:trinetra_pass@postgres:5432/trinetra
       - REDIS_URL=redis://redis:6379/0
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - OLLAMA_MODEL=jarsh-phi3
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-phi3:mini}
     env_file:
       - .env
     volumes:
