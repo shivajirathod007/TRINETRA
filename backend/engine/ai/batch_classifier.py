@@ -87,7 +87,7 @@ class BatchAIClassifier:
                         self.classifier._create_detection(label, "regex_pattern_match", 1.0)
                     )
                     max_conf = 1.0
-                    break  # Stop at first regex match
+
 
             for label, pattern in VULNERABILITY_PATTERNS.items():
                 if pattern.search(text):
@@ -95,7 +95,7 @@ class BatchAIClassifier:
                         self.classifier._create_detection(label, "vulnerability_pattern_match", 1.0)
                     )
                     max_conf = 1.0
-                    break
+
 
             results.append((detections, max_conf))
 

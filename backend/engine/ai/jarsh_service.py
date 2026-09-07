@@ -75,14 +75,14 @@ class JARSHService:
         self.ollama_host = ollama_host or os.getenv("OLLAMA_HOST", "http://localhost:11434")
         self.model = model or os.getenv("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
         self.system_prompt = ""  # Empty because model has it built-in
-
-        # Cached Ollama health check: (checked_at_monotonic, is_up)
-        self._ollama_health_cache: Optional[Tuple[float, bool]] = None
-
-        # NOTE: _keep_model_alive() is deliberately NOT scheduled here.
-        # There is no running event loop at import time, so create_task() would
-        # raise RuntimeError and the keep-alive would never register. It is
-        # registered from the FastAPI startup hook in api/main.py instead.
+        
+        # Keep model loaded in memory to avoid 40-60s reload time
+        import asyncio
+        try:
+            self._keep_alive_task = asyncio.create_task(self._keep_model_alive())
+        except RuntimeError:
+            # If no event loop is running, skip keep_alive
+            pass
     
     async def _keep_model_alive(self):
         """Keep Ollama model loaded in memory for 24 hours"""
@@ -477,17 +477,29 @@ class JARSHService:
         parts.append("### \u2705 Recommended Actions")
         parts.append("")
         if scan.critical_count and scan.critical_count > 0:
-            parts.append("1. Remediate the critical assets listed above first.")
-            parts.append("2. Deploy hybrid (classical + PQC) key exchange on those endpoints.")
-            parts.append("3. Generate a CBOM report to track migration progress.")
-        else:
-            parts.append("1. Keep monitoring for newly exposed or shadow assets.")
-            parts.append("2. Plan a proactive PQC migration for medium and low-risk assets.")
-            parts.append("3. Re-scan after any certificate or TLS configuration change.")
-
-        return "\n".join(parts) + "\n"
-
-
+            summary += "## ⚡ Immediate Actions Required\n\n"
+            summary += "1. 🔍 **Review** all critical and high-risk assets\n"
+            summary += "2. 📋 **Plan** PQC migration for vulnerable endpoints\n"
+            summary += "3. 🔐 **Implement** hybrid cryptography as interim solution\n"
+            summary += "4. 📊 **Generate** CBOM report for compliance\n"
+            summary += "5. 🎯 **Prioritize** assets with long data lifetimes\n\n"
+        elif scan.status == "COMPLETED":
+            summary += "## ✅ Good News!\n\n"
+            summary += "No critical vulnerabilities found. Your infrastructure shows good quantum readiness.\n\n"
+            summary += "**Recommendations:**\n"
+            summary += "- Continue monitoring for new assets\n"
+            summary += "- Plan proactive PQC migration\n"
+            summary += "- Review medium and low-risk items\n\n"
+        
+        # Footer with next steps
+        summary += "---\n\n"
+        summary += "💬 **Ask me:**\n"
+        summary += "- \"Show mitigation steps for critical assets\"\n"
+        summary += "- \"Generate CBOM report\"\n"
+        summary += "- \"What is the migration timeline?\"\n"
+        
+        return summary
+    
     async def _handle_greeting(self) -> Dict:
         """Handle greeting queries"""
         response = await self._call_ollama(

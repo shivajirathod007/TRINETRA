@@ -1,3 +1,17 @@
+"""
+TRINETRA — LLM Fallback Classifier
+
+Provides LLM-based classification when regex patterns and the DistilBERT
+model return no/low-confidence results.
+
+TODO: Integrate Groq API as the primary LLM fallback provider.
+      - Add GROQ_API_KEY to .env and core/config.py settings
+      - Use Groq's chat completions endpoint (https://api.groq.com/openai/v1/chat/completions)
+      - Groq supports fast inference with models like llama3, mixtral, gemma
+      - Keep the same FALLBACK_SYSTEM_PROMPT and response parsing logic
+      - Update llm_classify() to call Groq instead of Anthropic
+"""
+
 import os
 import json
 import httpx
@@ -65,74 +79,34 @@ def log_llm_fallback_config() -> None:
 
 
 async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
-    if not settings.llm_fallback_enabled:
-        log.info("llm_fallback_disabled", asset_url=payload.asset_url)
-        return []
-
-    if not settings.anthropic_api_key:
-        log.warning("anthropic_api_key_missing_skipping_llm_fallback")
-        return []
-
-    try:
-        user_prompt = build_fallback_user_prompt(payload)
-        
-        async with httpx.AsyncClient(timeout=settings.llm_fallback_timeout) as client:
-            resp = await client.post(
-                ANTHROPIC_MESSAGES_ENDPOINT,
-                headers={
-                    "x-api-key": settings.anthropic_api_key,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json"
-                },
-                json={
-                    "model": settings.llm_model,
-                    "max_tokens": settings.llm_max_tokens,
-                    "system": FALLBACK_SYSTEM_PROMPT,
-                    "messages": [
-                        {"role": "user", "content": user_prompt}
-                    ]
-                }
-            )
-            if resp.status_code < 200 or resp.status_code >= 300:
-                # Surface HTTP failures (401, 429, 5xx, ...) distinctly from
-                # "no crypto detected" — both still return [] to the pipeline.
-                log.error(
-                    "llm_fallback_http_error",
-                    status_code=resp.status_code,
-                    model=settings.llm_model,
-                    endpoint=ANTHROPIC_MESSAGES_ENDPOINT,
-                    error_body=resp.text[:500],
-                    asset_url=payload.asset_url,
-                )
-                return []
-
-            data = resp.json()
-            response_text = data["content"][0]["text"].strip()
-            
-            # Defensive parsing just in case Claude included markdown
-            if response_text.startswith("```json"):
-                response_text = response_text[7:-3].strip()
-            elif response_text.startswith("```"):
-                response_text = response_text[3:-3].strip()
-
-            parsed_list = json.loads(response_text)
-            
-            detections = []
-            for item in parsed_list:
-                detections.append(SingleDetection(**item))
-                
-            return detections
-
-    except httpx.TimeoutException as e:
-        log.error(
-            "llm_fallback_timeout",
-            timeout_seconds=settings.llm_fallback_timeout,
-            model=settings.llm_model,
-            endpoint=ANTHROPIC_MESSAGES_ENDPOINT,
-            error=str(e),
-            asset_url=payload.asset_url,
-        )
-        return []
-    except Exception as e:
-        log.error("llm_fallback_failed", error=str(e), asset_url=payload.asset_url)
-        return []
+    """
+    LLM-based fallback classifier.
+    
+    Currently disabled — waiting for Groq API integration.
+    Returns empty list so the pipeline continues with regex-only results.
+    
+    TODO: Replace with Groq API call when GROQ_API_KEY is configured.
+          Example Groq integration:
+          
+          async with httpx.AsyncClient() as client:
+              resp = await client.post(
+                  "https://api.groq.com/openai/v1/chat/completions",
+                  headers={
+                      "Authorization": f"Bearer {settings.groq_api_key}",
+                      "Content-Type": "application/json",
+                  },
+                  json={
+                      "model": "llama3-70b-8192",  # or mixtral-8x7b-32768
+                      "messages": [
+                          {"role": "system", "content": FALLBACK_SYSTEM_PROMPT},
+                          {"role": "user", "content": user_prompt},
+                      ],
+                      "temperature": 0.1,
+                      "max_tokens": 1024,
+                  },
+              )
+    """
+    # TODO: Enable when Groq API key is added by friend
+    # For now, log and return empty — regex-only mode
+    log.info("llm_fallback_disabled", reason="Waiting for Groq API integration")
+    return []

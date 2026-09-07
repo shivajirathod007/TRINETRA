@@ -83,7 +83,7 @@ async def _run_all_scanners(scan_id: str, asset_data: dict) -> dict:
     try:
         return await asyncio.wait_for(
             _run_scanners_inner(scan_id, asset_data),
-            timeout=45.0,  # 45s max per asset — TLS fast mode + 8s HTTP + 5s SSH
+            timeout=120.0,  # 120s max per asset — TLS fast mode + 8s HTTP + 5s SSH
         )
     except asyncio.TimeoutError:
         asset_url = asset_data.get("asset_url", "unknown")
@@ -273,7 +273,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
                 asset_url=asset_url,
                 asset_type=asset_type,
                 status_code=api_result.http_status or 200,
-                response_headers=str(api_result.response_headers_raw or ""),
+                response_headers={k: str(v) for k, v in (api_result.response_headers_raw or {}).items()},
                 response_body=api_result.response_body_preview or "",
                 request_method="GET",
                 request_url=asset_url,
@@ -455,10 +455,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
         "key_exchange": key_exchange,
         "vulnerabilities": vulns,
         # Certificate
-        "cert_algorithm": (
-            cert_info.signature_algorithm if cert_info
-            else (f"RSA-{cert_info.key_length_bits}" if cert_info and cert_info.key_length_bits else primary_algorithm)
-        ),
+        "cert_algorithm": cert_info.signature_algorithm if cert_info else primary_algorithm,
         "cert_key_length": cert_info.key_length_bits if cert_info else None,
         "cert_expiry": cert_info.not_after.isoformat() if cert_info and cert_info.not_after else None,
         "cert_expiry_days": cert_expiry_days,

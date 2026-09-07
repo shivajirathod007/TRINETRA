@@ -2,6 +2,9 @@
 TRINETRA — AI Crypto Pattern Classifier
 Uses fine-tuned DistilBERT to classify cryptographic asset risk
 based on HTTP response text and headers.
+
+Current Mode: Regex + LLM Fallback
+(DistilBERT model inference activates automatically when model weights are available)
 """
 
 import os
@@ -67,7 +70,8 @@ class AIClassifier:
             self.is_loaded = True
             log.info("ai_model_loaded_successfully", device=str(self.device), labels=list(self.id2label.values()))
         except Exception as e:
-            log.error("ai_model_load_failed", error=str(e))
+            log.warning("ai_model_load_skipped", error=str(e),
+                       hint="Model weights likely missing. Using regex + LLM fallback mode.")
             self.is_loaded = False
 
     def predict(self, text: str) -> Tuple[List[SingleDetection], float]:
@@ -92,10 +96,13 @@ class AIClassifier:
                 detections.append(self._create_detection(label, "vulnerability_pattern_match", 1.0))
                 max_conf = 1.0
 
-        # ── 2. DistilBERT Model Prediction ──────────────────────────────────
+        # ── 2. DistilBERT Model Prediction (when model weights are available) ─
         if not self.is_loaded:
+            # Model not available — return regex-only results
+            # LLM fallback will be triggered in classify_http_response() if needed
             return detections, max_conf
 
+        # Model IS loaded — run inference
         model_detection, model_conf = self._predict_model(text)
         if model_detection:
             detections.append(model_detection)
@@ -160,9 +167,10 @@ async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:
     
     Flow:
     1. Preprocess payload into combined text
-    2. Run DistilBERT inference
-    3. If max confidence < 0.60 (including 0.0 = nothing detected), call LLM fallback
-    4. Return ClassifierOutput
+    2. Run regex pattern matching (always)
+    3. Run DistilBERT inference (when model weights are available)
+    4. If no detections found OR max confidence < 0.60, call LLM fallback
+    5. Return ClassifierOutput
     """
     start = time.time()
     
@@ -171,22 +179,28 @@ async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:
         combined_text, token_count = preprocess_response(payload, classifier.tokenizer)
         
         detections, max_conf = classifier.predict(combined_text)
-
-        # model_version reflects what actually contributed, not what was available
-        model_contributed = any(
-            d.evidence_text == "Detected via distilbert_model" for d in detections
-        )
-        model_version = "distilbert-crypto-v1" if model_contributed else "regex-only"
+        model_version = "regex-rules-v1" if not classifier.is_loaded else "distilbert-crypto-v1"
         
         fallback_used = False
         fallback_reason = None
         
-        if max_conf < 0.60:
+        # Trigger LLM fallback when:
+        # 1. No detections found at all (regex didn't match, model not loaded/returned nothing)
+        # 2. Low confidence from model (0 < conf < 0.60)
+        should_fallback = (
+            (max_conf == 0.0 and not detections) or           # Nothing found at all
+            (0.0 < max_conf < 0.60)                           # Low confidence from model
+        )
+        
+        if should_fallback:
             llm_detections = await llm_classify(payload)
             if llm_detections:
                 detections = llm_detections
                 fallback_used = True
-                fallback_reason = f"low_confidence:{max_conf:.2f}"
+                fallback_reason = (
+                    "no_detections" if max_conf == 0.0
+                    else f"low_confidence:{max_conf:.2f}"
+                )
                 model_version = "llm-fallback"
 
         return ClassifierOutput(

@@ -51,7 +51,7 @@ def check_scheduled_scans() -> dict:
 async def _dispatch_due_scans() -> dict:
     from db.session import AsyncSessionLocal
     from db.repository import ScheduledScanRepository, ScanRepository
-    from workers.tasks.scan_tasks import run_full_scan  # noqa: F401 — imported for .delay()
+    from workers.orchestrator import run_full_scan  # noqa: F401 — imported for .delay()
 
     dispatched = 0
     failed = 0
