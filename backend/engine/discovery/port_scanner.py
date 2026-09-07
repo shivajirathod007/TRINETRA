@@ -75,6 +75,19 @@ class PortScanner:
     def __init__(self):
         self.timeout = settings.port_scan_timeout
         self.semaphore = asyncio.Semaphore(settings.port_scan_concurrency)
+        self.scan_ports = dict(SCAN_PORTS)
+        
+        # Dynamically inject manual ports from database rules
+        import db.sync_db as sync_db
+        rules = sync_db.get_active_scan_rules_sync()
+        for rule in rules:
+            if rule["match_type"] == "PORT":
+                try:
+                    port_num = int(rule["pattern"])
+                    svc = rule["override_status"].lower() if rule.get("override_status") else "https"
+                    self.scan_ports[port_num] = svc
+                except ValueError:
+                    log.warning("invalid_manual_port_rule", pattern=rule["pattern"])
 
     async def scan(self, ip_address: str, fqdn: str) -> PortScanResult:
         """
@@ -89,19 +102,22 @@ class PortScanner:
                 return port, is_open
 
         probe_results = await asyncio.gather(
-            *[probe_one(p) for p in SCAN_PORTS.keys()]
+            *[probe_one(p) for p in self.scan_ports.keys()]
         )
 
         for port, is_open in probe_results:
             if is_open:
                 result.open_ports.append(port)
-                result.services[port] = SCAN_PORTS[port]
+                result.services[port] = self.scan_ports[port]
 
         # Derive service flags
-        result.has_https = any(p in result.open_ports for p in [443, 8443, 4433, 10443])
-        result.has_ssh = 22 in result.open_ports
-        result.has_smtp = any(p in result.open_ports for p in [25, 587])
-        result.has_vpn_ports = any(p in result.open_ports for p in VPN_PORTS)
+        result.has_https = any(
+            p in result.open_ports and self.scan_ports.get(p, "").startswith("https")
+            for p in result.open_ports
+        )
+        result.has_ssh = any(p in result.open_ports and self.scan_ports.get(p) == "ssh" for p in result.open_ports)
+        result.has_smtp = any(p in result.open_ports and self.scan_ports.get(p, "").startswith("smtp") for p in result.open_ports)
+        result.has_vpn_ports = any(p in result.open_ports and (self.scan_ports.get(p) == "openvpn" or p in VPN_PORTS) for p in result.open_ports)
 
         log.debug(
             "port_scan_complete",

@@ -328,10 +328,7 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
                 if ip_addr and fnmatch.fnmatch(ip_addr, pat):
                     custom_override_status = rule["override_status"]
                     break
-            elif m_type == "PORT":
-                if str(port) == pat:
-                    custom_override_status = rule["override_status"]
-                    break
+
             elif m_type == "ALGORITHM":
                 algo = cert_info.signature_algorithm if cert_info else primary_algorithm
                 if algo and fnmatch.fnmatch(algo, pat):

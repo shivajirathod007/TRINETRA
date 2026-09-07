@@ -31,8 +31,17 @@ const RulesPage = () => {
   const [isSubmitting, setIsSubmitting]     = useState(false);
 
   useEffect(() => {
-    if (matchType === 'PROTOCOL') setPattern('TLSv1.2');
-    else setPattern('');
+    if (matchType === 'PROTOCOL') {
+      setPattern('TLSv1.2');
+    } else {
+      setPattern('');
+    }
+    
+    if (matchType === 'PORT') {
+      setOverrideStatus('https');
+    } else {
+      setOverrideStatus('PQC_READY');
+    }
   }, [matchType]);
 
   const getPlaceholder = () => {
@@ -176,11 +185,11 @@ const RulesPage = () => {
               )}
             </div>
 
-            {/* Override Status */}
+            {/* Override Status / Service Protocol */}
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5"
                 style={{ color: 'var(--text-secondary)' }}>
-                Override Status
+                {matchType === 'PORT' ? 'Service Protocol' : 'Override Status'}
               </label>
               <select
                 value={overrideStatus}
@@ -189,10 +198,23 @@ const RulesPage = () => {
                 onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-indigo)'; e.currentTarget.style.boxShadow = '0 0 0 3px var(--primary-indigo-glow)'; }}
                 onBlur={e => { e.currentTarget.style.borderColor = 'var(--input-border)'; e.currentTarget.style.boxShadow = 'none'; }}
               >
-                <option value="PQC_READY">PQC Ready</option>
-                <option value="FULLY_QUANTUM_SAFE">Fully Quantum Safe</option>
-                <option value="VULNERABLE">Vulnerable</option>
-                <option value="SAFE">Safe</option>
+                {matchType === 'PORT' ? (
+                  <>
+                    <option value="https">HTTPS</option>
+                    <option value="https-alt">HTTPS (Alt)</option>
+                    <option value="http">HTTP</option>
+                    <option value="ssh">SSH</option>
+                    <option value="smtp">SMTP</option>
+                    <option value="openvpn">OpenVPN</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="PQC_READY">PQC Ready</option>
+                    <option value="FULLY_QUANTUM_SAFE">Fully Quantum Safe</option>
+                    <option value="VULNERABLE">Vulnerable</option>
+                    <option value="SAFE">Safe</option>
+                  </>
+                )}
               </select>
             </div>
 
@@ -235,7 +257,7 @@ const RulesPage = () => {
             <table className="w-full text-sm border-collapse">
               <thead>
                 <tr style={{ background: 'var(--surface-card)' }}>
-                  {['Match Type', 'Pattern', 'Status Override', 'Actions'].map(h => (
+                  {['Match Type', 'Pattern', 'Status / Protocol', 'Actions'].map(h => (
                     <th key={h}
                       className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
                       style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>
@@ -265,7 +287,11 @@ const RulesPage = () => {
                   </tr>
                 ) : (
                   rules.map(rule => {
-                    const s = STATUS_STYLE[rule.override_status] ?? STATUS_STYLE.PQC_READY;
+                    const isPort = rule.match_type === 'PORT';
+                    const s = isPort 
+                      ? { bg: 'rgba(99,102,241,0.10)', color: 'var(--primary-indigo)', border: 'rgba(99,102,241,0.25)' }
+                      : (STATUS_STYLE[rule.override_status] ?? STATUS_STYLE.PQC_READY);
+                      
                     return (
                       <tr key={rule.id}
                         className="border-b group"
