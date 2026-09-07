@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, X, MessageCircle, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 // @ts-expect-error — ThemeContext is a .jsx file
 import { useTheme } from '../../context/ThemeContext'
 
@@ -10,6 +11,22 @@ interface Message {
   sender: 'user' | 'bot'
   text: string
   timestamp: Date
+}
+
+// Structured scan reference returned by /chat/message. Generic answers still
+// return plain string labels, so `sources` is a union.
+interface ChatSource {
+  scan_id: string
+  domain: string
+  completed_at: string | null
+}
+
+interface ChatMessageResponse {
+  response: string
+  confidence?: number | null
+  sources?: (ChatSource | string)[] | null
+  sources_display?: string[] | null
+  suggestions?: string[] | null
 }
 
 const STORAGE_KEY = 'jarsh_chat_history'
@@ -71,6 +88,11 @@ export function FloatingChatBot() {
     timestampColor: '#64748b',
     subText: '#94a3b8',
     titleColor: '#fff',
+    mdBorder: '#334155',
+    mdTableHeadBg: '#0f172a',
+    mdCodeBg: '#0f172a',
+    mdLink: '#818cf8',
+    mdStrong: '#f8fafc',
   } : {
     windowBg: 'linear-gradient(135deg, #ffffff 0%, #f8faff 100%)',
     windowBorder: 'rgba(99,102,241,0.2)',
@@ -90,6 +112,11 @@ export function FloatingChatBot() {
     timestampColor: '#94a3b8',
     subText: '#64748b',
     titleColor: '#0f172a',
+    mdBorder: '#cbd5e1',
+    mdTableHeadBg: '#f1f5f9',
+    mdCodeBg: '#f1f5f9',
+    mdLink: '#6366f1',
+    mdStrong: '#0f172a',
   }
 
   const [isOpen, setIsOpen] = useState(false)
@@ -120,10 +147,12 @@ export function FloatingChatBot() {
     setIsLoading(true)
 
     try {
-      const response = await axios.post('/api/v1/chat/message', {
-        message: inputText,
-        context: 'general'
-      })
+      const token = localStorage.getItem('trinetra_token')
+      const response = await axios.post<ChatMessageResponse>(
+        '/api/v1/chat/message',
+        { message: inputText, context: 'general' },
+        token ? { headers: { Authorization: `Bearer ${token}` } } : undefined
+      )
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -334,7 +363,365 @@ export function FloatingChatBot() {
                   }}>
                     {msg.sender === 'bot' ? (
                       <div className="markdown-content" style={{ margin: '0 0 4px 0' }}>
-                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            table: ({ node, ...props }) => (
+                              <div className="markdown-table-wrap">
+                                <table {...props} />
+                              </div>
+                            ),
+                            a: ({ node, ...props }) => (
+                              <a {...props} target="_blank" rel="noopener noreferrer" />
+                            ),
+                          }}
+                        >{msg.text}</ReactMarkdown>
+                      </div>
+                    ) : (
+                      <p style={{ margin: '0 0 4px 0', whiteSpace: 'pre-wrap' }}>{msg.text}</p>
+                    )}
+                    <span style={{
+                      fontSize: '11px',
+                      color: msg.sender === 'user' ? 'rgba(255,255,255,0.6)' : t.timestampColor,
+                      display: 'block',
+                      marginTop: '4px',
+                      opacity: 0.7
+                    }}>
+                      {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+
+              {/* Loading indicator */}
+              {isLoading && (
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <div style={{
+                    background: t.botMsgBg,
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    display: 'flex',
+                    gap: '6px',
+                    border: `1px solid ${t.botMsgBorder}`
+                  }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', display: 'block', animation: 'jarsh-bounce 1.4s infinite' }} />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', display: 'block', animation: 'jarsh-bounce 1.4s infinite 0.2s' }} />
+                    <span style={{ width: '8px', height: '8px', borderRadius: '9999px', background: '#ef4444', display: 'block', animation: 'jarsh-bounce 1.4s infinite 0.4s' }} />
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div style={{
+              borderTop: `1px solid ${t.headerBorder}`,
+              padding: '12px',
+              background: t.inputAreaBg,
+              display: 'flex',
+              gap: '8px',
+              flexShrink: 0,
+            }}>
+              <textarea
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask about scans, mitigations, PQC..."
+                style={{
+                  flex: 1,
+                  background: t.inputBg,
+                  color: t.inputColor,
+                  fontSize: '14px',
+                  border: `1px solid ${t.inputBorder}`,
+                  borderRadius: '8px',
+                  padding: '10px 12px',
+                  resize: 'none',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  fontFamily: 'inherit',
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#ef4444'
+                  e.currentTarget.style.boxShadow = '0 0 0 2px rgba(239, 68, 68, 0.1)'
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = t.inputBorder
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+                rows={2}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={isLoading || !inputText.trim()}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  background: isLoading || !inputText.trim()
+                    ? '#475569'
+                    : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                  color: 'white',
+                  border: 'none',
+                  cursor: isLoading || !inputText.trim() ? 'not-allowed' : 'pointer',
+                  opacity: isLoading || !inputText.trim() ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: isLoading || !inputText.trim() ? 'none' : '0 4px 12px rgba(239, 68, 68, 0.3)',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isLoading && inputText.trim()) {
+                    e.currentTarget.style.transform = 'scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.5)'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)'
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)'
+                }}
+              >
+                <Send size={18} strokeWidth={2} />
+              </button>
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes jarsh-slide {
+              from { opacity: 0; transform: translateY(20px) scale(0.95); }
+              to { opacity: 1; transform: translateY(0) scale(1); }
+            }
+            @keyframes jarsh-fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            @keyframes jarsh-bounce {
+              0%, 100% { opacity: 0.3; transform: translateY(0); }
+              50% { opacity: 1; transform: translateY(-8px); }
+            }
+            
+            /* Markdown styling for bot messages */
+            .markdown-content h1 {
+              font-size: 18px;
+              font-weight: bold;
+              margin: 8px 0 4px 0;
+              color: #ef4444;
+            }
+            .markdown-content h2 {
+              font-size: 16px;
+              font-weight: bold;
+              margin: 8px 0 4px 0;
+              color: #f97316;
+            }
+            .markdown-content h3 {
+              font-size: 14px;
+              font-weight: bold;
+              margin: 6px 0 3px 0;
+            }
+            .markdown-content p {
+              margin: 4px 0;
+            }
+            .markdown-content ul, .markdown-content ol {
+              margin: 4px 0;
+              padding-left: 20px;
+            }
+            .markdown-content li {
+              margin: 2px 0;
+            }
+            .markdown-content table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 8px 0;
+              font-size: 12px;
+            }
+            /* The bubble is narrow -- let wide tables scroll instead of overflowing */
+            .markdown-content .markdown-table-wrap {
+              overflow-x: auto;
+              max-width: 100%;
+            }
+            .markdown-content th {
+              background: ${t.mdTableHeadBg};
+              padding: 6px 8px;
+              text-align: left;
+              border: 1px solid ${t.mdBorder};
+              font-weight: bold;
+              white-space: nowrap;
+            }
+            .markdown-content td {
+              padding: 6px 8px;
+              border: 1px solid ${t.mdBorder};
+              vertical-align: top;
+            }
+            .markdown-content code {
+              background: ${t.mdCodeBg};
+              padding: 2px 4px;
+              border-radius: 3px;
+              font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-size: 12px;
+            }
+            .markdown-content pre {
+              background: ${t.mdCodeBg};
+              padding: 8px;
+              border-radius: 6px;
+              overflow-x: auto;
+              margin: 6px 0;
+            }
+            .markdown-content pre code {
+              background: none;
+              padding: 0;
+            }
+            .markdown-content a {
+              color: ${t.mdLink};
+              text-decoration: underline;
+              text-underline-offset: 2px;
+            }
+            .markdown-content a:hover {
+              opacity: 0.8;
+            }
+            .markdown-content strong {
+              font-weight: bold;
+              color: ${t.mdStrong};
+            }
+            .markdown-content blockquote {
+              margin: 6px 0;
+              padding-left: 10px;
+              border-left: 3px solid ${t.mdBorder};
+              opacity: 0.9;
+            }
+            .markdown-content hr {
+              border: none;
+              border-top: 1px solid ${t.mdBorder};
+              margin: 8px 0;
+            }
+            .markdown-content > *:first-child { margin-top: 0; }
+            .markdown-content > *:last-child { margin-bottom: 0; }
+          `}</style>
+        </>
+      )}
+
+      {/* Chat Window */}
+      {isOpen && (
+        <>
+          <div style={{
+            position: 'fixed',
+            bottom: '100px',
+            right: '20px',
+            zIndex: 9999,
+            width: '420px',
+            height: '520px',
+            background: t.windowBg,
+            borderRadius: '16px',
+            boxShadow: t.windowShadow,
+            border: `1px solid ${t.windowBorder}`,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'jarsh-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)',
+            backdropFilter: 'blur(20px)',
+          }}>
+
+            {/* Header */}
+            <div style={{
+              background: t.headerBg,
+              borderBottom: `1px solid ${t.headerBorder}`,
+              padding: '14px 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexShrink: 0,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '9999px',
+                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 50%, #f97316 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)',
+                }}>
+                  ⚡
+                </div>
+                <div>
+                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: t.titleColor, letterSpacing: '0.5px' }}>JARSH</div>
+                  <div style={{ fontSize: '12px', color: t.subText }}>Quantum Security AI</div>
+                </div>
+              </div>
+
+              {/* FIX: Added missing closing div for button group */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={clearHistory}
+                  style={{ background: 'none', border: 'none', color: t.iconColor, cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#ef4444'; e.currentTarget.style.transform = 'scale(1.1)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = t.iconColor; e.currentTarget.style.transform = 'scale(1)' }}
+                  title="Clear chat history"
+                >
+                  <Trash2 size={18} />
+                </button>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  style={{ background: 'none', border: 'none', color: t.iconColor, cursor: 'pointer', padding: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = t.titleColor; e.currentTarget.style.transform = 'rotate(90deg)' }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = t.iconColor; e.currentTarget.style.transform = 'rotate(0deg)' }}
+                  title="Close chat"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '16px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              background: t.msgAreaBg,
+            }}>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    display: 'flex',
+                    justifyContent: msg.sender === 'user' ? 'flex-end' : 'flex-start',
+                    animation: 'jarsh-fadeIn 0.3s ease-out'
+                  }}
+                >
+                  <div style={{
+                    maxWidth: '85%',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    lineHeight: '1.6',
+                    background: msg.sender === 'user'
+                      ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                      : t.botMsgBg,
+                    color: msg.sender === 'user' ? 'white' : t.botMsgColor,
+                    border: msg.sender === 'user' ? 'none' : `1px solid ${t.botMsgBorder}`,
+                    boxShadow: msg.sender === 'user' ? '0 4px 12px rgba(239, 68, 68, 0.2)' : 'none',
+                    wordBreak: 'break-word',
+                  }}>
+                    {msg.sender === 'bot' ? (
+                      <div className="markdown-content" style={{ margin: '0 0 4px 0' }}>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            table: ({ node, ...props }) => (
+                              <div className="markdown-table-wrap">
+                                <table {...props} />
+                              </div>
+                            ),
+                            a: ({ node, ...props }) => (
+                              <a {...props} target="_blank" rel="noopener noreferrer" />
+                            ),
+                          }}
+                        >{msg.text}</ReactMarkdown>
                       </div>
                     ) : (
                       <p style={{ margin: '0 0 4px 0', whiteSpace: 'pre-wrap' }}>{msg.text}</p>

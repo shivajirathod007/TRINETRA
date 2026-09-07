@@ -13,6 +13,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.24.0",
     "react-markdown": "^9.0.1",
+    "remark-gfm": "^4.0.1",
     "axios": "^1.7.2",
     "lucide-react": "^0.395.0",
     "zustand": "^4.5.2",
