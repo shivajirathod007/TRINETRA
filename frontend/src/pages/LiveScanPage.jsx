@@ -60,27 +60,27 @@ const JsonViewer = ({ data, title }) => {
 
 /** Animated stat card */
 const StatCard = ({ label, value, color = 'text-primary', icon: Icon, pulse = false, accent }) => (
-    <div className="p-4 rounded-xl border flex flex-col gap-2 relative overflow-hidden"
-        style={{ background: accent ? `rgba(${accent},0.06)` : 'var(--surface-card-hover)', borderColor: accent ? `rgba(${accent},0.25)` : 'var(--glass-border)' }}>
+    <div className="eterna-phase-card p-4 rounded-2xl border flex flex-col gap-2 relative overflow-hidden transition-all duration-300"
+        style={{ background: accent ? `rgba(${accent},0.06)` : 'var(--surface-card)', borderColor: accent ? `rgba(${accent},0.3)` : 'var(--glass-border)' }}>
         <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--text-secondary)' }}>{label}</span>
-            {Icon && <Icon size={14} className={color} />}
+            <span className="text-[10px] uppercase tracking-widest font-bold font-mono text-secondary">{label}</span>
+            {Icon && <Icon size={16} className={color} />}
         </div>
-        <div className={`text-2xl font-bold font-mono ${color} ${pulse ? 'animate-pulse' : ''}`}>{value}</div>
-        {accent && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: `rgba(${accent},0.4)` }} />}
+        <div className={`text-2xl font-black font-mono ${color} ${pulse ? 'animate-pulse' : ''}`}>{value}</div>
+        {accent && <div className="absolute bottom-0 left-0 h-1 w-full" style={{ background: `rgba(${accent},0.7)` }} />}
     </div>
 );
 
 /** Animated progress bar */
-const ProgressBar = ({ label, value, icon: Icon, color = '#6366f1' }) => (
+const ProgressBar = ({ label, value, icon: Icon, color = '#f59e0b' }) => (
     <div className="space-y-1.5">
         <div className="flex justify-between items-center text-xs">
-            <span className="text-secondary flex items-center gap-1.5">
-                {Icon && <Icon size={12} />}{label}
+            <span className="text-secondary flex items-center gap-1.5 font-medium">
+                {Icon && <Icon size={13} style={{ color }} />}{label}
             </span>
             <span className="font-mono font-bold" style={{ color }}>{value}%</span>
         </div>
-        <div className="w-full bg-surface-card-hover rounded-full h-2 overflow-hidden">
+        <div className="w-full bg-surface-card rounded-full h-2 overflow-hidden border border-glass-border">
             <div className="h-full rounded-full transition-all duration-700 ease-out relative overflow-hidden"
                 style={{ width: `${value}%`, background: `linear-gradient(90deg, ${color}99, ${color})` }}>
                 {value > 0 && value < 100 && (
@@ -93,15 +93,15 @@ const ProgressBar = ({ label, value, icon: Icon, color = '#6366f1' }) => (
 
 /** Phase checklist item */
 const PhaseItem = ({ label, done, active }) => (
-    <div className="flex items-center gap-3 py-2 px-3 rounded-lg transition-all duration-300"
-        style={{ background: active && !done ? 'rgba(99,102,241,0.08)' : 'transparent' }}>
+    <div className="flex items-center gap-3 py-2 px-3 rounded-xl transition-all duration-300 font-mono text-xs"
+        style={{ background: active && !done ? 'rgba(245,158,11,0.08)' : 'transparent', border: active && !done ? '1px solid rgba(245,158,11,0.25)' : '1px solid transparent' }}>
         <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] font-bold transition-all duration-500
-            ${done ? 'bg-status-safe text-black' : active ? 'bg-primary-indigo/30 border border-primary-indigo animate-pulse' : 'border border-glass-border bg-surface-card-hover'}`}>
+            ${done ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20' : active ? 'bg-amber-500/20 text-amber-400 border border-amber-500 animate-pulse' : 'border border-glass-border bg-surface-card'}`}>
             {done ? '✓' : active ? '●' : '○'}
         </div>
-        <span className={`text-xs transition-colors duration-300 ${done ? 'text-status-safe' : active ? 'text-primary' : 'text-secondary'}`}>{label}</span>
-        {done && <span className="ml-auto text-[10px] text-status-safe font-mono font-bold">DONE</span>}
-        {active && !done && <span className="ml-auto text-[10px] text-primary-indigo font-mono animate-pulse">ACTIVE</span>}
+        <span className={`text-xs transition-colors duration-300 font-medium ${done ? 'text-emerald-400' : active ? 'text-primary font-bold' : 'text-secondary'}`}>{label}</span>
+        {done && <span className="ml-auto text-[9.5px] text-emerald-400 font-mono font-bold tracking-wider">DONE</span>}
+        {active && !done && <span className="ml-auto text-[9.5px] text-amber-500 font-mono animate-pulse tracking-wider">ACTIVE</span>}
     </div>
 );
 

@@ -1,25 +1,32 @@
-import type { RiskLevel, QuantumStatus, CertTier, AssetType } from '@/types'
+import type { RiskLevel, CertTier, AssetType } from '@/types'
 
 // ── Risk colors ───────────────────────────────────────────────────────────────
 
 export const RISK_COLORS: Record<RiskLevel, string> = {
-  CRITICAL: '#E24B4A',
-  HIGH:     '#EF9F27',
-  MEDIUM:   '#FAC775',
-  LOW:      '#97C459',
-  SAFE:     '#1D9E75',
+  CRITICAL: '#ef4444',
+  HIGH:     '#f97316',
+  MEDIUM:   '#eab308',
+  LOW:      '#3b82f6',
+  SAFE:     '#22c55e',
 }
 
 export const RISK_BG: Record<RiskLevel, string> = {
-  CRITICAL: 'bg-red-900/30 text-red-400 border-red-800/50',
-  HIGH:     'bg-orange-900/30 text-orange-400 border-orange-800/50',
-  MEDIUM:   'bg-yellow-900/30 text-yellow-400 border-yellow-800/50',
-  LOW:      'bg-green-900/30 text-green-400 border-green-800/50',
-  SAFE:     'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
+  CRITICAL: 'badge-critical',
+  HIGH:     'badge-high',
+  MEDIUM:   'badge-medium',
+  LOW:      'badge-low',
+  SAFE:     'badge-safe',
 }
 
 export function riskBadgeClass(level: RiskLevel | string): string {
-  return RISK_BG[level as RiskLevel] ?? 'bg-gray-800 text-gray-400 border-gray-700'
+  const map: Record<string, string> = {
+    CRITICAL: 'badge-critical',
+    HIGH:     'badge-high',
+    MEDIUM:   'badge-medium',
+    LOW:      'badge-low',
+    SAFE:     'badge-safe',
+  }
+  return map[(level as string)?.toUpperCase()] ?? 'tag'
 }
 
 export function riskColor(level: RiskLevel | string): string {
@@ -36,22 +43,23 @@ export function scoreToRisk(score: number): RiskLevel {
 
 // ── PQC status ────────────────────────────────────────────────────────────────
 
-export const CERT_TIER_LABEL: Record<CertTier, string> = {
+export const CERT_TIER_LABEL: Record<string, string> = {
   QUANTUM_VULNERABLE: 'Quantum Vulnerable',
+  VULNERABLE:         'Quantum Vulnerable',
   PQC_READY:          'PQC Ready',
   FULLY_QUANTUM_SAFE: 'Fully Quantum Safe',
 }
 
 export const CERT_TIER_COLOR: Record<CertTier, string> = {
-  QUANTUM_VULNERABLE: '#E24B4A',
-  PQC_READY:          '#EF9F27',
-  FULLY_QUANTUM_SAFE: '#1D9E75',
+  QUANTUM_VULNERABLE: '#ef4444',
+  PQC_READY:          '#f97316',
+  FULLY_QUANTUM_SAFE: '#22c55e',
 }
 
 export const CERT_TIER_BG: Record<CertTier, string> = {
-  QUANTUM_VULNERABLE: 'bg-red-900/30 text-red-400 border border-red-800/50',
-  PQC_READY:          'bg-orange-900/30 text-orange-400 border border-orange-800/50',
-  FULLY_QUANTUM_SAFE: 'bg-emerald-900/30 text-emerald-400 border border-emerald-800/50',
+  QUANTUM_VULNERABLE: 'badge-critical',
+  PQC_READY:          'badge-high',
+  FULLY_QUANTUM_SAFE: 'badge-safe',
 }
 
 // ── Asset type labels ─────────────────────────────────────────────────────────

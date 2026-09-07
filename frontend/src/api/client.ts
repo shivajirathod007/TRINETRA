@@ -28,11 +28,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !isRedirecting) {
+      const hadToken = !!localStorage.getItem('trinetra_token')
       isRedirecting = true
       localStorage.removeItem('trinetra_token')
       localStorage.removeItem('trinetra_user')
       localStorage.removeItem('trinetra_auth')
-      window.location.href = '/login'
+      const path = window.location.pathname
+      const isPublic = path === '/' || path === '/landing' || path === '/login'
+      if (hadToken && !isPublic) {
+        window.location.href = '/login'
+      }
       setTimeout(() => { isRedirecting = false }, 2000)
     }
     return Promise.reject(error)
@@ -50,8 +55,15 @@ export const scanApi = {
   getStatus: (scanId: string) =>
     api.get<ScanJob>(`/scans/${scanId}`).then(r => r.data),
 
-  list: (domain: string | null = null, limit = 10) =>
-    api.get<ScanJob[]>('/scans/', { params: { domain, limit } }).then(r => r.data),
+  list: (domain: string | null = null, limit = 20) =>
+    api.get<ScanJob[]>('/scans/', {
+      params: { limit, ...(domain ? { domain } : {}) },
+    }).then(r => r.data),
+
+  cancel: (scanId: string) =>
+    api.post<{ scan_id: string; status: string; message: string }>(
+      `/scans/${scanId}/cancel`
+    ).then(r => r.data),
 
   getResults: (scanId: string) =>
     api.get<any>(`/scans/${scanId}/results`).then(r => r.data),

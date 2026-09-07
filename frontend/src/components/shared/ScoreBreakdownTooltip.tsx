@@ -1,16 +1,8 @@
 /**
  * ScoreBreakdownTooltip — hover/expand tooltip showing sensitivity-adjusted
- * score breakdown for an asset.
- *
- * Displays:
- *   - data_shelf_life_years
- *   - sensitivity_tier_impact (points added to HNDL component by tier)
- *   - Updated formula annotation
- *
- * Requirements: 8.2
+ * score breakdown for an asset. Fully theme-aware (light + dark).
  */
-
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 interface ScoreBreakdown {
   algorithm_risk?: number;
@@ -29,7 +21,7 @@ interface ScoreBreakdownTooltipProps {
 }
 
 const FORMULA =
-  "Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)";
+  'Score = (AlgRisk×0.40) + (HNDLTimeline[sensitivity-adjusted]×0.40) + (Exposure×0.20)';
 
 export const ScoreBreakdownTooltip: React.FC<ScoreBreakdownTooltipProps> = ({
   score,
@@ -38,9 +30,9 @@ export const ScoreBreakdownTooltip: React.FC<ScoreBreakdownTooltipProps> = ({
 }) => {
   const [open, setOpen] = useState(false);
 
-  const shelfLife = breakdown?.data_shelf_life_years ?? 0;
+  const shelfLife  = breakdown?.data_shelf_life_years   ?? 0;
   const tierImpact = breakdown?.sensitivity_tier_impact ?? 0;
-  const formula = breakdown?.formula ?? FORMULA;
+  const formula    = breakdown?.formula ?? FORMULA;
 
   return (
     <div className="relative inline-block">
@@ -50,41 +42,40 @@ export const ScoreBreakdownTooltip: React.FC<ScoreBreakdownTooltipProps> = ({
         className="focus:outline-none"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen(v => !v)}
         aria-expanded={open}
         aria-label="Show score breakdown"
       >
         {children ?? (
-          <span className="font-bold tabular-nums">{Math.round(score)}</span>
+          <span className="font-bold tabular-nums font-mono">{Math.round(score)}</span>
         )}
       </button>
 
       {/* Tooltip panel */}
       {open && (
         <div
-          className="absolute z-50 left-1/2 -translate-x-1/2 mt-2 w-72 rounded-lg shadow-xl border border-gray-700 bg-gray-900 text-white text-xs p-3"
+          className="absolute z-50 left-1/2 -translate-x-1/2 mt-2 w-72 rounded-xl text-xs p-4 animate-scaleIn"
           role="tooltip"
+          style={{
+            background: 'var(--surface-elevated)',
+            border: '1px solid var(--glass-border)',
+            boxShadow: 'var(--card-shadow)',
+            color: 'var(--text-primary)',
+          }}
         >
-          <p className="font-semibold text-sm mb-2">Score Breakdown</p>
+          <p className="font-semibold text-sm mb-3 font-outfit" style={{ color: 'var(--text-primary)' }}>
+            Score Breakdown
+          </p>
 
-          <div className="space-y-1">
-            <Row
-              label="Algorithm Risk"
-              value={`${breakdown?.algorithm_risk ?? "—"} × 40%`}
-            />
-            <Row
-              label="HNDL Timeline"
-              value={`${breakdown?.hndl_timeline ?? "—"} × 40%`}
-            />
-            <Row
-              label="Public Exposure"
-              value={`${breakdown?.public_exposure ?? "—"} × 20%`}
-            />
+          <div className="space-y-1.5">
+            <Row label="Algorithm Risk"  value={`${breakdown?.algorithm_risk ?? '—'} × 40%`} />
+            <Row label="HNDL Timeline"   value={`${breakdown?.hndl_timeline ?? '—'} × 40%`} />
+            <Row label="Public Exposure" value={`${breakdown?.public_exposure ?? '—'} × 20%`} />
           </div>
 
-          <hr className="my-2 border-gray-700" />
+          <div className="my-3 h-px" style={{ background: 'var(--border-divider)' }} />
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <Row
               label="Data shelf life"
               value={`${shelfLife} yr`}
@@ -97,23 +88,28 @@ export const ScoreBreakdownTooltip: React.FC<ScoreBreakdownTooltipProps> = ({
             />
           </div>
 
-          <hr className="my-2 border-gray-700" />
+          <div className="my-3 h-px" style={{ background: 'var(--border-divider)' }} />
 
-          <p className="text-gray-400 leading-snug">{formula}</p>
+          <p className="leading-snug text-[10px]" style={{ color: 'var(--text-secondary)' }}>
+            {formula}
+          </p>
         </div>
       )}
     </div>
   );
 };
 
-const Row: React.FC<{
-  label: string;
-  value: string;
-  highlight?: boolean;
-}> = ({ label, value, highlight }) => (
-  <div className="flex justify-between">
-    <span className="text-gray-400">{label}</span>
-    <span className={highlight ? "text-amber-400 font-semibold" : "text-white"}>
+const Row: React.FC<{ label: string; value: string; highlight?: boolean }> = ({
+  label,
+  value,
+  highlight,
+}) => (
+  <div className="flex justify-between items-center">
+    <span style={{ color: 'var(--text-secondary)' }}>{label}</span>
+    <span
+      className="font-mono font-semibold"
+      style={{ color: highlight ? 'var(--accent-amber)' : 'var(--text-primary)' }}
+    >
       {value}
     </span>
   </div>

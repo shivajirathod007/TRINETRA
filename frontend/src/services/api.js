@@ -38,21 +38,16 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401 && !isRedirecting) {
+      const hadToken = !!localStorage.getItem('trinetra_token');
       isRedirecting = true;
-      
-      // Clear auth data
       localStorage.removeItem('trinetra_token');
       localStorage.removeItem('trinetra_user');
       localStorage.removeItem('trinetra_auth');
-      
-      // Show error message
-      const message = error.response?.data?.detail || 'Not logged in yet. Please go back to login.';
-      console.warn('Auth error:', message);
-      
-      // Redirect to login
-      window.location.href = '/login';
-      
-      // Reset flag after a delay
+      const path = window.location.pathname;
+      const isPublic = path === '/' || path === '/landing' || path === '/login';
+      if (hadToken && !isPublic) {
+        window.location.href = '/login';
+      }
       setTimeout(() => {
         isRedirecting = false;
       }, 2000);

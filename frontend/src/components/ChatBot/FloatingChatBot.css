@@ -1,15 +1,5 @@
 .chatbot-button {
   @apply w-14 h-14 rounded-full bg-gradient-to-br from-brand-red to-brand-gold shadow-lg hover:shadow-xl transition-all duration-300 flex flex-col items-center justify-center cursor-pointer transform hover:scale-110 text-white font-semibold gap-1;
-  animation: pulse-glow 2s ease-in-out infinite;
-}
-
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(239, 68, 68, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.8);
-  }
 }
 
 .chatbot-window {

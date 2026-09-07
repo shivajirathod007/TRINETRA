@@ -34,10 +34,16 @@ function Select({ label, options }: { label: string; options: string[] }) {
   return (
     <div className="relative w-full">
       <select value={val} onChange={e => setVal(e.target.value)}
-        className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer">
+        className="w-full appearance-none text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none cursor-pointer transition-all"
+        style={{
+          background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+          color: 'var(--text-primary)',
+        }}
+        onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+        onBlur={e => (e.currentTarget.style.borderColor = 'var(--input-border)')}>
         {options.map(o => <option key={o}>{o}</option>)}
       </select>
-      <ChevronDown size={14} className="absolute right-3 top-3.5 text-secondary pointer-events-none" />
+      <ChevronDown size={14} className="absolute right-3 top-3.5 pointer-events-none" style={{ color: 'var(--text-secondary)' }} />
     </div>
   );
 }
@@ -95,30 +101,30 @@ function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; sta
   return (
     <div className="flex flex-col gap-6">
       {/* Three card row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {CARDS.map(c => (
           <div key={c.key}
-            onClick={() => c.key !== 'executive' && setActiveCard(c.key as any)}
-            className={`glass-card border rounded-2xl p-5 flex flex-col gap-3 transition-all duration-200 ${c.key !== 'executive' ? 'cursor-pointer hover:scale-[1.02]' : ''}`}
-            style={{ background: c.color, borderColor: c.border }}>
+            onClick={() => setActiveCard(c.key === 'executive' ? 'schedule' : c.key as any)}
+            className="eterna-phase-card border rounded-2xl p-6 flex flex-col gap-4 cursor-pointer"
+            style={{ borderColor: c.border }}>
             {/* Top row: icon + badge */}
             <div className="flex items-start justify-between">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{ background: c.color, border: `1px solid ${c.border}` }}>
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style={{ background: `${c.accent}18`, border: `1px solid ${c.accent}35` }}>
                 {c.icon}
               </div>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+              <span className="text-[10px] font-bold px-2.5 py-1 rounded-full font-mono"
                 style={{ color: c.accent, background: `${c.accent}18`, border: `1px solid ${c.accent}30` }}>
                 {c.badge}
               </span>
             </div>
             {/* Label + desc */}
             <div>
-              <div className="font-black text-primary whitespace-pre-line leading-tight text-sm mb-1">{c.label}</div>
-              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>{c.desc}</div>
+              <div className="font-extrabold text-primary whitespace-pre-line leading-tight text-base mb-1 font-outfit">{c.label}</div>
+              <div className="text-xs text-secondary leading-relaxed font-medium">{c.desc}</div>
             </div>
             {/* Bottom accent line */}
-            <div className="h-0.5 rounded-full mt-auto" style={{ background: `linear-gradient(90deg, ${c.accent}60, transparent)` }} />
+            <div className="h-1 rounded-full mt-auto" style={{ background: `linear-gradient(90deg, ${c.accent}, transparent)` }} />
           </div>
         ))}
       </div>
@@ -126,41 +132,41 @@ function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; sta
       {/* Summary dashboard — 5 module tiles */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Assets Discovery */}
-        <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+        <div className="eterna-phase-card border rounded-2xl p-5" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="flex items-center gap-2 mb-3">
-            <Globe size={16} className="text-primary-indigo" />
-            <span className="text-sm font-bold text-primary">Assets Discovery</span>
+            <Globe size={18} className="text-amber-500" />
+            <span className="text-sm font-bold text-primary font-outfit">Assets Discovery</span>
           </div>
-          <div className="flex flex-col gap-1.5 text-xs text-secondary">
+          <div className="flex flex-col gap-2 text-xs text-secondary">
             <div className="flex justify-between"><span>Domains Scanned</span><span className="font-mono text-primary font-bold">{activeDomain ? '1' : '0'}</span></div>
-            <div className="flex justify-between"><span>Current Target</span><span className="font-mono text-primary font-bold truncate max-w-[120px] text-right" title={activeDomain || ''}>{activeDomain || '—'}</span></div>
+            <div className="flex justify-between"><span>Current Target</span><span className="font-mono text-amber-500 font-bold truncate max-w-[120px] text-right" title={activeDomain || ''}>{activeDomain || '—'}</span></div>
             <div className="flex justify-between"><span>Total Assets</span><span className="font-mono text-primary font-bold">{stats?.total_assets ?? 0}</span></div>
           </div>
         </div>
 
         {/* Cyber Rating */}
-        <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(234,179,8,0.2)' }}>
+        <div className="eterna-phase-card border rounded-2xl p-5" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="flex items-center gap-2 mb-3">
-            <Star size={16} className="text-brand-gold" />
-            <span className="text-sm font-bold text-primary">Cyber Rating</span>
+            <Star size={18} className="text-violet-400" />
+            <span className="text-sm font-bold text-primary font-outfit">Cyber Rating</span>
           </div>
           <div className="flex flex-col gap-1.5 text-xs text-secondary">
-            {[['Tier 1', 'Excellent', '#22c55e'],['Tier 2', 'Good', '#3b82f6'],['Tier 3', 'Satisfactory', '#f59e0b'],['Tier 4', 'Needs Work', '#ef4444']].map(([t, l, c]) => (
+            {[['Tier 1', 'Elite-PQC', '#10b981'],['Tier 2', 'Standard', '#3b82f6'],['Tier 3', 'Legacy', '#f59e0b'],['Tier 4', 'Critical', '#ef4444']].map(([t, l, c]) => (
               <div key={t} className="flex justify-between items-center">
-                <span>{t}</span>
-                <span className="font-bold text-xs px-2 py-0.5 rounded-full" style={{ color: c, background: `${c}18` }}>{l}</span>
+                <span className="font-mono text-[11px]">{t}</span>
+                <span className="font-bold text-[10px] px-2 py-0.5 rounded-full" style={{ color: c, background: `${c}18`, border: `1px solid ${c}30` }}>{l}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Assets Inventory */}
-        <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+        <div className="eterna-phase-card border rounded-2xl p-5" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="flex items-center gap-2 mb-3">
-            <Cpu size={16} style={{ color: '#a78bfa' }} />
-            <span className="text-sm font-bold text-primary">Assets Inventory</span>
+            <Cpu size={18} style={{ color: '#06b6d4' }} />
+            <span className="text-sm font-bold text-primary font-outfit">Assets Inventory</span>
           </div>
-          <div className="flex flex-col gap-1.5 text-xs text-secondary">
+          <div className="flex flex-col gap-2 text-xs text-secondary">
             {[['Total Discovered', stats?.total_assets ?? 0],['Shadow Assets', stats?.shadow_count ?? 0],['Known Managed', Math.max(0, (stats?.total_assets ?? 0) - (stats?.shadow_count ?? 0))]].map(([k, v]) => (
               <div key={k} className="flex justify-between"><span>{k}</span><span className="font-mono text-primary font-bold">{v}</span></div>
             ))}
@@ -168,33 +174,33 @@ function OverviewTab({ activeDomain, stats }: { activeDomain: string | null; sta
         </div>
 
         {/* Posture of PQC */}
-        <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(34,197,94,0.2)' }}>
+        <div className="eterna-phase-card border rounded-2xl p-5" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="flex items-center gap-2 mb-3">
-            <ShieldCheck size={16} className="text-status-safe" />
-            <span className="text-sm font-bold text-primary">Posture of PQC</span>
+        <ShieldCheck size={18} style={{ color: 'var(--status-safe)' }} aria-hidden="true" />
+            <span className="text-sm font-bold text-primary font-outfit">Posture of PQC</span>
           </div>
           {[['Quantum Safe Progress', Math.round(((stats?.safe ?? 0) / Math.max(1, stats?.total_assets ?? 1)) * 100)],['Organization Risk Score', stats?.exposure_score ?? 0]].map(([label, pct], i) => (
             <div key={i} className="mb-2">
               {label && <div className="text-[10px] text-secondary mb-1 leading-tight">{label}</div>}
               <div className="flex items-center gap-2">
-                <div className="flex-1 h-2 bg-surface-card-hover rounded-full overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i === 0 ? '#22c55e' : (pct > 70 ? '#ef4444' : '#f59e0b') }} />
+                <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: i === 0 ? '#10b981' : (pct > 70 ? '#ef4444' : '#f59e0b') }} />
                 </div>
-                <span className="text-xs font-mono text-secondary w-8 text-right">{pct}%</span>
+                <span className="text-xs font-mono text-secondary w-8 text-right font-bold">{pct}%</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* CBOM */}
-        <div className="glass-card border rounded-xl p-4 md:col-span-2" style={{ borderColor: 'rgba(139,92,246,0.2)' }}>
+        <div className="eterna-phase-card border rounded-2xl p-5 md:col-span-2" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="flex items-center gap-2 mb-3">
-            <Shield size={16} style={{ color: '#a78bfa' }} />
-            <span className="text-sm font-bold text-primary">CBOM Target Findings</span>
+            <Shield size={18} style={{ color: '#f59e0b' }} />
+            <span className="text-sm font-bold text-primary font-outfit">CBOM Target Findings</span>
           </div>
-          <div className="flex flex-col gap-1.5 text-xs text-secondary">
-            <div className="flex justify-between"><span>Cryptographic Bill of Material</span><span className="font-mono text-primary font-bold">TRINETRA</span></div>
-            <div className="flex justify-between"><span>Vulnerable components found</span><span className="font-mono text-status-critical font-bold">{(stats?.critical_count ?? 0) + (stats?.high_count ?? 0)}</span></div>
+          <div className="flex flex-col gap-2 text-xs text-secondary">
+            <div className="flex justify-between"><span>Cryptographic Bill of Material standard</span><span className="font-mono text-primary font-bold">CycloneDX 1.6</span></div>
+            <div className="flex justify-between"><span>Vulnerable algorithms flagged</span><span className="font-mono text-status-critical font-bold">{(stats?.critical_count ?? 0) + (stats?.high_count ?? 0)}</span></div>
           </div>
         </div>
       </div>
@@ -348,21 +354,22 @@ function ScheduleTab() {
     <div className="flex flex-col gap-6">
       {/* Success/Progress Message Banner */}
       {successMessage && (
-        <div className={`rounded-xl p-4 flex items-center gap-3 animate-fadeIn ${
-          typeof successMessage === 'string' && successMessage.startsWith('✅') 
-            ? 'bg-status-safe/10 border border-status-safe/30' 
-            : typeof successMessage === 'string' && successMessage.startsWith('❌')
-            ? 'bg-status-critical/10 border border-status-critical/30'
-            : 'bg-primary-indigo/10 border border-primary-indigo/30'
-        }`}>
+        <div className={`rounded-xl p-4 flex items-center gap-3 animate-fadeIn`}
+          style={
+            typeof successMessage === 'string' && successMessage.startsWith('✅')
+              ? { background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.28)' }
+              : typeof successMessage === 'string' && successMessage.startsWith('❌')
+              ? { background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.28)' }
+              : { background: 'rgba(99,102,241,0.09)', border: '1px solid rgba(99,102,241,0.28)' }
+          }>
           {typeof successMessage === 'string' && successMessage.startsWith('✅') ? (
-            <CheckCircle size={20} className="text-status-safe flex-shrink-0" />
+            <CheckCircle size={20} className="flex-shrink-0" style={{ color: 'var(--status-safe)' }} />
           ) : typeof successMessage === 'string' && successMessage.startsWith('❌') ? (
-            <Shield size={20} className="text-status-critical flex-shrink-0" />
+            <Shield size={20} className="flex-shrink-0" style={{ color: 'var(--status-critical)' }} />
           ) : typeof successMessage === 'string' ? (
-            <RefreshCw size={20} className="text-primary-indigo flex-shrink-0 animate-spin" />
+            <RefreshCw size={20} className="flex-shrink-0 animate-spin" style={{ color: 'var(--primary-indigo)' }} />
           ) : (
-            <CheckCircle size={20} className="text-status-safe flex-shrink-0" />
+            <CheckCircle size={20} className="flex-shrink-0" style={{ color: 'var(--status-safe)' }} />
           )}
           <div className="text-sm font-medium flex-1" style={{ color: 'var(--text-primary)' }}>
             {successMessage}
@@ -370,10 +377,10 @@ function ScheduleTab() {
         </div>
       )}
 
-      <div className="glass-card border rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
+      <div className="eterna-phase-card rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(99,102,241,0.25)' }}>
         {/* Header */}
-        <div className="px-6 py-5 border-b border-glass-border flex items-center justify-between"
-          style={{ background: 'rgba(99,102,241,0.06)' }}>
+        <div className="px-6 py-5 border-b flex items-center justify-between"
+          style={{ borderColor: 'var(--border-divider)', background: 'rgba(99,102,241,0.06)' }}>
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl" style={{ background: 'rgba(99,102,241,0.15)' }}>
               <Calendar size={20} className="text-primary-indigo" />
@@ -396,17 +403,19 @@ function ScheduleTab() {
               <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-2">Report Type</label>
               <div className="relative w-full">
                 <select value={reportType} onChange={e => setReportType(e.target.value)}
-                  className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer">
+                  className="w-full appearance-none text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none cursor-pointer transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}>
                   {['Executive Summary Report', 'Technical Risk Report', 'CBOM Export', 'Compliance Report'].map(o => <option key={o}>{o}</option>)}
                 </select>
-                <ChevronDown size={14} className="absolute right-3 top-3.5 text-secondary pointer-events-none" />
+                <ChevronDown size={14} className="absolute right-3 top-3.5 pointer-events-none" style={{ color: 'var(--text-secondary)' }} />
               </div>
             </div>
             <div>
               <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-2">Frequency</label>
               <div className="relative w-full">
                 <select value={frequency} onChange={e => setFrequency(e.target.value)}
-                  className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer">
+                  className="w-full appearance-none text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none cursor-pointer transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}>
                   {['Weekly', 'Daily', 'Monthly', 'Bi-Weekly'].map(o => <option key={o}>{o}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-3.5 text-secondary pointer-events-none" />
@@ -416,7 +425,8 @@ function ScheduleTab() {
               <label className="text-xs font-bold text-secondary uppercase tracking-wider block mb-2">Select Assets</label>
               <div className="relative w-full">
                 <select value={assetFilter} onChange={e => setAssetFilter(e.target.value)}
-                  className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-4 py-2.5 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer">
+                  className="w-full appearance-none text-sm rounded-xl px-4 py-2.5 pr-8 focus:outline-none cursor-pointer transition-all"
+                  style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}>
                   {['All Assets', 'Critical Only', 'Specific Domain'].map(o => <option key={o}>{o}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-3 top-3.5 text-secondary pointer-events-none" />
@@ -436,24 +446,29 @@ function ScheduleTab() {
 
           {/* Right: schedule details + delivery */}
           <div className="flex flex-col gap-4">
-            <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(99,102,241,0.15)' }}>
+            <div className="eterna-phase-card p-4">
               <div className="text-xs font-bold text-secondary uppercase tracking-wider mb-3">Schedule Details</div>
               <div className="flex flex-col gap-3">
                 <div>
                   <label className="text-xs text-secondary block mb-1.5">Date</label>
                   <input type="date" value={scheduleDate} onChange={e => setScheduleDate(e.target.value)}
-                    className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-primary-indigo/50" />
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary block mb-1.5">Time</label>
                   <input type="time" value={scheduleTime} onChange={e => setScheduleTime(e.target.value)}
-                    className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-primary-indigo/50" />
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }} />
                 </div>
                 <div>
                   <label className="text-xs text-secondary block mb-1.5">Time Zone</label>
                   <div className="relative w-full">
                     <select value={timezone} onChange={e => setTimezone(e.target.value)}
-                      className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-primary-indigo/50 cursor-pointer">
+                      className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none cursor-pointer transition-all"
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--input-border)')}>
                       {['Asia/Kolkata', 'UTC', 'America/New_York', 'Europe/London'].map(o => <option key={o}>{o}</option>)}
                     </select>
                     <ChevronDown size={14} className="absolute right-3 top-2.5 text-secondary pointer-events-none" />
@@ -462,7 +477,7 @@ function ScheduleTab() {
               </div>
             </div>
 
-            <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(99,102,241,0.15)' }}>
+            <div className="eterna-phase-card p-4">
               <div className="text-xs font-bold text-secondary uppercase tracking-wider mb-3">Delivery Options</div>
               <div className="flex flex-col gap-3">
                 {[
@@ -474,18 +489,19 @@ function ScheduleTab() {
                     <button
                       type="button"
                       onClick={() => setDeliveryMethod(d.key)}
-                      className={`flex-1 flex items-center gap-2 text-sm px-3 py-2 rounded-lg border transition-all ${
+                      className="flex-1 flex items-center gap-2 text-sm px-3 py-2 rounded-lg border transition-all"
+                      style={
                         deliveryMethod === d.key
-                          ? 'border-primary-indigo bg-primary-indigo/10 text-primary'
-                          : 'border-glass-border text-secondary hover:border-primary-indigo/30'
-                      }`}>
+                          ? { borderColor: 'var(--primary-indigo)', background: 'rgba(99,102,241,0.10)', color: 'var(--text-primary)' }
+                          : { borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }
+                      }>
                       {d.icon} <span>{d.label}</span>
                       {d.editable && d.sub && (
                         <span className="text-[10px] font-mono text-secondary/60 ml-auto truncate max-w-[120px]">{d.sub}</span>
                       )}
                     </button>
                     {deliveryMethod === d.key && (
-                      <div className="w-3 h-3 rounded-full bg-primary-indigo flex-shrink-0" style={{ boxShadow: '0 0 6px rgba(99,102,241,0.6)' }} />
+                      <div className="w-3 h-3 rounded-full bg-primary-indigo flex-shrink-0" />
                     )}
                   </div>
                 ))}
@@ -499,7 +515,8 @@ function ScheduleTab() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       placeholder="executive@org.com"
-                      className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-primary-indigo/50"
+                      className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
                     />
                   </div>
                 )}
@@ -511,7 +528,8 @@ function ScheduleTab() {
                       value={savePath}
                       onChange={e => setSavePath(e.target.value)}
                       placeholder="/Reports/Quarterly"
-                      className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-primary-indigo/50"
+                      className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
                     />
                   </div>
                 )}
@@ -525,8 +543,7 @@ function ScheduleTab() {
             type="button"
             onClick={handleScheduleReport}
             disabled={loading}
-            className="w-full px-8 py-3.5 text-white font-bold rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)' }}>
+            className="eterna-btn-primary w-full py-3.5 flex items-center justify-center gap-2 shadow-lg">
             {deliveryMethod === 'download' ? (
               <>
                 <Download size={18} /> {loading ? 'Generating...' : 'Generate & Download Report'}
@@ -701,7 +718,7 @@ function OnDemandTab() {
         </div>
       )}
 
-      <div className="glass-card border rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(234,179,8,0.2)' }}>
+      <div className="eterna-phase-card rounded-2xl overflow-hidden" style={{ borderColor: 'rgba(234,179,8,0.25)' }}>
         {/* Header */}
         <div className="px-6 py-5 border-b border-glass-border flex items-center gap-3"
           style={{ background: 'rgba(234,179,8,0.06)' }}>
@@ -751,7 +768,10 @@ function OnDemandTab() {
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     placeholder="analyst@org.com"
-                    className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-brand-gold/50"
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent-amber)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--input-border)')}
                   />
                 </div>
               )}
@@ -763,23 +783,27 @@ function OnDemandTab() {
                     value={savePath}
                     onChange={e => setSavePath(e.target.value)}
                     placeholder="/Reports/OnDemand"
-                    className="w-full bg-surface-card border border-glass-border rounded-lg px-3 py-2 text-sm text-primary focus:outline-none focus:border-brand-gold/50"
+                    className="w-full rounded-xl px-3 py-2 text-sm focus:outline-none transition-all"
+                    style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
+                    onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent-amber)')}
+                    onBlur={e => (e.currentTarget.style.borderColor = 'var(--input-border)')}
                   />
                 </div>
               )}
             </div>
 
             {/* Advanced Settings */}
-            <div className="glass-card border rounded-xl p-4" style={{ borderColor: 'rgba(234,179,8,0.15)' }}>
+            <div className="eterna-phase-card p-4">
               <div className="text-xs font-bold text-secondary uppercase tracking-wider mb-3">Advanced Settings</div>
               <div className="flex flex-wrap gap-2 mb-3">
                 {(['PDF','CSV','JSON'] as const).map(f => (
                   <button key={f} type="button" onClick={() => setFormat(f)}
-                    className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                    className="px-4 py-1.5 rounded-lg text-xs font-bold border transition-all"
+                    style={
                       format === f
-                        ? 'bg-brand-gold text-black border-brand-gold'
-                        : 'border-glass-border text-secondary hover:text-primary'
-                    }`}>
+                        ? { background: 'var(--accent-amber)', color: '#0f172a', borderColor: 'var(--accent-amber)', boxShadow: '0 2px 8px rgba(245,158,11,0.25)' }
+                        : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }
+                    }>
                     {f}
                   </button>
                 ))}
@@ -792,7 +816,10 @@ function OnDemandTab() {
                 <label className="text-xs text-secondary block mb-1.5">Report Period</label>
                 <div className="relative w-full">
                   <select value={period} onChange={e => setPeriod(e.target.value)}
-                    className="w-full appearance-none bg-surface-card border border-glass-border text-primary text-sm rounded-lg px-3 py-2 pr-8 focus:outline-none focus:border-brand-gold/50 cursor-pointer">
+                      className="w-full appearance-none rounded-xl px-3 py-2 pr-8 text-sm focus:outline-none cursor-pointer transition-all"
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--text-primary)' }}
+                      onFocus={e => (e.currentTarget.style.borderColor = 'var(--accent-amber)')}
+                      onBlur={e => (e.currentTarget.style.borderColor = 'var(--input-border)')}>
                     {['Last 30 Days', 'Last 7 Days', 'Last 90 Days', 'All Time', 'Custom Range'].map(o => <option key={o}>{o}</option>)}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-2.5 text-secondary pointer-events-none" />
@@ -807,8 +834,7 @@ function OnDemandTab() {
             type="button"
             onClick={handleGenerateReport}
             disabled={loading}
-            className="w-full px-8 py-3.5 font-bold text-black rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+            className="eterna-btn-primary w-full py-3.5 flex items-center justify-center gap-2 shadow-lg">
             <Download size={18} /> {loading ? 'Generating...' : 'Generate Report'}
           </button>
         </div>

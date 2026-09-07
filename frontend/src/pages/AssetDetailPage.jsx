@@ -13,8 +13,8 @@ import { ScoreBreakdownTooltip } from '../components/shared/ScoreBreakdownToolti
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
 const Section = ({ title, icon, children, accentColor }) => (
-    <div className="glass-card border rounded-xl overflow-hidden"
-        style={{ borderColor: accentColor ? `${accentColor}22` : 'var(--glass-border)' }}>
+    <div className="eterna-phase-card rounded-xl overflow-hidden"
+        style={{ borderColor: accentColor ? `${accentColor}33` : 'var(--glass-border)' }}>
         <div className="px-5 py-3 border-b flex items-center gap-2.5"
             style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
             {icon && (
@@ -52,7 +52,7 @@ const JsonViewer = ({ data, title = 'Raw Scan Result (JSON)' }) => {
         });
     };
     return (
-        <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+        <div className="eterna-phase-card rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
             <button type="button" onClick={() => setOpen(v => !v)}
                 className="w-full flex items-center justify-between px-5 py-3 transition-colors"
                 style={{ background: 'var(--surface-card)' }}
@@ -203,7 +203,7 @@ const AssetDetailPage = () => {
                                 <circle cx="40" cy="40" r="32" fill="none"
                                     stroke={scoreColor} strokeWidth="8" strokeLinecap="round"
                                     strokeDasharray={`${(score / 100) * 201} 201`}
-                                    style={{ filter: `drop-shadow(0 0 6px ${scoreColor}88)`, transition: 'stroke-dasharray 1s ease' }} />
+                                    style={{ transition: 'stroke-dasharray 1s ease' }} />
                             </svg>
                             <div className="absolute inset-0 flex flex-col items-center justify-center">
                                 <span className="text-2xl font-black font-mono leading-none" style={{ color: scoreColor }}>{score}</span>

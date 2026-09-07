@@ -86,9 +86,9 @@ const TIER_TABLE = [
 ];
 
 const TOOLTIP = {
-  contentStyle: { background: 'rgba(10,16,36,0.97)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, fontSize: 12 },
-  labelStyle: { color: '#94a3b8', fontSize: 11 },
-  itemStyle: { color: '#f8fafc', fontSize: 12 },
+  contentStyle: { background: 'var(--surface-card)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 12, color: 'var(--text-primary)', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
+  labelStyle: { color: 'var(--text-secondary)', fontSize: 11 },
+  itemStyle: { color: 'var(--text-primary)', fontSize: 12 },
 };
 
 // ─── Risk Gauge (shows exposure score — higher arc = more risk) ───────────────
@@ -102,14 +102,12 @@ function RiskGauge({ exposureScore }: { exposureScore: number }) {
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: 190, height: 190 }}>
-      <div className="absolute inset-0 rounded-full opacity-10"
-        style={{ background: `radial-gradient(circle, ${col} 0%, transparent 70%)` }} />
       <svg width="190" height="190" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
-        <circle cx="95" cy="95" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="12" />
+        <circle cx="95" cy="95" r={r} fill="none" stroke="var(--glass-border)" strokeWidth="12" />
         <circle cx="95" cy="95" r={r} fill="none"
           stroke={col} strokeWidth="12" strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`}
-          style={{ filter: `drop-shadow(0 0 12px ${col}88)`, transition: 'stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1)' }} />
+          style={{ transition: 'stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1)' }} />
       </svg>
       <div className="absolute flex flex-col items-center text-center gap-0.5">
         <span className="text-4xl font-black font-mono leading-none" style={{ color: col }}>{exposureScore}</span>
@@ -133,14 +131,12 @@ function ReadinessGauge({ pct }: { pct: number }) {
 
   return (
     <div className="relative flex items-center justify-center" style={{ width: 190, height: 190 }}>
-      <div className="absolute inset-0 rounded-full opacity-10"
-        style={{ background: `radial-gradient(circle, ${col} 0%, transparent 70%)` }} />
       <svg width="190" height="190" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
-        <circle cx="95" cy="95" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="12" />
+        <circle cx="95" cy="95" r={r} fill="none" stroke="var(--glass-border)" strokeWidth="12" />
         <circle cx="95" cy="95" r={r} fill="none"
           stroke={col} strokeWidth="12" strokeLinecap="round"
           strokeDasharray={`${dash} ${circ}`}
-          style={{ filter: `drop-shadow(0 0 12px ${col}88)`, transition: 'stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1)' }} />
+          style={{ transition: 'stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1)' }} />
       </svg>
       <div className="absolute flex flex-col items-center text-center gap-0.5">
         <span className="text-4xl font-black font-mono leading-none" style={{ color: col }}>{pct}%</span>
@@ -170,9 +166,10 @@ export default function RatingPage() {
   const pqcReadyCount = (assets as any[]).filter(a =>
     a.quantum_safe_status === 'PQC_READY' || a.quantum_safe_status === 'FULLY_QUANTUM_SAFE'
   ).length;
-  const vulnerableCount = (assets as any[]).filter(a =>
-    a.quantum_safe_status === 'VULNERABLE'
-  ).length;
+  const vulnerableCount = (assets as any[]).filter(a => {
+    const s = String(a.quantum_safe_status || '').toUpperCase();
+    return s === 'VULNERABLE' || s === 'QUANTUM_VULNERABLE';
+  }).length;
   const pqcReadiness = totalAssets > 0 ? Math.round((pqcReadyCount / totalAssets) * 100) : 0;
 
   // Per-asset URL scores — sorted by risk score descending (worst first)
@@ -232,22 +229,22 @@ export default function RatingPage() {
           { label: 'Critical Assets', value: critCount,          color: '#ef4444', icon: <AlertTriangle size={18} />, note: `+${highCount} high` },
           { label: 'Rating Tier',     value: tier.label,         color: tier.color, icon: <Award size={18} />, note: tier.desc },
         ].map(k => (
-          <div key={k.label} className="glass-card border rounded-xl p-5 relative overflow-hidden"
-            style={{ borderColor: `${k.color}28`, background: `${k.color}08` }}>
-            <div className="absolute top-3 right-3 opacity-15" style={{ color: k.color }}>{k.icon}</div>
-            <div className="text-2xl font-black font-mono mb-1" style={{ color: k.color }}>{k.value}</div>
-            <div className="text-xs text-secondary font-semibold uppercase tracking-wider">{k.label}</div>
-            <div className="text-[10px] text-secondary/60 mt-1">{k.note}</div>
+          <div key={k.label} className="eterna-phase-card border rounded-2xl p-5 relative overflow-hidden transition-all duration-300"
+            style={{ borderColor: `${k.color}30`, background: `${k.color}08` }}>
+            <div className="absolute top-3 right-3 opacity-20" style={{ color: k.color }}>{k.icon}</div>
+            <div className="text-3xl font-black font-mono mb-1" style={{ color: k.color }}>{k.value}</div>
+            <div className="text-xs text-primary font-bold uppercase tracking-wider">{k.label}</div>
+            <div className="text-[10px] text-secondary mt-1">{k.note}</div>
           </div>
         ))}
       </div>
 
       {/* ── Score Banner ─────────────────────────────────────────── */}
-      <div className="glass-card border rounded-2xl overflow-hidden"
-        style={{ borderColor: `${tier.color}30`, background: `linear-gradient(135deg, ${tier.color}06 0%, rgba(99,102,241,0.05) 100%)` }}>
-        <div className="px-6 py-4 border-b border-glass-border text-center">
-          <h2 className="font-black text-primary text-lg">Consolidated Enterprise-Level Cyber-Rating Score</h2>
-          <p className="text-xs text-secondary mt-1">Risk score = average quantum exposure across all assets. Higher score = greater risk.</p>
+      <div className="eterna-phase-card border rounded-2xl overflow-hidden"
+        style={{ borderColor: `${tier.color}35`, background: `linear-gradient(135deg, ${tier.color}08 0%, rgba(99,102,241,0.05) 100%)` }}>
+        <div className="px-6 py-4 border-b text-center" style={{ borderColor: 'var(--border-divider)' }}>
+          <h2 className="font-extrabold text-primary text-xl font-outfit">Consolidated Enterprise-Level Cyber-Rating Score</h2>
+          <p className="text-xs text-secondary mt-1">Average quantum exposure quantification across all assets. Higher score = greater risk.</p>
         </div>
         <div className="flex flex-col md:flex-row items-center gap-8 p-8">
           {/* Two gauges side by side */}
@@ -256,33 +253,42 @@ export default function RatingPage() {
               <RiskGauge exposureScore={exposureScore} />
               <div className="text-[10px] text-secondary font-mono text-center">
                 {activeDomain || 'Enterprise'}<br/>
-                <span className="text-status-critical">↑ higher = more risk</span>
+                <span className="text-status-critical font-bold">↑ higher = more risk</span>
               </div>
             </div>
             <div className="flex flex-col items-center gap-2">
               <ReadinessGauge pct={pqcReadiness} />
               <div className="text-[10px] text-secondary font-mono text-center">
                 PQC Readiness<br/>
-                <span className="text-status-safe">↑ higher = more ready</span>
+                <span className="text-[10px] font-mono text-center" style={{ color: 'var(--status-safe)', fontWeight: 700 }}>
+                  ↑ higher = more ready
+                </span>
               </div>
             </div>
           </div>
 
           {/* Status table */}
           <div className="flex-1 w-full">
-            <div className="glass-card border rounded-xl overflow-hidden">
+            <div className="eterna-phase-card border rounded-2xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-surface-card-hover">
-                    <th className="text-left px-5 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">Tier</th>
-                    <th className="text-left px-5 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">Risk Score Range</th>
+                  <tr style={{ background: 'var(--surface-card-hover)' }}>
+                    <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider border-b whitespace-nowrap" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>Tier</th>
+                    <th className="text-left px-5 py-3 text-xs font-bold uppercase tracking-wider border-b whitespace-nowrap" style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>Risk Score Range</th>
                   </tr>
                 </thead>
                 <tbody>
                   {STATUS_TABLE.map((row, i) => {
                     const isCurrent = !row.italic && riskTier(exposureScore).label === row.status;
                     return (
-                      <tr key={i} className={`border-b border-glass-border/30 transition-colors ${isCurrent ? 'bg-surface-card-hover/80' : 'hover:bg-surface-card-hover/40'}`}>
+                      <tr key={i}
+                      className="border-b transition-colors"
+                      style={{
+                        borderColor: 'var(--border-divider)',
+                        background: isCurrent ? 'var(--surface-card-hover)' : '',
+                      }}
+                      onMouseEnter={e => { if (!isCurrent) e.currentTarget.style.background = 'var(--surface-card-hover)'; }}
+                      onMouseLeave={e => { if (!isCurrent) e.currentTarget.style.background = ''; }}>
                         <td className="px-5 py-3.5 font-semibold flex items-center gap-2.5" style={{ color: row.color }}>
                           {row.icon && <span className="text-base">{row.icon}</span>}
                           <span className={row.italic ? 'text-secondary text-[10px] italic' : ''}>{row.status}</span>
@@ -306,22 +312,21 @@ export default function RatingPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Per-asset URL score table */}
         <div className="lg:col-span-2 glass-card border rounded-xl overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-glass-border flex items-center justify-between">
+          <div className="px-5 py-3.5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-divider)' }}>
             <div className="flex items-center gap-2">
-              <Star size={15} className="text-amber-400" />
-              <span className="font-bold text-primary text-sm">Risk Score by Asset</span>
+              <Star size={15} style={{ color: 'var(--accent-amber)' }} aria-hidden="true" />
+              <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Risk Score by Asset</span>
             </div>
             <span className="text-[10px] text-secondary">sorted by highest risk first</span>
           </div>
           <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-surface-card-hover z-10">
-                <tr>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">#</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">Asset URL</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">Risk Score</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">PQC Status</th>
-                  <th className="text-left px-4 py-3 text-xs font-bold text-secondary uppercase tracking-wider border-b border-glass-border">Tier</th>
+              <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+                <tr style={{ background: 'var(--surface-card)' }}>
+                  {['#', 'Asset URL', 'Risk Score', 'PQC Status', 'Tier'].map(h => (
+                    <th key={h} className="text-left px-4 py-3 text-xs font-bold uppercase tracking-wider border-b whitespace-nowrap"
+                      style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -339,13 +344,17 @@ export default function RatingPage() {
                     : row.pqcStatus === 'PQC_READY' ? 'PQC Ready'
                     : row.pqcStatus === 'VULNERABLE' ? 'Vulnerable' : 'Unknown';
                   return (
-                    <tr key={i} className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors">
-                      <td className="px-4 py-2.5 text-secondary text-xs font-mono">{i + 1}</td>
-                      <td className="px-4 py-2.5 font-mono text-xs text-indigo-400 max-w-[220px] truncate" title={row.url}>{row.url}</td>
+                    <tr key={i}
+                      className="border-b transition-colors"
+                      style={{ borderColor: 'var(--border-divider)' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}>
+                      <td className="px-4 py-2.5 font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{i + 1}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs max-w-[220px] truncate" style={{ color: 'var(--text-link)' }} title={row.url}>{row.url}</td>
                       <td className="px-4 py-2.5">
                         <div className="flex items-center gap-2">
                           <span className="font-black font-mono text-sm w-8" style={{ color: riskColor(row.score) }}>{row.score}</span>
-                          <div className="w-14 h-1.5 bg-surface-card rounded-full overflow-hidden">
+                          <div className="w-14 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                             <div className="h-full rounded-full" style={{ width: `${row.score}%`, backgroundColor: riskColor(row.score) }} />
                           </div>
                         </div>
@@ -379,22 +388,22 @@ export default function RatingPage() {
 
           {/* Stacked bar */}
           {totalAssets > 0 && (
-            <div className="w-full h-5 rounded-full overflow-hidden flex gap-0.5">
+              <div className="w-full h-5 rounded-full overflow-hidden flex gap-0.5" style={{ background: 'var(--surface-card-hover)' }}>
               {vulnerableCount > 0 && (
-                <div className="h-full bg-red-500 transition-all duration-700 rounded-l-full"
-                  style={{ width: `${Math.round((vulnerableCount / totalAssets) * 100)}%` }}
+                <div className="h-full transition-all duration-700 rounded-l-full"
+                  style={{ width: `${Math.round((vulnerableCount / totalAssets) * 100)}%`, background: 'var(--status-critical)' }}
                   title={`Vulnerable: ${vulnerableCount}`} />
               )}
               {pqcReadyCount > 0 && (
-                <div className="h-full bg-amber-500 transition-all duration-700"
-                  style={{ width: `${Math.round((pqcReadyCount / totalAssets) * 100)}%` }}
+                <div className="h-full transition-all duration-700"
+                  style={{ width: `${Math.round((pqcReadyCount / totalAssets) * 100)}%`, background: 'var(--status-medium)' }}
                   title={`PQC Ready: ${pqcReadyCount}`} />
               )}
               {(() => {
                 const safeCount = (assets as any[]).filter(a => inferPqcStatus(a) === 'FULLY_QUANTUM_SAFE').length;
                 return safeCount > 0 ? (
-                  <div className="h-full bg-emerald-500 transition-all duration-700 rounded-r-full"
-                    style={{ width: `${Math.round((safeCount / totalAssets) * 100)}%` }}
+                  <div className="h-full transition-all duration-700 rounded-r-full"
+                    style={{ width: `${Math.round((safeCount / totalAssets) * 100)}%`, background: 'var(--status-safe)' }}
                     title={`Quantum Safe: ${safeCount}`} />
                 ) : null;
               })()}
@@ -429,11 +438,12 @@ export default function RatingPage() {
           </div>
 
           {/* Summary stats */}
-          <div className="mt-1 pt-3 border-t border-glass-border grid grid-cols-2 gap-2 text-[10px] text-secondary">
-            <div>Total Assets: <span className="text-primary font-bold">{totalAssets}</span></div>
-            <div>Shadow: <span className="text-orange-400 font-bold">{shadowCount}</span></div>
-            <div>Critical Risk: <span className="text-red-400 font-bold">{critCount}</span></div>
-            <div>High Risk: <span className="text-orange-400 font-bold">{highCount}</span></div>
+          <div className="mt-1 pt-3 border-t grid grid-cols-2 gap-2 text-[10px]"
+            style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
+            <div>Total Assets: <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{totalAssets}</span></div>
+            <div>Shadow: <span className="font-bold" style={{ color: 'var(--status-high)' }}>{shadowCount}</span></div>
+            <div>Critical Risk: <span className="font-bold" style={{ color: 'var(--status-critical)' }}>{critCount}</span></div>
+            <div>High Risk: <span className="font-bold" style={{ color: 'var(--status-high)' }}>{highCount}</span></div>
           </div>
         </div>
       </div>
@@ -442,12 +452,13 @@ export default function RatingPage() {
       {chartData.length > 0 && (
         <div className="glass-card border rounded-xl p-6">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-              <TrendingUp size={14} className="text-indigo-400" />
+            <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)' }}>
+              <TrendingUp size={14} />
             </div>
             <div>
-              <div className="text-sm font-bold text-primary">Risk Score by Asset (Top 10)</div>
-              <div className="text-xs text-secondary">Higher bar = higher risk. Red = critical, green = safe.</div>
+              <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Risk Score by Asset (Top 10)</div>
+              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Higher bar = higher risk.</div>
             </div>
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -469,12 +480,13 @@ export default function RatingPage() {
       {/* ── Domain Breakdown ─────────────────────────────────────── */}
       <div className="glass-card border rounded-xl p-6">
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center">
-            <Activity size={14} className="text-purple-400" />
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(139,92,246,0.12)', color: '#a78bfa' }}>
+            <Activity size={14} />
           </div>
           <div>
-            <div className="text-sm font-bold text-primary">Security Dimension Breakdown</div>
-            <div className="text-xs text-secondary">All scores are safety-oriented — higher = better</div>
+            <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Security Dimension Breakdown</div>
+            <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>All scores are safety-oriented — higher = better</div>
           </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -487,9 +499,9 @@ export default function RatingPage() {
                 </span>
                 <span className="font-black font-mono text-sm" style={{ color: cat.color }}>{cat.score}%</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-surface-card overflow-hidden">
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${cat.score}%`, background: cat.color, boxShadow: `0 0 8px ${cat.color}55` }} />
+                  style={{ width: `${cat.score}%`, background: cat.color }} />
               </div>
               <div className="text-[10px] text-secondary">{cat.note}</div>
             </div>
@@ -499,12 +511,16 @@ export default function RatingPage() {
 
       {/* ── Tier Classification ───────────────────────────────────── */}
       <div className="glass-card border rounded-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-glass-border flex items-center gap-2"
-          style={{ background: 'rgba(99,102,241,0.05)' }}>
-          <Shield size={16} className="text-indigo-400" />
-          <span className="font-bold text-primary">Tier Classification Reference</span>
+        <div className="px-6 py-4 border-b flex items-center gap-2"
+          style={{ borderColor: 'var(--border-divider)', background: 'rgba(99,102,241,0.05)' }}>
+          <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+            style={{ background: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)' }}>
+            <Shield size={14} />
+          </div>
+          <span className="font-bold" style={{ color: 'var(--text-primary)' }}>Tier Classification Reference</span>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-glass-border/30">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x"
+          style={{ borderColor: 'var(--border-divider)' }}>
           {TIER_TABLE.map((row, i) => {
             const isCurrent = riskTier(exposureScore).label === row.tier;
             return (

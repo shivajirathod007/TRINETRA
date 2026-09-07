@@ -333,19 +333,19 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
   const byId = new Map(nodes.map(n => [n.id, n]));
 
   return (
-    <div className="glass-card border rounded-xl overflow-hidden"
-      style={{ borderColor: 'rgba(99,102,241,0.2)', background: 'rgba(8,13,26,0.9)' }}>
+    <div className="eterna-phase-card border rounded-2xl overflow-hidden"
+      style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-card)' }}>
       {/* Header */}
       <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-2"
-        style={{ borderColor: 'rgba(99,102,241,0.15)' }}>
+        style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-card-hover)' }}>
         <div className="flex items-center gap-3">
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#22c55e' }} />
-          <span className="text-xs font-bold uppercase tracking-widest" style={{ color: 'rgba(148,163,184,0.8)' }}>
+          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#10b981' }} />
+          <span className="text-xs font-bold uppercase tracking-widest font-outfit" style={{ color: 'var(--text-primary)' }}>
             Domain Relationship Map
           </span>
           {assets.length > 0 && (
             <div className="flex items-center gap-3 text-[10px] font-mono">
-              <span style={{ color: 'rgba(148,163,184,0.6)' }}>{nodes.length} nodes</span>
+              <span style={{ color: 'var(--text-secondary)' }}>{nodes.length} nodes</span>
               {critCount > 0 && <span className="font-bold" style={{ color: '#ef4444' }}>{critCount} critical</span>}
               {shadowCount > 0 && <span className="font-bold" style={{ color: '#f97316' }}>{shadowCount} shadow</span>}
             </div>
@@ -353,14 +353,14 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
         </div>
         <div className="flex items-center gap-3 text-[10px]">
           <div className="flex items-center gap-2 flex-wrap">
-            {[['#ef4444','Critical'],['#f97316','High'],['#eab308','Medium'],['#22c55e','Safe'],['#6366f1','Unknown']].map(([c,l]) => (
+            {[['#ef4444','Critical'],['#f97316','High'],['#eab308','Medium'],['#10b981','Safe'],['#8b5cf6','Unknown']].map(([c,l]) => (
               <span key={l} className="flex items-center gap-1">
                 <span className="w-2 h-2 rounded-full" style={{ background: c as string }} />
-                <span style={{ color: 'rgba(148,163,184,0.6)' }}>{l}</span>
+                <span style={{ color: 'var(--text-secondary)' }}>{l}</span>
               </span>
             ))}
           </div>
-          <span className="font-mono font-bold" style={{ color: '#818cf8' }}>Live Topology</span>
+          <span className="font-mono font-bold" style={{ color: '#f59e0b' }}>Live Topology</span>
         </div>
       </div>
 
@@ -368,9 +368,9 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
       <div className="relative" style={{ height: H }}>
         {assets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-2"
-            style={{ color: 'rgba(148,163,184,0.4)' }}>
-            <Activity size={28} className="opacity-20" />
-            <p className="text-sm">No scan data — run a scan to populate the topology</p>
+            style={{ color: 'var(--text-secondary)' }}>
+            <Activity size={28} className="opacity-30" />
+            <p className="text-sm font-medium">No scan data — run a scan to populate the topology</p>
           </div>
         ) : (
           <>
@@ -382,14 +382,6 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
                   <stop offset="0%" stopColor="#f59e0b" />
                   <stop offset="100%" stopColor="#d97706" stopOpacity="0.8" />
                 </radialGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="2.5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
-                <filter id="glowStrong">
-                  <feGaussianBlur stdDeviation="5" result="blur"/>
-                  <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-                </filter>
               </defs>
 
               {/* Edges */}
@@ -442,7 +434,6 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
                     )}
                     <circle cx={node.x} cy={node.y} r={r}
                       fill={col}
-                      filter={isHov ? 'url(#glowStrong)' : 'url(#glow)'}
                       opacity={isHov ? 1 : 0.82}
                     />
                     {(isHov || node.risk === 'CRITICAL') && (
@@ -460,7 +451,7 @@ function LiveTopologyGraph({ assets, domain }: { assets: any[]; domain: string }
               {/* Root node */}
               {rootNode && (
                 <g>
-                  <circle cx={rootNode.x} cy={rootNode.y} r="22" fill="url(#rootGrad)" filter="url(#glowStrong)">
+                  <circle cx={rootNode.x} cy={rootNode.y} r="22" fill="url(#rootGrad)">
                     <animate attributeName="r" values="20;24;20" dur="3s" repeatCount="indefinite"/>
                   </circle>
                   <circle cx={rootNode.x} cy={rootNode.y} r="30" fill="none"
@@ -688,23 +679,23 @@ export default function DiscoveryPage() {
 
       {/* ── KPI strip ─────────────────────────────────────────────── */}
       {assets.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: 'Total Assets',   value: assets.length,  color: '#6366f1', icon: <Globe size={18} />, sub: 'discovered' },
-            { label: 'SSL / TLS',      value: sslData.length, color: '#06b6d4', icon: <Lock size={18} />, sub: 'certificates' },
-            { label: 'Critical Risk',  value: critCount,      color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
-            { label: 'Shadow Assets',  value: shadowCount,    color: '#f97316', icon: <Wifi size={18} />, sub: 'unmanaged' },
+            { label: 'Discovered Assets', value: assets.length,  color: '#f59e0b', icon: <Globe size={18} />, sub: 'Total Perimeter' },
+            { label: 'SSL / TLS Certs',   value: sslData.length, color: '#06b6d4', icon: <Lock size={18} />, sub: 'Active Certificates' },
+            { label: 'Critical Risk',     value: critCount,      color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'Immediate Focus' },
+            { label: 'Shadow Endpoints',  value: shadowCount,    color: '#8b5cf6', icon: <Wifi size={18} />, sub: 'Unmanaged Perimeter' },
           ].map(k => (
-            <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
-              style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `${k.color}15`, color: k.color }}>
+            <div key={k.label} className="eterna-phase-card border rounded-2xl p-5 flex items-center gap-4 transition-all duration-300"
+              style={{ borderColor: `${k.color}30` }}>
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: `${k.color}18`, border: `1px solid ${k.color}30`, color: k.color }}>
                 {k.icon}
               </div>
               <div>
                 <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>{k.value}</div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-secondary)' }}>{k.label}</div>
-                <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
+                <div className="text-[10px] font-bold uppercase tracking-wider mt-1 text-primary">{k.label}</div>
+                <div className="text-[10px] font-mono mt-0.5 text-secondary">{k.sub}</div>
               </div>
             </div>
           ))}
@@ -716,41 +707,40 @@ export default function DiscoveryPage() {
 
       {/* ── Scan input ────────────────────────────────────────────── */}
       <form onSubmit={handleInitiate} className="w-full">
-        <div className="glass-card border rounded-xl overflow-hidden"
-          style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
-          <div className="flex items-center px-2 py-1">
-            <Search size={18} className="ml-3 mr-2 shrink-0" style={{ color: '#818cf8' }} />
+        <div className="eterna-phase-card border rounded-2xl overflow-hidden"
+          style={{ borderColor: 'var(--glass-border)' }}>
+          <div className="flex items-center px-3 py-2">
+            <Search size={18} className="ml-3 mr-2 shrink-0 text-amber-500" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full bg-transparent placeholder-secondary focus:outline-none py-3 text-sm font-mono"
+              className="w-full bg-transparent placeholder-secondary focus:outline-none py-2.5 text-sm font-mono"
               style={{ color: 'var(--text-primary)' }}
-              placeholder="Search domain, URL, contact, IoC or other..."
+              placeholder="Search domain, URL, host, or perimeter target (e.g. quantum-bank.com)..."
             />
             <button
               type="submit"
               disabled={isScanning || !search.trim()}
-              className="px-5 py-2 font-bold uppercase tracking-widest text-xs rounded-lg transition-all whitespace-nowrap ml-2 mr-1 disabled:opacity-40 flex items-center gap-2"
-              style={{ background: '#6366f1', color: 'white' }}
+              className="eterna-btn-primary px-6 py-2.5 font-bold uppercase tracking-wider text-xs rounded-xl whitespace-nowrap ml-2 mr-1 disabled:opacity-40 flex items-center gap-2 border-0 cursor-pointer"
             >
               {isScanning ? <RefreshCw size={12} className="animate-spin" /> : null}
-              {isScanning ? 'Scanning…' : 'Scan Now'}
+              {isScanning ? 'Scanning Target…' : 'Initiate Scan'}
             </button>
           </div>
           {activeDomain && (
-            <div className="px-5 py-2 flex items-center gap-4 text-xs flex-wrap" style={{ background: 'var(--surface-card)', borderTop: '1px solid var(--border-divider)' }}>
-              <span className="text-secondary font-mono">Active domain:</span>
-              <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{activeDomain}</span>
+            <div className="px-5 py-2.5 flex items-center gap-4 text-xs flex-wrap" style={{ background: 'var(--surface-card)', borderTop: '1px solid var(--border-divider)' }}>
+              <span className="text-secondary font-mono">Active Target Domain:</span>
+              <span className="font-bold font-mono text-amber-500">{activeDomain}</span>
               {isRunning && (
-                <span className="flex items-center gap-1.5 text-amber-400">
+                <span className="flex items-center gap-1.5 text-amber-400 font-mono">
                   <RefreshCw size={11} className="animate-spin" />
-                  Scanning… {(scanStatus as any)?.progress ?? 0}%
+                  Telemetry Scanning… {(scanStatus as any)?.progress ?? 0}%
                 </span>
               )}
               {scanStatus?.status?.toLowerCase() === 'completed' && (
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  ✓ Scan complete — {(scanStatus as any)?.assets_found ?? assets.length} assets found
+                <span className="font-semibold flex items-center gap-1 font-mono" style={{ color: 'var(--status-safe)' }}>
+                  ✓ Scan Complete — {(scanStatus as any)?.assets_found ?? assets.length} assets mapped
                 </span>
               )}
             </div>
@@ -759,15 +749,14 @@ export default function DiscoveryPage() {
       </form>
 
       {/* ── Category tabs ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {(Object.keys(CATEGORY_COUNTS) as Category[]).map(cat => (
           <button key={cat} onClick={() => setCategory(cat)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all border"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all border cursor-pointer font-outfit"
             style={category === cat ? {
-              background: '#6366f1',
-              borderColor: '#6366f1',
+              background: 'linear-gradient(135deg, #d97706, #7c3aed)',
+              borderColor: 'transparent',
               color: 'white',
-              boxShadow: '0 4px 14px rgba(99,102,241,0.35)',
             } : {
               background: 'var(--surface-card)',
               borderColor: 'var(--glass-border)',
@@ -775,8 +764,8 @@ export default function DiscoveryPage() {
             }}>
             {CATEGORY_ICONS[cat]}
             <span>{cat}</span>
-            <span className="text-xs font-mono px-1.5 py-0.5 rounded-md"
-              style={category === cat ? { background: 'rgba(255,255,255,0.2)' } : { background: 'var(--surface-card-hover)' }}>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full"
+              style={category === cat ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
               {CATEGORY_COUNTS[cat]}
             </span>
           </button>
@@ -785,27 +774,27 @@ export default function DiscoveryPage() {
 
       {/* ── Status filter ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Status:</span>
+        <span className="text-[10px] font-bold text-secondary uppercase tracking-widest font-mono">Filter Posture:</span>
         {(Object.keys(STATUS_COUNTS) as StatusFilter[]).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
-            className="px-3 py-1 rounded-full font-semibold text-xs transition-all border"
+            className="px-3.5 py-1 rounded-full font-semibold text-xs transition-all border cursor-pointer font-mono"
             style={statusFilter === s ? {
               background: '#f59e0b',
               borderColor: '#f59e0b',
-              color: 'black',
-              boxShadow: '0 0 10px rgba(245,158,11,0.3)',
+              color: '#060813',
+              fontWeight: 700,
             } : {
               background: 'var(--surface-card)',
               borderColor: 'var(--glass-border)',
               color: 'var(--text-secondary)',
             }}>
-            {s} <span className="opacity-70">({STATUS_COUNTS[s]})</span>
+            {s} <span className="opacity-75 font-normal">({STATUS_COUNTS[s]})</span>
           </button>
         ))}
       </div>
 
       {/* ── Data table ────────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+      <div className="eterna-phase-card border rounded-2xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
         {/* Toolbar */}
         <div className="px-5 py-3 border-b flex flex-wrap items-center gap-3"
           style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
