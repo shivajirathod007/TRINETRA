@@ -45,7 +45,30 @@ BODY (first 2000 chars):
 
 Return JSON array only."""
 
+ANTHROPIC_MESSAGES_ENDPOINT = "https://api.anthropic.com/v1/messages"
+
+
+def log_llm_fallback_config() -> None:
+    """
+    Log the LLM fallback configuration at service startup so a misconfigured
+    model name or a disabled fallback is visible immediately, instead of
+    surfacing as silent per-scan failures.
+    """
+    log.info(
+        "llm_fallback_config",
+        enabled=settings.llm_fallback_enabled,
+        model=settings.llm_model,
+        endpoint=ANTHROPIC_MESSAGES_ENDPOINT,
+        timeout_seconds=settings.llm_fallback_timeout,
+        api_key_configured=bool(settings.anthropic_api_key),
+    )
+
+
 async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
+    if not settings.llm_fallback_enabled:
+        log.info("llm_fallback_disabled", asset_url=payload.asset_url)
+        return []
+
     if not settings.anthropic_api_key:
         log.warning("anthropic_api_key_missing_skipping_llm_fallback")
         return []
@@ -53,9 +76,9 @@ async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
     try:
         user_prompt = build_fallback_user_prompt(payload)
         
-        async with httpx.AsyncClient(timeout=settings.http_inspect_timeout) as client:
+        async with httpx.AsyncClient(timeout=settings.llm_fallback_timeout) as client:
             resp = await client.post(
-                "https://api.anthropic.com/v1/messages",
+                ANTHROPIC_MESSAGES_ENDPOINT,
                 headers={
                     "x-api-key": settings.anthropic_api_key,
                     "anthropic-version": "2023-06-01",
@@ -70,7 +93,19 @@ async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
                     ]
                 }
             )
-            resp.raise_for_status()
+            if resp.status_code < 200 or resp.status_code >= 300:
+                # Surface HTTP failures (401, 429, 5xx, ...) distinctly from
+                # "no crypto detected" — both still return [] to the pipeline.
+                log.error(
+                    "llm_fallback_http_error",
+                    status_code=resp.status_code,
+                    model=settings.llm_model,
+                    endpoint=ANTHROPIC_MESSAGES_ENDPOINT,
+                    error_body=resp.text[:500],
+                    asset_url=payload.asset_url,
+                )
+                return []
+
             data = resp.json()
             response_text = data["content"][0]["text"].strip()
             
@@ -88,6 +123,16 @@ async def llm_classify(payload: ClassifierInput) -> List[SingleDetection]:
                 
             return detections
 
+    except httpx.TimeoutException as e:
+        log.error(
+            "llm_fallback_timeout",
+            timeout_seconds=settings.llm_fallback_timeout,
+            model=settings.llm_model,
+            endpoint=ANTHROPIC_MESSAGES_ENDPOINT,
+            error=str(e),
+            asset_url=payload.asset_url,
+        )
+        return []
     except Exception as e:
-        log.error("llm_fallback_failed", error=str(e))
+        log.error("llm_fallback_failed", error=str(e), asset_url=payload.asset_url)
         return []

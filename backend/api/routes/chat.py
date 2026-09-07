@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.logging import get_logger
 from schemas.chat import ChatMessageRequest, ChatMessageResponse
 from db.session import get_db
+from api.dependencies import get_current_user
 from engine.ai.jarsh_service import JARSHService
 
 log = get_logger(__name__)
@@ -25,7 +26,8 @@ jarsh_service = JARSHService()
 @router.post("/message", response_model=ChatMessageResponse)
 async def send_chat_message(
     request: ChatMessageRequest,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: str = Depends(get_current_user),
 ):
     """
     Send a message to JARSH and get an AI-powered response.
@@ -40,7 +42,7 @@ async def send_chat_message(
     - PostgreSQL database for scan result queries
     - No hardcoded responses - all AI-generated
     
-    Note: This endpoint is public to allow chatbot access without authentication.
+    Requires a valid JWT bearer token.
     """
     try:
         log.info(
@@ -67,6 +69,7 @@ async def send_chat_message(
             response=result["response"],
             confidence=result["confidence"],
             sources=result.get("sources", []),
+            sources_display=result.get("sources_display", []),
             suggestions=result.get("suggestions", [])
         )
         

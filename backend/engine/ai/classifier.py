@@ -96,12 +96,12 @@ class AIClassifier:
         if not self.is_loaded:
             return detections, max_conf
 
-            model_detection, model_conf = self._predict_model(text)
-            if model_detection:
-                detections.append(model_detection)
-                max_conf = max(max_conf, model_conf)
+        model_detection, model_conf = self._predict_model(text)
+        if model_detection:
+            detections.append(model_detection)
+            max_conf = max(max_conf, model_conf)
 
-            return detections, max_conf
+        return detections, max_conf
 
     def _predict_model(self, text: str) -> Tuple[Optional[SingleDetection], float]:
         """Internal model-only prediction logic."""
@@ -161,7 +161,7 @@ async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:
     Flow:
     1. Preprocess payload into combined text
     2. Run DistilBERT inference
-    3. If max confidence < 0.60, call LLM fallback
+    3. If max confidence < 0.60 (including 0.0 = nothing detected), call LLM fallback
     4. Return ClassifierOutput
     """
     start = time.time()
@@ -171,12 +171,17 @@ async def classify_http_response(payload: ClassifierInput) -> ClassifierOutput:
         combined_text, token_count = preprocess_response(payload, classifier.tokenizer)
         
         detections, max_conf = classifier.predict(combined_text)
-        model_version = "distilbert-crypto-v1"
+
+        # model_version reflects what actually contributed, not what was available
+        model_contributed = any(
+            d.evidence_text == "Detected via distilbert_model" for d in detections
+        )
+        model_version = "distilbert-crypto-v1" if model_contributed else "regex-only"
         
         fallback_used = False
         fallback_reason = None
         
-        if max_conf > 0.0 and max_conf < 0.60:
+        if max_conf < 0.60:
             llm_detections = await llm_classify(payload)
             if llm_detections:
                 detections = llm_detections

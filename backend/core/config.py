@@ -57,6 +57,8 @@ class Settings(BaseSettings):
     distilbert_model_path: str = "./models/crypto_classifier"
     llm_model: str = "claude-3-5-sonnet-20240620"   # Anthropic model for LLM fallback
     llm_max_tokens: int = 1024                        # Max tokens in LLM response
+    llm_fallback_enabled: bool = True                 # Ops kill-switch for the LLM fallback
+    llm_fallback_timeout: float = 15.0                # LLM fallback HTTP timeout (separate from http_inspect_timeout)
 
     # ── CT Log ────────────────────────────────────────────────────────────────
     crtsh_base_url: str = "https://crt.sh"

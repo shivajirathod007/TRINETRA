@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Send, X, MessageCircle, Trash2 } from 'lucide-react'
 import axios from 'axios'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 // @ts-expect-error — ThemeContext is a .jsx file
 import { useTheme } from '../../context/ThemeContext'
 
@@ -10,6 +11,22 @@ interface Message {
   sender: 'user' | 'bot'
   text: string
   timestamp: Date
+}
+
+// Structured scan reference returned by /chat/message. Generic answers still
+// return plain string labels, so `sources` is a union.
+interface ChatSource {
+  scan_id: string
+  domain: string
+  completed_at: string | null
+}
+
+interface ChatMessageResponse {
+  response: string
+  confidence?: number | null
+  sources?: (ChatSource | string)[] | null
+  sources_display?: string[] | null
+  suggestions?: string[] | null
 }
 
 const STORAGE_KEY = 'jarsh_chat_history'
