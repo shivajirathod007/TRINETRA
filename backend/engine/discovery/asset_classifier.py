@@ -106,75 +106,83 @@ class AssetClassifier:
         """Classify a single port scan result into 1+ assets."""
         assets: list[ClassifiedAsset] = []
 
-        # ── HTTPS/HTTP assets (web, API, VPN) ─────────────────────────────────
-        for port in [80, 443, 8443, 4433, 10443]:
-            if port not in pr.open_ports:
-                continue
+        # Iterate over all open ports and their dynamically assigned services
+        for port, service in pr.services.items():
+            if service.startswith("http"):
+                schema = "http" if service == "http" else "https"
+                url = f"{schema}://{pr.fqdn}" if port in (80, 443) else f"{schema}://{pr.fqdn}:{port}"
+                fingerprint = await self._http_fingerprint(url)
 
-            schema = "http" if port == 80 else "https"
-            url = f"{schema}://{pr.fqdn}" if port in (80, 443) else f"{schema}://{pr.fqdn}:{port}"
-            fingerprint = await self._http_fingerprint(url)
+                # Check for VPN first — most specific match
+                vpn_type = self._detect_vpn(fingerprint, port)
+                if vpn_type:
+                    assets.append(ClassifiedAsset(
+                        fqdn=pr.fqdn,
+                        ip_address=pr.ip_address,
+                        port=port,
+                        asset_type="vpn_gateway",
+                        asset_url=url,
+                        is_shadow_asset=is_shadow,
+                        http_status=fingerprint.get("status"),
+                        server_header=fingerprint.get("server"),
+                        vpn_type=vpn_type,
+                        needs_tls_scan=True,
+                        needs_vpn_scan=True,
+                    ))
+                    continue
 
-            # Check for VPN first — most specific match
-            vpn_type = self._detect_vpn(fingerprint, port)
-            if vpn_type:
+                # Detect API endpoint vs web portal
+                asset_type = self._detect_web_type(fingerprint, pr.fqdn)
+
+                assets.append(ClassifiedAsset(
+                    fqdn=pr.fqdn,
+                    ip_address=pr.ip_address,
+                    port=port,
+                    asset_type=asset_type,
+                    asset_url=url,
+                    is_shadow_asset=is_shadow,
+                    http_status=fingerprint.get("status"),
+                    server_header=fingerprint.get("server"),
+                    content_type=fingerprint.get("content_type"),
+                    needs_tls_scan=True,
+                    needs_api_scan=True,
+                ))
+
+            elif service == "ssh":
+                assets.append(ClassifiedAsset(
+                    fqdn=pr.fqdn,
+                    ip_address=pr.ip_address,
+                    port=port,
+                    asset_type="ssh_endpoint",
+                    asset_url=f"ssh://{pr.fqdn}:{port}",
+                    is_shadow_asset=is_shadow,
+                    needs_tls_scan=False,
+                    needs_ssh_scan=True,
+                ))
+
+            elif service.startswith("smtp"):
+                assets.append(ClassifiedAsset(
+                    fqdn=pr.fqdn,
+                    ip_address=pr.ip_address,
+                    port=port,
+                    asset_type="smtp_mta",
+                    asset_url=f"smtp://{pr.fqdn}:{port}",
+                    is_shadow_asset=is_shadow,
+                    needs_tls_scan=False,
+                    needs_smtp_scan=True,
+                ))
+
+            elif service == "openvpn":
                 assets.append(ClassifiedAsset(
                     fqdn=pr.fqdn,
                     ip_address=pr.ip_address,
                     port=port,
                     asset_type="vpn_gateway",
-                    asset_url=url,
+                    asset_url=f"udp://{pr.fqdn}:{port}",
                     is_shadow_asset=is_shadow,
-                    http_status=fingerprint.get("status"),
-                    server_header=fingerprint.get("server"),
-                    vpn_type=vpn_type,
-                    needs_tls_scan=True,
-                    needs_vpn_scan=True,
-                ))
-                continue
-
-            # Detect API endpoint vs web portal
-            asset_type = self._detect_web_type(fingerprint, pr.fqdn)
-
-            assets.append(ClassifiedAsset(
-                fqdn=pr.fqdn,
-                ip_address=pr.ip_address,
-                port=port,
-                asset_type=asset_type,
-                asset_url=url,
-                is_shadow_asset=is_shadow,
-                http_status=fingerprint.get("status"),
-                server_header=fingerprint.get("server"),
-                content_type=fingerprint.get("content_type"),
-                needs_tls_scan=True,
-                needs_api_scan=True,  # Always inspect HTTP — can't know what's there without probing
-            ))
-
-        # ── SSH ───────────────────────────────────────────────────────────────
-        if pr.has_ssh:
-            assets.append(ClassifiedAsset(
-                fqdn=pr.fqdn,
-                ip_address=pr.ip_address,
-                port=22,
-                asset_type="ssh_endpoint",
-                asset_url=f"ssh://{pr.fqdn}:22",
-                is_shadow_asset=is_shadow,
-                needs_tls_scan=False,
-                needs_ssh_scan=True,
-            ))
-
-        # ── SMTP ──────────────────────────────────────────────────────────────
-        for smtp_port in [25, 587]:
-            if smtp_port in pr.open_ports:
-                assets.append(ClassifiedAsset(
-                    fqdn=pr.fqdn,
-                    ip_address=pr.ip_address,
-                    port=smtp_port,
-                    asset_type="smtp_mta",
-                    asset_url=f"smtp://{pr.fqdn}:{smtp_port}",
-                    is_shadow_asset=is_shadow,
+                    vpn_type="openvpn",
                     needs_tls_scan=False,
-                    needs_smtp_scan=True,
+                    needs_vpn_scan=True,
                 ))
 
         return assets

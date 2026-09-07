@@ -276,7 +276,9 @@ class CTLogMiner:
                     unique_fqdns=len(entries),
                     wildcards=sum(1 for e in entries if e.is_wildcard),
                 )
-                return entries or self._root_domain_entry(domain)
+                if not any(e.fqdn == domain for e in entries):
+                    entries.extend(self._root_domain_entry(domain))
+                return entries
         except httpx.HTTPStatusError as exc:
             log.warning(
                 "crtsh_http_error",
@@ -293,12 +295,16 @@ class CTLogMiner:
         log.info("ct_fallback_certspotter", domain=domain)
         entries = await self._fetch_certspotter(domain)
         if entries:
+            if not any(e.fqdn == domain for e in entries):
+                entries.extend(self._root_domain_entry(domain))
             return entries
 
         # ── 3. HackerTarget fallback ──────────────────────────────────────────
         log.info("ct_fallback_hackertarget", domain=domain)
         entries = await self._fetch_hackertarget(domain)
         if entries:
+            if not any(e.fqdn == domain for e in entries):
+                entries.extend(self._root_domain_entry(domain))
             return entries
 
         # ── 4. Root-domain zero fallback ──────────────────────────────────────
