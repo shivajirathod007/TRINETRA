@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useScanStore, useDashboardStore } from '@/store'
 import { useDashboard, useAssets, useScanStatus } from '@/hooks'
-import { StatCards, AssetTable, RiskPieChart, ImprovementRecommendations } from '@/components/dashboard'
+import { StatCards, AssetTable, RiskPieChart, ImprovementRecommendations } from '@/components/dashboard/index'
 import { LoadingSpinner, EmptyState, SectionHeader, RiskBadge } from '@/components/shared'
 import { RISK_COLORS } from '@/utils'
 import type { AssetSummary, RiskLevel } from '@/types'

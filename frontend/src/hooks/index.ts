@@ -10,8 +10,8 @@ export function useScanStatus(scanId: string | null) {
     queryFn: () => scanApi.getStatus(scanId!),
     enabled: !!scanId,
     refetchInterval: (query) => {
-      const status = query.state.data?.status
-      // Poll every 2s while running, stop when complete/failed
+      const status = query.state.data?.status?.toUpperCase()
+      // API returns lowercase; DB stores uppercase — compare case-insensitively
       return status === 'PENDING' || status === 'RUNNING' ? 2000 : false
     },
   })
@@ -20,7 +20,7 @@ export function useScanStatus(scanId: string | null) {
 export function useScanHistory(domain: string | null = null) {
   return useQuery({
     queryKey: ['scan-history', domain],
-    queryFn: () => scanApi.list(domain || null),
+    queryFn: () => scanApi.list(domain || null, 50),
     refetchOnWindowFocus: false,
     refetchInterval: (query) => {
       const data = (query.state.data as any[]) ?? []

@@ -70,9 +70,9 @@ function normaliseStatus(raw: string): string {
 const TILE_ORDER = ['FULLY_QUANTUM_SAFE', 'CLASSICAL_SAFE', 'PQC_READY', 'QUANTUM_VULNERABLE', 'VULNERABLE', 'UNKNOWN', 'SCAN_FAILED'];
 
 const TOOLTIP_STYLE = {
-  contentStyle: { background: 'rgba(10,16,36,0.97)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 10, fontSize: 12 },
-  labelStyle: { color: '#94a3b8', fontSize: 11 },
-  itemStyle: { color: '#f8fafc', fontSize: 12 },
+  contentStyle: { background: 'var(--surface-card)', border: '1px solid var(--glass-border)', borderRadius: 12, fontSize: 12, color: 'var(--text-primary)', boxShadow: '0 4px 16px rgba(0,0,0,0.15)' },
+  labelStyle: { color: 'var(--text-secondary)', fontSize: 11 },
+  itemStyle: { color: 'var(--text-primary)', fontSize: 12 },
 };
 
 // ─── Score color ──────────────────────────────────────────────────────────────
@@ -80,8 +80,8 @@ const TOOLTIP_STYLE = {
 function scoreColor(s: number) {
   if (s >= 75) return '#ef4444';
   if (s >= 50) return '#f97316';
-  if (s >= 25) return '#eab308';
-  return '#22c55e';
+  if (s >= 25) return '#f59e0b';
+  return '#10b981';
 }
 
 // ─── Donut gauge ──────────────────────────────────────────────────────────────
@@ -94,11 +94,11 @@ function DonutGauge({ pct, color, label }: { pct: number; color: string; label: 
     <div className="flex flex-col items-center gap-1">
       <div className="relative" style={{ width: 90, height: 90 }}>
         <svg width="90" height="90" style={{ transform: 'rotate(-90deg)', position: 'absolute' }}>
-          <circle cx="45" cy="45" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="8" />
+          <circle cx="45" cy="45" r={r} fill="none" stroke="var(--glass-border)" strokeWidth="8" />
           <circle cx="45" cy="45" r={r} fill="none"
             stroke={color} strokeWidth="8" strokeLinecap="round"
             strokeDasharray={`${dash} ${circ}`}
-            style={{ filter: `drop-shadow(0 0 6px ${color}66)`, transition: 'stroke-dasharray 1s ease' }} />
+            style={{ transition: 'stroke-dasharray 1s ease' }} />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-lg font-black font-mono leading-none" style={{ color }}>{pct}%</span>
@@ -124,8 +124,8 @@ export default function PosturePage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 pt-24 text-secondary">
-        <Loader2 size={40} className="animate-spin text-indigo-400" />
+      <div className="flex flex-col items-center justify-center gap-4 pt-24" style={{ color: 'var(--text-secondary)' }}>
+        <Loader2 size={40} className="animate-spin" style={{ color: 'var(--primary-indigo)' }} />
         <p className="text-sm font-medium">Loading posture data for <span className="text-primary font-bold">{activeDomain}</span>…</p>
       </div>
     );
@@ -188,21 +188,19 @@ export default function PosturePage() {
       />
 
       {/* Summary line */}
-      <div className="text-sm text-secondary">
-        Analysed <span className="text-primary font-bold">{assets.length}</span> assets
-        {activeDomain && <> for <span className="text-primary font-bold font-mono">{activeDomain}</span></>}
+      <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+        Analysed <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{assets.length}</span> assets
+        {activeDomain && <> for <span className="font-bold font-mono" style={{ color: 'var(--text-primary)' }}>{activeDomain}</span></>}
       </div>
 
       {/* ── KPI Tiles ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {tiles.map(tile => (
-          <div key={tile.key} className="glass-card rounded-xl border p-5 flex flex-col items-center text-center gap-2 relative overflow-hidden"
+          <div key={tile.key} className="eterna-phase-card rounded-2xl border p-5 flex flex-col items-center text-center gap-2 relative overflow-hidden transition-all duration-300"
             style={{ background: tile.bg, borderColor: tile.border }}>
-            <div className="absolute top-0 right-0 w-16 h-16 opacity-5 blur-xl rounded-full"
-              style={{ background: tile.color }} />
             <div style={{ color: tile.color }}>{tile.icon}</div>
             <div className="text-3xl font-black font-mono" style={{ color: tile.color }}>{tile.pct}%</div>
-            <div className="text-xl font-bold" style={{ color: tile.color }}>{tile.count}</div>
+            <div className="text-xl font-bold font-mono" style={{ color: tile.color }}>{tile.count}</div>
             <div className="text-xs text-secondary font-medium leading-snug">{tile.label}</div>
           </div>
         ))}
@@ -212,8 +210,8 @@ export default function PosturePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Donut gauges */}
-        <div className="glass-card border rounded-xl p-6">
-          <div className="text-sm font-bold text-primary mb-1">Readiness at a Glance</div>
+        <div className="eterna-phase-card border rounded-2xl p-6">
+          <div className="text-sm font-bold text-primary mb-1 font-outfit">Readiness at a Glance</div>
           <div className="text-xs text-secondary mb-5">Per-category percentage</div>
           <div className="flex flex-wrap justify-center gap-5">
             {tiles.filter(t => t.count > 0).map(t => (
@@ -223,8 +221,8 @@ export default function PosturePage() {
         </div>
 
         {/* Pie chart */}
-        <div className="glass-card border rounded-xl p-6">
-          <div className="text-sm font-bold text-primary mb-1">Distribution</div>
+        <div className="eterna-phase-card border rounded-2xl p-6">
+          <div className="text-sm font-bold text-primary mb-1 font-outfit">Distribution</div>
           <div className="text-xs text-secondary mb-3">PQC status breakdown</div>
           {pieData.length > 0 ? (
             <>
@@ -255,15 +253,15 @@ export default function PosturePage() {
         </div>
 
         {/* TLS version bar chart */}
-        <div className="glass-card border rounded-xl p-6">
-          <div className="text-sm font-bold text-primary mb-1">TLS Version Distribution</div>
+        <div className="eterna-phase-card border rounded-2xl p-6">
+          <div className="text-sm font-bold text-primary mb-1 font-outfit">TLS Version Distribution</div>
           <div className="text-xs text-secondary mb-3">Protocol versions in use</div>
           {tlsData.length > 0 ? (
             <ResponsiveContainer width="100%" height={180}>
               <BarChart data={tlsData} barSize={28} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.07)" vertical={false} />
-                <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} dy={4} />
-                <YAxis tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-divider)" vertical={false} />
+                <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} dy={4} />
+                <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <Tooltip {...TOOLTIP_STYLE} />
                 <Bar dataKey="value" name="Assets" radius={[5, 5, 0, 0]}>
                   {tlsData.map((entry, i) => (
@@ -279,9 +277,9 @@ export default function PosturePage() {
       </div>
 
       {/* ── Readiness Breakdown bars ────────────────────────────────── */}
-      <div className="glass-card border rounded-xl p-6">
-        <h2 className="font-bold text-primary mb-5 flex items-center gap-2">
-          <span className="w-1 h-5 rounded-full bg-indigo-500 inline-block" />
+      <div className="eterna-phase-card border rounded-2xl p-6">
+        <h2 className="font-bold text-primary mb-5 flex items-center gap-2 font-outfit">
+          <span className="w-1.5 h-5 rounded-full inline-block" style={{ background: 'var(--accent-amber)' }} aria-hidden="true" />
           Readiness Breakdown
         </h2>
         <div className="flex flex-col gap-4">
@@ -293,12 +291,12 @@ export default function PosturePage() {
                   <span className="text-primary">{tile.label}</span>
                 </span>
                 <span className="font-mono font-bold text-sm" style={{ color: tile.color }}>
-                  {tile.pct}% <span className="text-secondary font-normal text-xs">({tile.count})</span>
+                  {tile.pct}% <span className="text-secondary font-normal text-xs font-sans">({tile.count})</span>
                 </span>
               </div>
-              <div className="w-full h-2.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.05)' }}>
+              <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                 <div className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${tile.pct}%`, background: tile.color, boxShadow: `0 0 8px ${tile.color}55` }} />
+                  style={{ width: `${tile.pct}%`, background: tile.color }} />
               </div>
             </div>
           ))}
@@ -307,9 +305,10 @@ export default function PosturePage() {
 
       {/* ── Asset Details Table ─────────────────────────────────────── */}
       {assets.length > 0 && (
-        <div className="glass-card border rounded-xl overflow-hidden">
+        <div className="eterna-phase-card border rounded-2xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
           {/* Table header + filters */}
-          <div className="px-5 py-4 border-b border-glass-border flex flex-wrap items-center justify-between gap-3">
+          <div className="px-5 py-4 border-b flex flex-wrap items-center justify-between gap-3"
+            style={{ borderColor: 'var(--border-divider)' }}>
             <div className="flex items-center gap-2">
               <span className="font-bold text-primary">Asset Details</span>
               <span className="text-xs text-secondary">({filtered.length} of {assets.length})</span>
@@ -323,7 +322,10 @@ export default function PosturePage() {
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   placeholder="Search URL or type…"
-                  className="bg-surface-card border border-glass-border rounded-lg pl-8 pr-3 py-1.5 text-xs text-primary placeholder-secondary focus:outline-none focus:border-indigo-500/50 w-44"
+                  className="rounded-lg pl-8 pr-3 py-1.5 text-xs w-44 focus:outline-none transition-all"
+              style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
+              onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+              onBlur={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')}
                 />
               </div>
               {/* Status filter */}
@@ -335,7 +337,7 @@ export default function PosturePage() {
                       className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
                         statusFilter === k
                           ? 'text-white border-transparent'
-                          : 'border-glass-border text-secondary hover:text-primary'
+                          : 'border-glass-border'
                       }`}
                       style={statusFilter === k ? {
                         background: cfg ? cfg.color : '#6366f1',
@@ -352,9 +354,10 @@ export default function PosturePage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-surface-card-hover">
+                <tr style={{ background: 'var(--surface-card)' }}>
                   {['Asset URL', 'Type', 'TLS Version', 'Risk Score', 'PQC Status'].map(h => (
-                    <th key={h} className="text-left text-xs text-secondary uppercase tracking-wider px-4 py-3 font-semibold border-b border-glass-border whitespace-nowrap">{h}</th>
+                    <th key={h} className="text-left text-[10px] uppercase tracking-widest px-4 py-3 font-bold border-b whitespace-nowrap"
+                      style={{ color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -365,13 +368,17 @@ export default function PosturePage() {
                   const score = asset.score ?? asset.quantum_exposure_score ?? 0;
                   return (
                     <tr key={asset.id}
-                      className="border-b border-glass-border/30 hover:bg-surface-card-hover/60 transition-colors group cursor-pointer">
+                      className="border-b group cursor-pointer"
+                      style={{ borderColor: 'var(--border-divider)', transition: 'background 0.12s' }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-card-hover)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = '')}>
                       <td className="px-4 py-3">
-                        <span className="font-mono text-xs text-indigo-400 font-medium truncate max-w-[260px] block" title={asset.url || asset.fqdn}>
+                        <span className="font-mono text-xs font-medium truncate max-w-[260px] block"
+                          style={{ color: 'var(--text-link)' }} title={asset.url || asset.fqdn}>
                           {asset.url || asset.fqdn || '—'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-secondary text-xs capitalize">
+                      <td className="px-4 py-3 text-xs capitalize" style={{ color: 'var(--text-secondary)' }}>
                         {(asset.type || '—').replace(/_/g, ' ')}
                       </td>
                       <td className="px-4 py-3">
@@ -415,9 +422,10 @@ export default function PosturePage() {
             </table>
           </div>
 
-          <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">
+          <div className="px-5 py-3 border-t flex items-center justify-between text-xs"
+            style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
             <span>Showing {filtered.length} of {assets.length} assets</span>
-            <span>TRINETRA — Quantum Exposure Intelligence Platform</span>
+            <span style={{ color: 'var(--text-muted)' }}>TRINETRA — Quantum Exposure Intelligence</span>
           </div>
         </div>
       )}

@@ -3,17 +3,16 @@ import type { DashboardStats, AssetSummary } from '@/types'
 import { ScoreBadge, RiskBadge, CertBadge, AlgorithmTag, HNDLDeadline } from '@/components/shared'
 import { RISK_COLORS, ASSET_TYPE_ICON, ASSET_TYPE_LABEL, truncateUrl } from '@/utils'
 import { useNavigate } from 'react-router-dom'
-import { clsx } from 'clsx'
 
 // ── Stat Cards ────────────────────────────────────────────────────────────────
 
 export function StatCards({ stats }: { stats: DashboardStats }) {
   const items = [
     { label: 'Org Score',     value: <ScoreBadge score={stats.exposure_score} size="lg" />,     sub: 'quantum exposure' },
-    { label: 'Critical Risk', value: <span className="text-2xl font-bold text-status-critical">{stats.critical_count}</span>, sub: 'high priority' },
-    { label: 'PQC Ready',     value: <span className="text-2xl font-bold text-emerald-400">{stats.pqc_ready}</span>,        sub: 'crypto-agile' },
-    { label: 'Shadow Assets', value: <span className="text-2xl font-bold text-yellow-500">{stats.shadow_count}</span>,     sub: 'unmanaged' },
-    { label: 'Scanned',       value: <span className="text-2xl font-bold text-white">{stats.total_assets}</span>,     sub: 'total assets' },
+    { label: 'Critical Risk', value: <span className="text-2xl font-bold" style={{ color: 'var(--status-critical)' }}>{stats.critical_count}</span>, sub: 'high priority' },
+    { label: 'PQC Ready',     value: <span className="text-2xl font-bold" style={{ color: 'var(--status-safe)' }}>{stats.pqc_ready}</span>,          sub: 'crypto-agile' },
+    { label: 'Shadow Assets', value: <span className="text-2xl font-bold" style={{ color: 'var(--status-medium)' }}>{stats.shadow_count}</span>,     sub: 'unmanaged' },
+    { label: 'Scanned',       value: <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{stats.total_assets}</span>,     sub: 'total assets' },
   ]
   return (
     <div className="grid grid-cols-5 gap-4 mb-6">
@@ -54,8 +53,8 @@ export function RiskPieChart({ stats }: { stats: DashboardStats }) {
           {data.map(d => (
             <div key={d.name} className="flex items-center gap-2 text-xs">
               <span className="w-2 h-2 rounded-full" style={{ background: d.color }} />
-              <span className="text-gray-400">{d.name}</span>
-              <span className="text-white font-medium">{d.value}</span>
+              <span className="text-xs font-medium" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+              <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{d.value}</span>
             </div>
           ))}
         </div>
@@ -76,15 +75,16 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
 
   return (
     <div className="card overflow-hidden p-0">
-      <div className="px-6 py-4 border-b border-surface-600">
-        <span className="text-sm font-semibold text-white">Assets ({assets.length})</span>
+      <div className="px-6 py-4 border-b" style={{ borderColor: 'var(--border-divider)' }}>
+        <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Assets ({assets.length})</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-surface-card-hover border-b border-surface-700">
+            <tr style={{ background: 'var(--surface-card-hover)', borderBottom: '1px solid var(--border-divider)' }}>
               {['Asset', 'Type', 'Score', 'Risk', 'Status', 'HNDL Deadline', 'Algorithm', 'Cert Expiry'].map(h => (
-                <th key={h} className="text-left text-xs text-gray-500 uppercase tracking-wide px-4 py-3 font-medium">
+                <th key={h} className="text-left text-xs uppercase tracking-wide px-4 py-3 font-medium"
+                  style={{ color: 'var(--text-secondary)' }}>
                   {h}
                 </th>
               ))}
@@ -100,33 +100,24 @@ export function AssetTable({ assets, onSelect }: AssetTableProps) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     {asset.discovery === 'Shadow' && (
-                      <span className="text-yellow-400 text-xs" title="Shadow asset">👻</span>
+                      <span className="text-xs" style={{ color: 'var(--status-medium)' }} title="Shadow asset">👻</span>
                     )}
-                    <span className="font-mono text-xs text-gray-300">{truncateUrl(asset.fqdn, 35)}</span>
+                    <span className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>{truncateUrl(asset.fqdn, 35)}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>
                     {ASSET_TYPE_ICON[asset.type]} {ASSET_TYPE_LABEL[asset.type]}
                   </span>
                 </td>
+                <td className="px-4 py-3"><ScoreBadge score={asset.score} size="sm" /></td>
+                <td className="px-4 py-3"><RiskBadge level={asset.risk_level} size="sm" /></td>
+                <td className="px-4 py-3"><CertBadge tier={asset.quantum_safe_status as any} /></td>
+                <td className="px-4 py-3"><span className="text-xs" style={{ color: 'var(--text-secondary)' }}>—</span></td>
+                <td className="px-4 py-3"><AlgorithmTag algorithm={asset.cert_algorithm} /></td>
                 <td className="px-4 py-3">
-                  <ScoreBadge score={asset.score} size="sm" />
-                </td>
-                <td className="px-4 py-3">
-                  <RiskBadge level={asset.risk_level} size="sm" />
-                </td>
-                <td className="px-4 py-3">
-                  <CertBadge tier={asset.quantum_safe_status as any} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-xs text-gray-400">—</span>
-                </td>
-                <td className="px-4 py-3">
-                  <AlgorithmTag algorithm={asset.cert_algorithm} />
-                </td>
-                <td className="px-4 py-3">
-                  <span className={clsx('text-xs', (asset.cert_expiry_days ?? 999) < 90 ? 'text-red-400' : 'text-gray-400')}>
+                  <span className="text-xs"
+                    style={{ color: (asset.cert_expiry_days ?? 999) < 90 ? 'var(--status-critical)' : 'var(--text-secondary)' }}>
                     {asset.cert_expiry_days != null ? `${asset.cert_expiry_days}d` : '—'}
                   </span>
                 </td>
@@ -156,8 +147,8 @@ export function ImprovementRecommendations({ assets }: { assets: AssetSummary[] 
       <div className="space-y-2">
         {recs.map((r, i) => (
           <div key={i} className="flex items-start gap-3 text-sm">
-            <span className="text-brand-gold mt-0.5">→</span>
-            <span className="text-gray-300">{r}</span>
+            <span className="text-xs" style={{ color: 'var(--accent-amber)' }}>→</span>
+            <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{r}</span>
           </div>
         ))}
       </div>

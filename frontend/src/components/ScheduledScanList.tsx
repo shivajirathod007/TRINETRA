@@ -36,14 +36,16 @@ function fmtDate(d: string | null | undefined): string {
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: ScheduledScanRecord['status'] }) {
-  const map: Record<ScheduledScanRecord['status'], string> = {
-    active:    'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    paused:    'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    completed: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
-    failed:    'bg-red-500/15 text-red-400 border-red-500/30',
+  const map: Record<ScheduledScanRecord['status'], { bg: string; color: string; border: string }> = {
+    active:    { bg: 'rgba(34,197,94,0.12)',  color: 'var(--status-safe)',     border: 'rgba(34,197,94,0.28)' },
+    paused:    { bg: 'rgba(245,158,11,0.12)', color: 'var(--status-medium)',   border: 'rgba(245,158,11,0.28)' },
+    completed: { bg: 'rgba(99,102,241,0.12)', color: 'var(--primary-indigo)',  border: 'rgba(99,102,241,0.28)' },
+    failed:    { bg: 'rgba(239,68,68,0.12)',  color: 'var(--status-critical)', border: 'rgba(239,68,68,0.28)' },
   };
+  const s = map[status] ?? { bg: 'var(--surface-card)', color: 'var(--text-secondary)', border: 'var(--glass-border)' };
   return (
-    <span className={`inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border ${map[status] ?? 'bg-surface-card text-secondary border-glass-border'}`}>
+    <span className="inline-flex items-center text-xs font-bold px-2.5 py-1 rounded-full border"
+      style={{ background: s.bg, color: s.color, borderColor: s.border }}>
       {status.charAt(0).toUpperCase() + status.slice(1)}
     </span>
   );
@@ -77,7 +79,7 @@ export default function ScheduledScanList({ schedules, onRefresh }: Props) {
   };
 
   return (
-    <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+    <div className="eterna-phase-card rounded-xl overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -117,7 +119,10 @@ export default function ScheduledScanList({ schedules, onRefresh }: Props) {
                     {s.status === 'active' && (
                       <button
                         onClick={() => handlePause(s.id)}
-                        className="px-2.5 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/30 rounded-lg text-xs font-bold hover:bg-amber-500 hover:text-black transition-colors"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                        style={{ background: 'rgba(245,158,11,0.10)', color: 'var(--status-medium)', border: '1px solid rgba(245,158,11,0.28)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--status-medium)'; e.currentTarget.style.color = '#000'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(245,158,11,0.10)'; e.currentTarget.style.color = 'var(--status-medium)'; }}
                       >
                         Pause
                       </button>
@@ -125,14 +130,20 @@ export default function ScheduledScanList({ schedules, onRefresh }: Props) {
                     {s.status === 'paused' && (
                       <button
                         onClick={() => handleResume(s.id)}
-                        className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-black transition-colors"
+                        className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                        style={{ background: 'rgba(34,197,94,0.10)', color: 'var(--status-safe)', border: '1px solid rgba(34,197,94,0.28)' }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--status-safe)'; e.currentTarget.style.color = '#000'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.10)'; e.currentTarget.style.color = 'var(--status-safe)'; }}
                       >
                         Resume
                       </button>
                     )}
                     <button
                       onClick={() => handleDelete(s.id)}
-                      className="px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-colors"
+                      className="px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                      style={{ background: 'rgba(239,68,68,0.10)', color: 'var(--status-critical)', border: '1px solid rgba(239,68,68,0.28)' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--status-critical)'; e.currentTarget.style.color = '#fff'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; e.currentTarget.style.color = 'var(--status-critical)'; }}
                     >
                       Delete
                     </button>
