@@ -130,8 +130,7 @@ const fieldClass = "w-full px-3 py-2 rounded-lg text-sm border outline-none focu
 
   return (
     <div
-      className="glass-card border rounded-xl p-6"
-      style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-card)' }}
+      className="eterna-phase-card p-6"
     >
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
@@ -310,7 +309,7 @@ const fieldClass = "w-full px-3 py-2 rounded-lg text-sm border outline-none focu
         <button
           type="submit"
           disabled={loading}
-          className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-bold transition-colors"
+          className="eterna-btn-primary flex items-center justify-center gap-2 w-full py-3 text-sm font-bold shadow-md"
         >
           {loading ? (
             <>

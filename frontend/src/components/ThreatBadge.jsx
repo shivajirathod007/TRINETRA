@@ -1,78 +1,47 @@
 import React from 'react';
-import { AlertTriangle, AlertCircle, Info, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { AlertTriangle, AlertCircle, Info, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
 
-const getBadgeConfig = (level) => {
-    const normLevel = level.toUpperCase();
-    if (normLevel.includes('CRITICAL')) {
-        return {
-            className: 'badge badge-critical animate-pulse-subtle',
-            dotClassName: 'badge-dot badge-dot-critical',
-            Icon: AlertOctagon,
-        };
-    }
-    if (normLevel.includes('HIGH')) {
-        return {
-            className: 'badge badge-high',
-            dotClassName: 'badge-dot',
-            Icon: AlertTriangle,
-        };
-    }
-    if (normLevel.includes('MEDIUM') || normLevel.includes('WARNING')) {
-        return {
-            className: 'badge badge-medium',
-            dotClassName: 'badge-dot',
-            Icon: AlertCircle,
-        };
-    }
-    if (normLevel.includes('SHADOW')) {
-        return {
-            className: 'badge badge-shadow',
-            dotClassName: 'badge-dot',
-            Icon: ShieldAlert,
-        };
-    }
-    if (normLevel.includes('PQC') || normLevel.includes('READY')) {
-        return {
-            className: 'badge badge-pqc glow-indigo',
-            dotClassName: 'badge-dot',
-            Icon: Info,
-        };
-    }
-    if (normLevel.includes('SAFE')) {
-        return {
-            className: 'badge badge-safe glow-safe',
-            dotClassName: 'badge-dot',
-            Icon: ShieldCheck,
-        };
-    }
-
-    // Default Neutral
-    return {
-        className: 'badge',
-        style: { backgroundColor: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--border-divider)' },
-        dotClassName: 'badge-dot',
-        Icon: Info,
-    };
+// ─── Level → style config ────────────────────────────────────────────────────
+const LEVEL_CONFIG = {
+  CRITICAL:          { bg: 'rgba(239,68,68,0.13)',  color: 'var(--status-critical)', border: 'rgba(239,68,68,0.30)',  Icon: ShieldX,       pulse: true },
+  HIGH:              { bg: 'rgba(249,115,22,0.13)', color: 'var(--status-high)',     border: 'rgba(249,115,22,0.30)', Icon: AlertTriangle },
+  MEDIUM:            { bg: 'rgba(234,179,8,0.13)',  color: 'var(--status-medium)',   border: 'rgba(234,179,8,0.30)',  Icon: AlertCircle },
+  LOW:               { bg: 'rgba(59,130,246,0.13)', color: 'var(--status-low)',      border: 'rgba(59,130,246,0.30)', Icon: Info },
+  SAFE:              { bg: 'rgba(34,197,94,0.13)',  color: 'var(--status-safe)',     border: 'rgba(34,197,94,0.30)',  Icon: ShieldCheck },
+  PQC_READY:         { bg: 'rgba(249,115,22,0.13)', color: 'var(--status-high)',     border: 'rgba(249,115,22,0.30)', Icon: ShieldAlert },
+  QUANTUM_VULNERABLE:{ bg: 'rgba(239,68,68,0.13)',  color: 'var(--status-critical)', border: 'rgba(239,68,68,0.30)',  Icon: ShieldX },
+  VULNERABLE:        { bg: 'rgba(239,68,68,0.13)',  color: 'var(--status-critical)', border: 'rgba(239,68,68,0.30)',  Icon: ShieldX },
+  FULLY_QUANTUM_SAFE:{ bg: 'rgba(34,197,94,0.13)',  color: 'var(--status-safe)',     border: 'rgba(34,197,94,0.30)',  Icon: ShieldCheck },
+  SHADOW:            { bg: 'rgba(245,158,11,0.13)', color: 'var(--accent-amber)',    border: 'rgba(245,158,11,0.30)', Icon: AlertTriangle },
 };
 
-// Standardizing icon since AlertOctagon wasn't imported from lucide above
-const AlertOctagon = ({ size, className }) => (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-        <polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"></polygon>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-    </svg>
-);
+const DEFAULT_CONFIG = {
+  bg: 'var(--surface-card)',
+  color: 'var(--text-secondary)',
+  border: 'var(--glass-border)',
+  Icon: Info,
+};
 
 const ThreatBadge = ({ level, className = '' }) => {
-    const config = getBadgeConfig(level);
+  if (!level) return null;
 
-    return (
-        <div className={`${config.className} gap-2 ${className}`} style={config.style || {}}>
-            <div className={config.dotClassName} style={!config.dotClassName.includes('critical') && !config.style ? { backgroundColor: 'currentColor' } : {}}></div>
-            <span>{level}</span>
-        </div>
-    );
+  const key = level.toUpperCase().replace(/\s+/g, '_');
+  const config = LEVEL_CONFIG[key] ?? DEFAULT_CONFIG;
+  const { Icon } = config;
+
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${config.pulse ? 'animate-pulse-subtle' : ''} ${className}`}
+      style={{
+        background: config.bg,
+        color: config.color,
+        borderColor: config.border,
+      }}
+    >
+      <Icon size={12} aria-hidden="true" />
+      {level}
+    </span>
+  );
 };
 
 export default ThreatBadge;

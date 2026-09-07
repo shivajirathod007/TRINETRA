@@ -48,7 +48,6 @@ const ScoreGauge = ({ score, size = 180, strokeWidth = 12 }) => {
                         transform: 'rotate(135deg)',
                         transformOrigin: '50% 50%',
                         transition: 'stroke-dashoffset 1s ease-in-out',
-                        filter: `drop-shadow(0 0 8px ${color})`
                     }}
                 />
             </svg>

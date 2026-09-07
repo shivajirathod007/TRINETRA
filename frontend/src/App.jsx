@@ -37,8 +37,9 @@ function AppRoutes() {
   return (
     <Routes>
       {/* ── Public routes (no sidebar) ─────────────────────────── */}
-      <Route path="/"      element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/"        element={<LandingPage />} />
+      <Route path="/landing" element={<LandingPage />} />
+      <Route path="/login"   element={<LoginPage />} />
 
       {/* ── Authenticated routes (wrapped in sidebar layout) ───── */}
       <Route element={

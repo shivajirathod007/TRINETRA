@@ -13,14 +13,28 @@ import { useScanStore } from '../store';
 import { useAuth } from '../context/AuthContext';
 import { SensitivityBadge } from '../components/shared/SensitivityBadge';
 
+const EternaTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+        return (
+            <div className="eterna-chart-tooltip">
+                <div className="font-bold text-xs">{label || payload[0].name}</div>
+                <div className="text-[11px] font-mono mt-0.5" style={{ color: payload[0].payload?.fill || payload[0].color || '#f59e0b' }}>
+                    {payload[0].value} {payload[0].unit || 'assets'}
+                </div>
+            </div>
+        );
+    }
+    return null;
+};
+
 const RISK_COLORS = {
-    CRITICAL: '#EF4444',
-    HIGH: '#F97316',
-    MEDIUM: '#EAB308',
-    'PQC READY': '#3B82F6',
-    'QUANTUM SAFE': '#22C55E',
-    SAFE: '#22C55E',
-    LOW: '#3B82F6',
+    CRITICAL: '#ef4444',
+    HIGH: '#f97316',
+    MEDIUM: '#f59e0b',
+    'PQC READY': '#8b5cf6',
+    'QUANTUM SAFE': '#10b981',
+    SAFE: '#10b981',
+    LOW: '#3b82f6',
 };
 
 // Backend asset_type enum → human label mappings (must match AssetClassifier output)
@@ -111,7 +125,7 @@ const DashboardPage = () => {
             const latest = recentScans.find(s => s.status === 'completed') || recentScans[0];
             if (latest) setActiveScan(latest.scan_id, latest.domain);
         }
-    }, [noDomain, recentScans]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [noDomain, recentScans]);
 
     const isLoading = recentLoading || (viewMode === 'all' ? aggregateLoading : (!noDomain && (statsLoading || assetsLoading)));
 
@@ -275,7 +289,7 @@ const DashboardPage = () => {
                 <div className="glass-panel p-1 border-t-4 border-t-primary-indigo mt-8 flex-1 relative flex flex-col items-center justify-center min-h-[500px] z-10 shadow-2xl">
                     <div className="text-center relative z-20 max-w-xl p-8 backdrop-blur-xl border border-glass-border rounded-2xl shadow-2xl"
                         style={{ background: 'var(--surface-card-hover)' }}>
-                        <div className="w-20 h-20 rounded-full text-primary-indigo flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(99,102,241,0.3)]"
+                        <div className="w-20 h-20 rounded-full text-primary-indigo flex items-center justify-center mx-auto mb-6"
                             style={{ background: 'rgba(99,102,241,0.15)' }}>
                             <LayoutDashboard size={40} />
                         </div>
@@ -286,7 +300,7 @@ const DashboardPage = () => {
                         </p>
                         <Link
                             to="/"
-                            className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-primary-indigo text-white font-bold font-outfit text-lg hover:bg-primary-indigo-hover hover:scale-105 transition-all shadow-[0_0_20px_rgba(99,102,241,0.5)] w-full"
+                            className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl bg-primary-indigo text-white font-bold font-outfit text-lg hover:bg-primary-indigo-hover transition-all shadow-md w-full"
                         >
                             <Search size={22} /> INITIATE FIRST SCAN <ArrowRight size={20} />
                         </Link>
@@ -417,73 +431,74 @@ const DashboardPage = () => {
             )}
 
             {/* KPI Cards Row */}
-            <div className="grid grid-cols-2 md-grid-cols-3 lg-grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 {kpis.map((kpi, i) => {
                     const Icon = kpi.icon;
                     const colorMap = {
                         'text-status-critical': '#ef4444',
                         'text-status-high': '#f97316',
-                        'text-status-safe': '#22c55e',
-                        'text-status-medium': '#eab308',
-                        'text-primary-indigo': '#6366f1',
+                        'text-status-safe': '#10b981',
+                        'text-status-medium': '#f59e0b',
+                        'text-primary-indigo': '#8b5cf6',
                         'text-primary': 'var(--text-primary)',
                         'text-secondary': 'var(--text-secondary)',
                     };
-                    const hexColor = colorMap[kpi.color] ?? '#6366f1';
+                    const hexColor = colorMap[kpi.color] ?? '#f59e0b';
                     const isCritical = kpi.color === 'text-status-critical' && kpi.value > 0;
                     const isWarning = kpi.color === 'text-status-high' && kpi.value > 0;
                     return (
-                        <div key={i} className="glass-card border rounded-xl px-4 py-3.5 flex items-center gap-3 relative overflow-hidden transition-all duration-200"
-                            style={isCritical
-                                ? { borderColor: 'rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.05)' }
-                                : isWarning
-                                    ? { borderColor: 'rgba(249,115,22,0.25)', background: 'rgba(249,115,22,0.04)' }
-                                    : { borderColor: `${hexColor}20`, background: `${hexColor}06` }}>
-                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                                style={{ background: `${hexColor}18`, color: hexColor }}>
-                                <Icon size={16} />
+                        <div key={i} className="eterna-phase-card border rounded-2xl px-4 py-3.5 flex items-center gap-3 relative overflow-hidden transition-all duration-300"
+                            style={{
+                                borderColor: isCritical ? 'rgba(239,68,68,0.35)' : isWarning ? 'rgba(249,115,22,0.35)' : 'var(--glass-border)'
+                            }}>
+                            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                                style={{ background: `${hexColor}18`, border: `1px solid ${hexColor}30`, color: hexColor }}>
+                                <Icon size={18} />
                             </div>
                             <div className="min-w-0">
-                                <div className="text-[10px] text-secondary uppercase tracking-widest font-semibold truncate">{kpi.label}</div>
-                                <div className="text-2xl font-black font-mono leading-tight" style={{ color: hexColor }}>
+                                <div className="text-[10px] text-secondary uppercase tracking-widest font-bold truncate">{kpi.label}</div>
+                                <div className="text-2xl font-black font-mono leading-tight mt-0.5" style={{ color: hexColor }}>
                                     {isLoading ? <span className="text-secondary text-lg">—</span> : <AnimatedCounters value={kpi.value} />}
                                 </div>
                             </div>
-                            {isCritical && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: 'rgba(239,68,68,0.5)' }} />}
-                            {isWarning && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: 'rgba(249,115,22,0.4)' }} />}
+                            {isCritical && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: '#ef4444' }} />}
+                            {isWarning && <div className="absolute bottom-0 left-0 h-0.5 w-full" style={{ background: '#f97316' }} />}
                         </div>
                     );
                 })}
             </div>
 
-            <div className="grid grid-cols-1 lg-grid-cols-4 gap-4 flex-1 min-h-[400px]">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 flex-1 min-h-[400px]">
                 {/* Analytics Top Row */}
-                <div className="lg-col-span-4 grid grid-cols-1 md-grid-cols-3 gap-4">
+                <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     {/* Risk Distribution */}
-                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>Risk Distribution</h3>
+                    <div className="eterna-phase-card border rounded-2xl p-5 min-h-[230px] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-primary font-outfit">Risk Distribution</h3>
+                            <span className="text-[10px] font-mono text-secondary">Quantum Classification</span>
+                        </div>
                         {riskData.length === 0 ? (
                             <div className="flex-1 flex items-center justify-center text-secondary text-sm">No data yet</div>
                         ) : (
                             <div className="flex-1 flex items-center justify-center gap-4">
-                                <div className="w-[120px] h-[120px]">
+                                <div className="w-[125px] h-[125px]">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <PieChart>
-                                            <Pie data={riskData} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={2} dataKey="value" stroke="none">
-                                                {riskData.map((entry, i) => <Cell key={i} fill={entry.color ?? '#6366F1'} />)}
+                                            <Pie data={riskData} cx="50%" cy="50%" innerRadius={36} outerRadius={58} paddingAngle={3} dataKey="value" stroke="none">
+                                                {riskData.map((entry, i) => <Cell key={i} fill={entry.color ?? '#f59e0b'} />)}
                                             </Pie>
-                                            <Tooltip contentStyle={{ backgroundColor: 'var(--glass-bg)', border: '1px solid var(--border-divider)', color: 'var(--text-primary)' }} />
+                                            <Tooltip content={<EternaTooltip />} />
                                         </PieChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <div className="flex flex-col gap-2 flex-1">
+                                <div className="flex flex-col gap-1.5 flex-1">
                                     {riskData.map(d => (
                                         <div key={d.name} className="flex items-center gap-2 text-xs w-full justify-between">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: d.color ?? '#6366F1' }} />
-                                                <span style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
+                                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color ?? '#f59e0b' }} />
+                                                <span className="text-[11px] font-medium" style={{ color: 'var(--text-secondary)' }}>{d.name}</span>
                                             </div>
-                                            <span className="font-bold" style={{ color: 'var(--text-primary)' }}>{d.value}</span>
+                                            <span className="font-bold font-mono text-xs" style={{ color: 'var(--text-primary)' }}>{d.value}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -492,9 +507,14 @@ const DashboardPage = () => {
                     </div>
 
                     {/* Certificate Expiry Timeline */}
-                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>Certificate Expiry Timeline</h3>
-                        <p className="text-[10px] mb-3" style={{ color: 'var(--text-secondary)', opacity: 0.6 }}>Based on TLS cert expiry from scanned assets</p>
+                    <div className="eterna-phase-card border rounded-2xl p-5 min-h-[230px] flex flex-col justify-between">
+                        <div>
+                            <div className="flex items-center justify-between mb-1">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-primary font-outfit">TLS Certificate Expiry</h3>
+                                <span className="text-[10px] font-mono text-secondary">Telemetry</span>
+                            </div>
+                            <p className="text-[10px] text-secondary opacity-70 mb-3">Post-quantum TLS certificate lifespans</p>
+                        </div>
                         {assetsWithCerts.length === 0 && !isLoading ? (
                             <div className="flex-1 flex items-center justify-center text-secondary text-sm">No cert data in this scan</div>
                         ) : (
@@ -504,8 +524,8 @@ const DashboardPage = () => {
                                     return (
                                         <div key={i} className="flex items-center gap-3 text-xs">
                                             <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.hex }} />
-                                            <span className="w-20 text-secondary text-right text-[10px]">{d.name}</span>
-                                            <div className="flex-1 h-2.5 bg-surface-card rounded-full overflow-hidden">
+                                            <span className="w-20 text-secondary text-right text-[10px] font-medium">{d.name}</span>
+                                            <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                                                 <div
                                                     className="h-full rounded-full transition-all duration-700"
                                                     style={{
@@ -514,14 +534,14 @@ const DashboardPage = () => {
                                                     }}
                                                 />
                                             </div>
-                                            <span className="w-6 font-bold font-mono text-right" style={{ color: d.count > 0 ? d.hex : 'var(--text-secondary)' }}>{d.count}</span>
+                                            <span className="w-6 font-bold font-mono text-right text-xs" style={{ color: d.count > 0 ? d.hex : 'var(--text-secondary)' }}>{d.count}</span>
                                         </div>
                                     );
                                 })}
-                                <div className="mt-2 pt-2 border-t border-glass-border text-[10px] text-secondary flex justify-between">
-                                    <span>{assetsWithCerts.length} certs tracked</span>
-                                    <span className={expiringCertsCount > 0 ? 'text-status-high font-bold' : 'text-status-safe'}>
-                                        {expiringCertsCount > 0 ? `⚠ ${expiringCertsCount} expiring soon` : '✓ All certs healthy'}
+                                <div className="mt-2 pt-2 border-t text-[10px] flex justify-between" style={{ borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
+                                    <span className="font-mono">{assetsWithCerts.length} active certs</span>
+                                    <span className={`font-semibold ${expiringCertsCount > 0 ? 'text-amber-500' : 'text-emerald-400'}`}>
+                                        {expiringCertsCount > 0 ? `⚠ ${expiringCertsCount} expiring soon` : '✓ All certs compliant'}
                                     </span>
                                 </div>
                             </div>
@@ -529,21 +549,28 @@ const DashboardPage = () => {
                     </div>
 
                     {/* IP Version Breakdown */}
-                    <div className="glass-card border p-4 min-h-[220px] flex flex-col">
-                        <h3 className="text-xs font-bold uppercase tracking-widest mb-4" style={{ color: 'var(--text-secondary)' }}>IP Version Breakdown</h3>
+                    <div className="eterna-phase-card border rounded-2xl p-5 min-h-[230px] flex flex-col justify-between">
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-xs font-bold uppercase tracking-widest text-primary font-outfit">IP Infrastructure</h3>
+                            <span className="text-[10px] font-mono text-secondary">Stack</span>
+                        </div>
                         <div className="flex-1 relative flex items-center justify-center">
-                            <PieChart width={160} height={160}>
-                                <Pie data={ipData} cx="50%" cy="50%" innerRadius={50} outerRadius={70} stroke="none" dataKey="value">
-                                    {ipData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
-                                </Pie>
-                                <Tooltip />
-                            </PieChart>
+                            <div className="w-[150px] h-[150px]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <PieChart>
+                                        <Pie data={ipData} cx="50%" cy="50%" innerRadius={46} outerRadius={66} stroke="none" dataKey="value">
+                                            {ipData.map((entry, index) => <Cell key={index} fill={entry.color || (index === 0 ? '#3b82f6' : '#8b5cf6')} />)}
+                                        </Pie>
+                                        <Tooltip content={<EternaTooltip />} />
+                                    </PieChart>
+                                </ResponsiveContainer>
+                            </div>
                             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                <span className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
+                                <span className="text-2xl font-black font-mono text-primary">
                                     {ipData.length > 0 ? Math.round((ipData[0].value / ipData.reduce((a, b) => a + b.value, 0)) * 100) : 0}%
                                 </span>
-                                <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>
-                                    {ipData.length > 0 ? ipData[0].name : 'IPv4'} Dominant
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-secondary">
+                                    {ipData.length > 0 ? ipData[0].name : 'IPv4'}
                                 </span>
                             </div>
                         </div>
@@ -552,15 +579,17 @@ const DashboardPage = () => {
 
                 {/* Cryptographic Asset Map Table — single scan mode */}
                 {viewMode === 'scan' && (
-                    <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                    <div className="lg:col-span-4 eterna-phase-card border rounded-2xl overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
                         {/* Toolbar */}
-                        <div className="px-5 py-3 border-b flex flex-wrap gap-2 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
-                            <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>
-                                Cryptographic Asset Map
-                                <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
-                                    {filteredDashAssets.length}
+                        <div className="px-5 py-3.5 border-b flex flex-wrap gap-3 items-center justify-between" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>
+                                    Cryptographic Asset Map
                                 </span>
-                            </span>
+                                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                                    {filteredDashAssets.length} tracked
+                                </span>
+                            </div>
                             <div className="flex items-center gap-2 flex-wrap">
                                 {/* Search */}
                                 <div className="relative">
@@ -569,8 +598,8 @@ const DashboardPage = () => {
                                         type="text"
                                         value={assetSearch}
                                         onChange={e => setAssetSearch(e.target.value)}
-                                        placeholder="Search URL or type…"
-                                        className="text-xs rounded-lg pl-8 pr-3 py-1.5 focus:outline-none w-44"
+                                        placeholder="Filter by host or endpoint…"
+                                        className="text-xs rounded-xl pl-8 pr-3 py-1.5 focus:outline-none w-48 font-mono transition-all"
                                         style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
                                     />
                                 </div>
@@ -578,29 +607,31 @@ const DashboardPage = () => {
                                 <div className="flex items-center gap-1">
                                     {['ALL', 'CRITICAL', 'HIGH', 'SHADOW'].map(f => (
                                         <button key={f} onClick={() => setAssetFilter(f)}
-                                            className="px-2 py-1 text-[10px] font-bold rounded-md border transition-all"
+                                            className="px-2.5 py-1 text-[10px] font-mono font-bold rounded-lg border transition-all"
                                             style={assetFilter === f
-                                                ? { background: 'var(--primary-indigo)', color: 'white', borderColor: 'var(--primary-indigo)' }
+                                                ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', color: 'white', borderColor: 'transparent', boxShadow: '0 2px 8px rgba(217,119,6,0.25)' }
                                                 : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
                                             {f}
                                         </button>
                                     ))}
                                 </div>
-                                <button className="action-btn text-xs" onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
-                                    Sort: {sortField === 'score' ? 'Risk' : 'URL'} <ChevronDown size={12} />
+                                <button className="action-btn text-xs font-mono rounded-lg px-2.5 py-1 border"
+                                    style={{ background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}
+                                    onClick={() => setSortField(sortField === 'score' ? 'url' : 'score')}>
+                                    Sort: {sortField === 'score' ? 'Risk Score' : 'URL'} <ChevronDown size={12} />
                                 </button>
                             </div>
                         </div>
 
                         {/* Row limit slider */}
-                        <div className="px-5 py-2 flex items-center gap-3 border-b" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
-                            <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Show rows:</span>
+                        <div className="px-5 py-2 flex items-center gap-3 border-b text-xs" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
+                            <span className="text-[10px] font-semibold uppercase tracking-wider flex-shrink-0" style={{ color: 'var(--text-secondary)' }}>Show records:</span>
                             <input type="range" min={5} max={Math.max(5, filteredDashAssets.length)} step={5}
                                 value={assetRowLimit}
                                 onChange={e => setAssetRowLimit(Number(e.target.value))}
                                 className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer"
-                                style={{ accentColor: 'var(--primary-indigo)' }} />
-                            <span className="text-[10px] font-mono font-bold w-16 text-right flex-shrink-0" style={{ color: 'var(--primary-indigo)' }}>
+                                style={{ accentColor: '#f59e0b' }} />
+                            <span className="text-[11px] font-mono font-bold w-16 text-right flex-shrink-0" style={{ color: '#f59e0b' }}>
                                 {Math.min(assetRowLimit, filteredDashAssets.length)} / {filteredDashAssets.length}
                             </span>
                         </div>
@@ -608,7 +639,7 @@ const DashboardPage = () => {
                         <div className="overflow-x-auto overflow-y-auto" style={{ maxHeight: 380 }}>
                             {assetsLoading ? (
                                 <div className="flex items-center justify-center py-12" style={{ color: 'var(--text-secondary)' }}>
-                                    <RefreshCw size={18} className="animate-spin mr-2" /> Loading assets...
+                                    <RefreshCw size={18} className="animate-spin mr-2" style={{ color: '#f59e0b' }} /> Loading telemetry assets...
                                 </div>
                             ) : filteredDashAssets.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center py-12 gap-2" style={{ color: 'var(--text-secondary)' }}>
@@ -693,10 +724,10 @@ const DashboardPage = () => {
 
                 {/* All Scans breakdown table */}
                 {viewMode === 'all' && (
-                    <div className="lg-col-span-4 glass-card border overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
+                    <div className="lg:col-span-4 eterna-phase-card border rounded-2xl overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
                         <div className="p-4 border-b flex items-center justify-between" style={{ background: 'var(--surface-card)', borderColor: 'var(--border-divider)' }}>
-                            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Scan History — Risk Breakdown</h2>
-                            <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{scansBreakdown.length} most recent scans</span>
+                            <h2 className="font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>Scan History — Risk Breakdown</h2>
+                            <span className="text-xs font-mono" style={{ color: 'var(--text-secondary)' }}>{scansBreakdown.length} completed telemetry scans</span>
                         </div>
                         <div className="table-container flex-1">
                             {aggregateLoading ? (

@@ -1,6 +1,8 @@
 // ── Scan types ───────────────────────────────────────────────────────────────
 
-export type ScanStatus = 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+export type ScanStatus =
+  | 'PENDING' | 'RUNNING' | 'COMPLETED' | 'FAILED'
+  | 'pending' | 'running' | 'completed' | 'failed'
 
 export type CRQCScenario = 'pessimistic' | 'moderate' | 'optimistic'
 
@@ -9,24 +11,35 @@ export interface ScanJob {
   domain: string
   status: ScanStatus
   current_stage?: string
-  assets_discovered: number
+  /** API list/status uses assets_found (maps from assets_discovered) */
+  assets_found?: number
+  assets_discovered?: number
   assets_scanned: number
   organization_score?: number
+  exposure_score?: number
   critical_count: number
   high_count: number
   medium_count: number
   low_count: number
-  safe_count: number
-  shadow_assets_found: number
-  created_at: string
+  safe_count?: number
+  shadow_assets?: number
+  shadow_assets_found?: number
+  started_at?: string
+  created_at?: string
   completed_at?: string
+  error_message?: string
 }
 
 // ── Asset types ───────────────────────────────────────────────────────────────
 
 export type RiskLevel = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'SAFE'
 export type AssetType = 'web_portal' | 'api_endpoint' | 'vpn_gateway' | 'ssh_endpoint' | 'smtp_mta' | 'staging' | 'shadow_asset' | 'mobile_backend'
-export type QuantumStatus = 'VULNERABLE' | 'PQC_READY' | 'FULLY_QUANTUM_SAFE' | 'UNKNOWN'
+export type QuantumStatus =
+  | 'VULNERABLE'
+  | 'QUANTUM_VULNERABLE'
+  | 'PQC_READY'
+  | 'FULLY_QUANTUM_SAFE'
+  | 'UNKNOWN'
 
 export interface AssetSummary {
   id: string

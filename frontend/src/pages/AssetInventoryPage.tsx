@@ -12,6 +12,7 @@ import { SectionHeader, LoadingSpinner, RiskBadge, CertBadge } from '../componen
 import { SensitivityBadge } from '../components/shared/SensitivityBadge';
 import { useQuery } from '@tanstack/react-query';
 import { useScanStore } from '../store';
+import { useAutoLoadScan } from '../hooks/useAutoLoadScan';
 import { assetsApi } from '../api/index';
 import { RISK_COLORS } from '../utils';
 
@@ -216,6 +217,7 @@ function APIsTable({ assets, onRowClick }: { assets: any[]; onRowClick: (a: any)
 const API_TYPES = new Set(['api_endpoint', 'api_public', 'api_authenticated', 'mobile_backend']);
 
 export default function AssetInventoryPage() {
+  useAutoLoadScan();
   const [tab, setTab] = useState<Tab>('Domains');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('ALL');
   const [search, setSearch] = useState('');
@@ -305,38 +307,38 @@ export default function AssetInventoryPage() {
       {/* ── KPI Cards ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total Assets', value: assets.length, color: '#6366f1', icon: <Globe size={18} />, sub: 'discovered' },
-          { label: 'SSL / TLS', value: sslAssets.length, color: '#06b6d4', icon: <Shield size={18} />, sub: 'certificates' },
-          { label: 'Critical Risk', value: criticalCount, color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'assets' },
-          { label: 'Shadow Assets', value: shadowCount, color: '#f97316', icon: <Server size={18} />, sub: 'unmanaged' },
+          { label: 'Total Assets', value: assets.length, color: '#f59e0b', icon: <Globe size={18} />, sub: 'Discovered Perimeter' },
+          { label: 'SSL / TLS Certs', value: sslAssets.length, color: '#06b6d4', icon: <Shield size={18} />, sub: 'Active Certificates' },
+          { label: 'Critical Risk', value: criticalCount, color: '#ef4444', icon: <AlertTriangle size={18} />, sub: 'Immediate Vulnerability' },
+          { label: 'Shadow Assets', value: shadowCount, color: '#8b5cf6', icon: <Server size={18} />, sub: 'Unmanaged Endpoints' },
         ].map(k => (
-          <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
-            style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: `${k.color}15`, color: k.color }}>{k.icon}</div>
+          <div key={k.label} className="eterna-phase-card border rounded-2xl p-5 flex items-center gap-4 transition-all duration-300"
+            style={{ borderColor: `${k.color}30` }}>
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: `${k.color}18`, border: `1px solid ${k.color}30`, color: k.color }}>{k.icon}</div>
             <div>
               <div className="text-2xl font-black font-mono leading-none" style={{ color: k.color }}>
                 {isLoading ? '—' : k.value}
               </div>
-              <div className="text-[10px] font-semibold uppercase tracking-wider mt-0.5" style={{ color: 'var(--text-secondary)' }}>{k.label}</div>
-              <div className="text-[10px] mt-0.5" style={{ color: `${k.color}80` }}>{k.sub}</div>
+              <div className="text-[10px] font-bold uppercase tracking-wider mt-1 text-primary">{k.label}</div>
+              <div className="text-[10px] font-mono mt-0.5 text-secondary">{k.sub}</div>
             </div>
           </div>
         ))}
       </div>
 
       {/* ── Category Tabs ─────────────────────────────────────────── */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2.5">
         {(Object.keys(tabCounts) as Tab[]).map(t => (
           <button key={t} onClick={() => { setTab(t); setRowLimit(15); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all border"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all border cursor-pointer font-outfit"
             style={tab === t
-              ? { background: '#6366f1', borderColor: '#6366f1', color: 'white', boxShadow: '0 4px 14px rgba(99,102,241,0.35)' }
+              ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', borderColor: 'transparent', color: 'white' }
               : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
             {tabIcons[t]}
             <span>{t}</span>
-            <span className="text-xs font-mono px-1.5 py-0.5 rounded-md"
-              style={tab === t ? { background: 'rgba(255,255,255,0.2)' } : { background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full"
+              style={tab === t ? { background: 'rgba(255,255,255,0.25)', color: 'white' } : { background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
               {tabCounts[t]}
             </span>
           </button>
@@ -344,35 +346,35 @@ export default function AssetInventoryPage() {
       </div>
 
       {/* ── Data Table ────────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+      <div className="eterna-phase-card border rounded-2xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
 
         {/* Toolbar: search + filter */}
-        <div className="px-5 py-3 border-b flex flex-wrap items-center gap-3"
+        <div className="px-5 py-3.5 border-b flex flex-wrap items-center gap-3"
           style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
           {/* Search */}
           <div className="relative flex-1 min-w-[180px]">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-secondary)' }} />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search URL, type, IP, issuer…"
-              className="w-full rounded-lg pl-8 pr-3 py-1.5 text-xs focus:outline-none"
+              placeholder="Filter by endpoint, type, IP, or cert authority…"
+              className="w-full rounded-xl pl-8 pr-3 py-1.5 text-xs font-mono focus:outline-none transition-all"
               style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)', color: 'var(--text-primary)' }}
-              onFocus={e => (e.currentTarget.style.borderColor = 'var(--primary-indigo)')}
+              onFocus={e => (e.currentTarget.style.borderColor = '#f59e0b')}
               onBlur={e => (e.currentTarget.style.borderColor = 'var(--glass-border)')} />
           </div>
           {/* Risk filter chips */}
-          <div className="flex items-center gap-1 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap">
             {(['ALL', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'SAFE'] as RiskFilter[]).map(r => (
               <button key={r} onClick={() => { setRiskFilter(r); setRowLimit(15); }}
-                className="px-2.5 py-1 rounded-full text-[10px] font-bold border transition-all"
+                className="px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer"
                 style={riskFilter === r
-                  ? { background: (RISK_COLORS as any)[r] ?? '#6366f1', borderColor: (RISK_COLORS as any)[r] ?? '#6366f1', color: 'white' }
+                  ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', borderColor: 'transparent', color: 'white', boxShadow: '0 2px 8px rgba(217,119,6,0.3)' }
                   : { background: 'var(--surface-card)', borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
                 {r}
               </button>
             ))}
           </div>
-          <span className="text-[10px] font-mono ml-auto" style={{ color: 'var(--text-secondary)' }}>
-            {filtered.length} records
+          <span className="text-[11px] font-mono font-bold ml-auto text-amber-500">
+            {filtered.length} matching
           </span>
         </div>
 

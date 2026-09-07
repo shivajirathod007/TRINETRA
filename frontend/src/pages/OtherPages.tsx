@@ -121,7 +121,7 @@ export function DiscoveryPage() {
 
       {/* Initiation Search Box */}
       <form onSubmit={handleInitiate} className="mb-10 w-full max-w-5xl">
-          <div className="glass-panel p-[1px] bg-gradient-to-r from-primary-indigo/40 to-primary-indigo/10 rounded-xl shadow-[0_0_25px_rgba(99,102,241,0.15)] relative overflow-hidden transition-all focus-within:shadow-[0_0_40px_rgba(99,102,241,0.3)]">
+          <div className="glass-panel p-[1px] bg-gradient-to-r from-primary-indigo/40 to-primary-indigo/10 rounded-xl shadow-md relative overflow-hidden transition-all">
              <div className="bg-surface-card rounded-t-xl flex items-center p-2 border-b border-glass-border">
                  <Search size={22} className="text-primary-indigo ml-4 mr-3" />
                  <input 
@@ -176,7 +176,7 @@ export function DiscoveryPage() {
           { label: `Confirmed (${assets.length > 0 ? Math.floor(assets.length * 0.7) : 36})`, active: false },
           { label: `All (${assets.length || 52})`, active: true },
         ].map(tab => (
-          <button key={tab.label} className={`px-6 py-2 rounded-full font-bold text-xs transition-all ${tab.active ? 'bg-status-medium text-white shadow-[0_0_10px_rgba(234,179,8,0.3)]' : 'bg-surface-card text-secondary hover:text-primary hover:bg-surface-card-hover border border-glass-border'}`}>
+          <button key={tab.label} className={`px-6 py-2 rounded-full font-bold text-xs transition-all ${tab.active ? 'bg-status-medium text-white shadow-sm' : 'bg-surface-card text-secondary hover:text-primary hover:bg-surface-card-hover border border-glass-border'}`}>
             {tab.label}
           </button>
         ))}
@@ -266,13 +266,13 @@ export function HistoryPage() {
           <tbody>
             {scans.map(scan => (
               <tr key={scan.scan_id} className="table-row">
-                <td className="px-4 py-3 text-xs text-gray-400">{scan.completed_at?.slice(0, 10) ?? scan.created_at.slice(0, 10)}</td>
+                <td className="px-4 py-3 text-xs text-gray-400">{scan.completed_at?.slice(0, 10) ?? scan.started_at?.slice(0, 10) ?? scan.created_at?.slice(0, 10) ?? '—'}</td>
                 <td className="px-4 py-3 font-mono text-xs text-gray-300">{scan.domain}</td>
-                <td className="px-4 py-3 text-gray-300">{scan.assets_scanned}</td>
-                <td className="px-4 py-3"><ScoreBadge score={scan.organization_score} size="sm" /></td>
+                <td className="px-4 py-3 text-gray-300">{scan.assets_found ?? scan.assets_scanned}</td>
+                <td className="px-4 py-3"><ScoreBadge score={scan.exposure_score ?? scan.organization_score} size="sm" /></td>
                 <td className="px-4 py-3 text-red-400 font-medium">{scan.critical_count}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${scan.status === 'COMPLETED' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${String(scan.status).toLowerCase() === 'completed' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-gray-800 text-gray-400'}`}>
                     {scan.status}
                   </span>
                 </td>

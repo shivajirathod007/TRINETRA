@@ -29,6 +29,7 @@ interface ScanRecord {
   started_at?:     string;
   completed_at?:   string;
   assets_found?:   number;
+  assets_discovered?: number;
   assets_scanned?: number;
   critical_count?: number;
   high_count?:     number;
@@ -64,27 +65,28 @@ function scoreColor(score: number) {
 
 const TOOLTIP_STYLE = {
   contentStyle: {
-    background: 'rgba(10,16,36,0.97)',
-    border: '1px solid rgba(99,102,241,0.35)',
+    background: 'var(--surface-card)',
+    border: '1px solid var(--glass-border)',
     borderRadius: 10,
     fontSize: 12,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+    boxShadow: '0 8px 32px rgba(0,0,0,0.25)',
   },
-  labelStyle: { color: '#94a3b8', fontSize: 11, marginBottom: 4 },
-  itemStyle: { color: '#f8fafc', fontSize: 12 },
+  labelStyle: { color: 'var(--text-secondary)', fontSize: 11, marginBottom: 4 },
+  itemStyle: { color: 'var(--text-primary)', fontSize: 12 },
 };
 
 function StatusChip({ status }: { status: string }) {
   const s = status?.toUpperCase();
-  const map: Record<string, { icon: React.ReactNode; cls: string; label: string }> = {
-    COMPLETED: { icon: <CheckCircle size={11} />, cls: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30', label: 'Completed' },
-    FAILED:    { icon: <XCircle size={11} />,     cls: 'bg-red-500/15 text-red-400 border-red-500/30',           label: 'Failed' },
-    RUNNING:   { icon: <RefreshCw size={11} className="animate-spin" />, cls: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30', label: 'Running' },
-    PENDING:   { icon: <Clock size={11} className="animate-pulse" />,    cls: 'bg-amber-500/15 text-amber-400 border-amber-500/30',   label: 'Queued' },
+  const map: Record<string, { icon: React.ReactNode; bg: string; color: string; border: string; label: string }> = {
+    COMPLETED: { icon: <CheckCircle size={11} />, bg: 'rgba(34,197,94,0.12)',  color: 'var(--status-safe)',     border: 'rgba(34,197,94,0.28)',  label: 'Completed' },
+    FAILED:    { icon: <XCircle size={11} />,     bg: 'rgba(239,68,68,0.12)',  color: 'var(--status-critical)', border: 'rgba(239,68,68,0.28)',  label: 'Failed' },
+    RUNNING:   { icon: <RefreshCw size={11} className="animate-spin" />, bg: 'rgba(99,102,241,0.12)',  color: 'var(--primary-indigo)',  border: 'rgba(99,102,241,0.28)', label: 'Running' },
+    PENDING:   { icon: <Clock size={11} className="animate-pulse" />,    bg: 'rgba(245,158,11,0.12)',  color: 'var(--status-medium)',   border: 'rgba(245,158,11,0.28)', label: 'Queued' },
   };
-  const cfg = map[s] ?? { icon: <AlertCircle size={11} />, cls: 'bg-surface-card text-secondary border-glass-border', label: status };
+  const cfg = map[s] ?? { icon: <AlertCircle size={11} />, bg: 'var(--surface-card)', color: 'var(--text-secondary)', border: 'var(--glass-border)', label: status };
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${cfg.cls}`}>
+    <span className="inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border"
+      style={{ background: cfg.bg, color: cfg.color, borderColor: cfg.border }}>
       {cfg.icon} {cfg.label}
     </span>
   );
@@ -122,7 +124,7 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
     name: fmtShort(s.started_at),
     domain: s.domain.split('.')[0].substring(0, 10),
     score: s.exposure_score ?? s.organization_score ?? 0,
-    assets: s.assets_found ?? s.assets_scanned ?? 0,
+    assets: s.assets_found ?? s.assets_discovered ?? s.assets_scanned ?? 0,
     critical: s.critical_count ?? 0,
     high: s.high_count ?? 0,
   }));
@@ -144,11 +146,12 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
       {/* Score trend — spans 2 cols */}
-      <div className="lg:col-span-2 glass-card border rounded-xl p-6">
+      <div className="lg:col-span-2 eterna-phase-card p-6">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
-              <TrendingUp size={16} className="text-indigo-400" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(99,102,241,0.14)', color: 'var(--primary-indigo)' }}>
+              <TrendingUp size={16} />
             </div>
             <div>
               <div className="text-sm font-bold text-primary">Risk Score Trend</div>
@@ -159,7 +162,8 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
             <div className="text-2xl font-black font-mono" style={{ color: scoreColor(latestScore) }}>
               {latestScore}
             </div>
-            <div className={`text-xs font-bold flex items-center justify-end gap-1 ${scoreDelta > 0 ? 'text-red-400' : scoreDelta < 0 ? 'text-emerald-400' : 'text-secondary'}`}>
+            <div className={`text-xs font-bold flex items-center justify-end gap-1`}
+              style={{ color: scoreDelta > 0 ? 'var(--status-critical)' : scoreDelta < 0 ? 'var(--status-safe)' : 'var(--text-secondary)' }}>
               {scoreDelta > 0 ? '↑' : scoreDelta < 0 ? '↓' : '→'}
               {Math.abs(scoreDelta)} pts vs prev
             </div>
@@ -190,10 +194,11 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
       </div>
 
       {/* Assets discovered */}
-      <div className="glass-card border rounded-xl p-6">
+      <div className="eterna-phase-card p-6">
         <div className="flex items-center gap-2.5 mb-5">
-          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-            <BarChart2 size={16} className="text-emerald-400" />
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+          style={{ background: 'rgba(34,197,94,0.12)', color: 'var(--status-safe)' }}>
+            <BarChart2 size={16} />
           </div>
           <div>
             <div className="text-sm font-bold text-primary">Assets Discovered</div>
@@ -218,28 +223,33 @@ function AnalyticsSection({ scans }: { scans: ScanRecord[] }) {
       </div>
 
       {/* Critical & High findings */}
-      <div className="lg:col-span-3 glass-card border rounded-xl p-6">
+      <div className="lg:col-span-3 eterna-phase-card p-6">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-red-500/15 flex items-center justify-center">
-              <AlertTriangle size={16} className="text-red-400" />
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: 'rgba(239,68,68,0.12)', color: 'var(--status-critical)' }}>
+              <AlertTriangle size={16} />
             </div>
             <div>
-              <div className="text-sm font-bold text-primary">Critical &amp; High Findings per Scan</div>
-              <div className="text-xs text-secondary">Stacked risk breakdown across scan history</div>
+              <div className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Critical &amp; High Findings per Scan</div>
+              <div className="text-xs" style={{ color: 'var(--text-secondary)' }}>Stacked risk breakdown across scan history</div>
             </div>
           </div>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Critical</span>
-            <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-orange-500 inline-block" /> High</span>
+          <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#ef4444' }} aria-hidden="true" /> Critical
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded-sm inline-block" style={{ background: '#f97316' }} aria-hidden="true" /> High
+            </span>
           </div>
         </div>
 
         {/* If all counts are 0 AND no scan has risk data at all, show a note */}
         {chartData.every(d => d.critical === 0 && d.high === 0) ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-secondary">
-            <CheckCircle size={28} className="text-emerald-400 opacity-60" />
-            <p className="text-sm font-medium text-emerald-400">No critical or high findings recorded</p>
+            <CheckCircle size={28} style={{ color: 'var(--status-safe)', opacity: 0.55 }} className="mx-auto mb-2" />
+            <p className="text-sm font-medium" style={{ color: 'var(--status-safe)' }}>No critical or high findings recorded</p>
             <p className="text-xs text-secondary">
               {completed.length === 0
                 ? 'No completed scans yet.'
@@ -335,8 +345,8 @@ export default function ScanHistoryPage() {
           title="Scan History"
           subtitle={`${scans.length} scans stored • click a row to open it`}
         />
-        <button className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border border-glass-border text-secondary hover:text-primary hover:border-primary-indigo/50 transition-all">
-          <Download size={14} /> Export CSV
+        <button className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border transition-all action-btn">
+          <Download size={14} aria-hidden="true" /> Export CSV
         </button>
       </div>
 
@@ -344,9 +354,9 @@ export default function ScanHistoryPage() {
       {runningScans.length > 0 && (
         <div className="rounded-xl p-4 flex items-center gap-4 border"
           style={{ borderColor: 'rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.07)' }}>
-          <RefreshCw size={18} className="text-indigo-400 animate-spin flex-shrink-0" />
+          <RefreshCw size={18} className="animate-spin flex-shrink-0" style={{ color: 'var(--primary-indigo)' }} />
           <div className="flex-1 min-w-0">
-            <span className="text-sm font-bold text-indigo-400">
+            <span className="text-sm font-bold" style={{ color: 'var(--primary-indigo)' }}>
               {runningScans.length} scan{runningScans.length > 1 ? 's' : ''} in progress
             </span>
             <span className="text-xs text-secondary ml-2 truncate">
@@ -357,7 +367,10 @@ export default function ScanHistoryPage() {
             onClick={() => navigate(`/scan/${encodeURIComponent(runningScans[0].domain)}`, {
               state: { scanId: runningScans[0].scan_id ?? runningScans[0].id },
             })}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-500 text-white text-xs font-bold rounded-lg hover:bg-indigo-600 transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-colors whitespace-nowrap"
+            style={{ background: 'var(--primary-indigo)', color: '#fff' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'var(--primary-indigo-hover)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'var(--primary-indigo)')}
           >
             <Eye size={12} /> Watch Live
           </button>
@@ -372,7 +385,7 @@ export default function ScanHistoryPage() {
           { label: 'Failed',         value: failedScans.length,    color: '#ef4444', icon: <XCircle size={18} />,      sub: 'errored' },
           { label: 'Avg Risk Score', value: avgScore,              color: '#f59e0b', icon: <Target size={18} />,       sub: 'higher = worse' },
         ].map(k => (
-          <div key={k.label} className="glass-card border rounded-xl px-5 py-4 flex items-center gap-4"
+          <div key={k.label} className="eterna-phase-card px-5 py-4 flex items-center gap-4"
             style={{ borderColor: `${k.color}25`, background: `${k.color}08` }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: `${k.color}15`, color: k.color }}>
@@ -391,10 +404,10 @@ export default function ScanHistoryPage() {
       <AnalyticsSection scans={scans} />
 
       {/* ── Filter + Table ─────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
+      <div className="eterna-phase-card rounded-xl overflow-hidden" style={{ borderColor: 'var(--glass-border)' }}>
         <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
           <div className="flex items-center gap-2">
-            <Clock size={15} className="text-indigo-400" />
+            <Clock size={15} style={{ color: 'var(--primary-indigo)' }} aria-hidden="true" />
             <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
               History
               <span className="ml-2 text-xs font-mono px-1.5 py-0.5 rounded" style={{ background: 'var(--surface-card-hover)', color: 'var(--text-secondary)' }}>
@@ -410,7 +423,6 @@ export default function ScanHistoryPage() {
                   background: '#6366f1',
                   borderColor: '#6366f1',
                   color: 'white',
-                  boxShadow: '0 0 10px rgba(99,102,241,0.3)',
                 } : {
                   background: 'var(--surface-card)',
                   borderColor: 'var(--glass-border)',
@@ -460,14 +472,15 @@ export default function ScanHistoryPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         {isActive && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse flex-shrink-0" />
+                          <span className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+                            style={{ background: 'var(--primary-indigo)' }} aria-hidden="true" />
                         )}
                         <span className="font-mono font-semibold" style={{ color: 'var(--text-primary)' }}>{scan.domain}</span>
                       </div>
                     </td>
 
                     <td className="px-4 py-3 font-mono text-primary">
-                      {scan.assets_found ?? scan.assets_scanned ?? '—'}
+                      {scan.assets_found ?? scan.assets_discovered ?? scan.assets_scanned ?? '—'}
                     </td>
 
                     <td className="px-4 py-3">
@@ -476,7 +489,7 @@ export default function ScanHistoryPage() {
                           <span className="font-bold font-mono text-sm" style={{ color: scoreColor(score) }}>
                             {score}
                           </span>
-                          <div className="w-14 h-1.5 bg-surface-card rounded-full overflow-hidden">
+                          <div className="w-14 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--surface-card-hover)' }}>
                             <div className="h-full rounded-full transition-all"
                               style={{ width: `${score}%`, backgroundColor: scoreColor(score) }} />
                           </div>
@@ -491,14 +504,18 @@ export default function ScanHistoryPage() {
                         (scan.critical_count ?? 0) > 0 || (scan.high_count ?? 0) > 0 ? (
                           <div className="flex items-center gap-2">
                             {(scan.critical_count ?? 0) > 0 && (
-                              <span className="font-bold font-mono text-red-400">{scan.critical_count}</span>
+                              <span className="font-bold font-mono text-xs" style={{ color: 'var(--status-critical)' }}>
+                                {scan.critical_count}
+                              </span>
                             )}
                             {(scan.high_count ?? 0) > 0 && (
-                              <span className="font-bold font-mono text-orange-400 text-xs">+{scan.high_count}H</span>
+                              <span className="font-bold font-mono text-xs" style={{ color: 'var(--status-high)' }}>
+                                +{scan.high_count}H
+                              </span>
                             )}
                           </div>
                         ) : (
-                          <span className="text-emerald-400 text-xs font-bold">0</span>
+                          <span className="text-xs font-bold" style={{ color: 'var(--status-safe)' }}>0</span>
                         )
                       ) : (
                         <span className="text-secondary text-xs">—</span>
@@ -515,14 +532,20 @@ export default function ScanHistoryPage() {
                           <>
                             <button
                               onClick={e => { e.stopPropagation(); navigate(`/scan/${encodeURIComponent(scan.domain)}`, { state: { scanId: sid } }); }}
-                              className="flex items-center gap-1 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 rounded-lg text-xs font-bold hover:bg-indigo-500 hover:text-white transition-colors"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                              style={{ background: 'rgba(99,102,241,0.10)', color: 'var(--primary-indigo)', border: '1px solid rgba(99,102,241,0.28)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--primary-indigo)'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.10)'; e.currentTarget.style.color = 'var(--primary-indigo)'; }}
                             >
-                              <Play size={10} /> Live
+                              <Play size={10} aria-hidden="true" /> Live
                             </button>
                             <button
                               onClick={e => handleCancel(e, scan)}
                               disabled={isCancelling}
-                              className="flex items-center gap-1 px-2.5 py-1 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-colors disabled:opacity-50"
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                              style={{ background: 'rgba(239,68,68,0.10)', color: 'var(--status-critical)', border: '1px solid rgba(239,68,68,0.28)' }}
+                              onMouseEnter={e => { e.currentTarget.style.background = 'var(--status-critical)'; e.currentTarget.style.color = '#fff'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.10)'; e.currentTarget.style.color = 'var(--status-critical)'; }}
                             >
                               {isCancelling ? <RefreshCw size={10} className="animate-spin" /> : <StopCircle size={10} />}
                               {isCancelling ? '…' : 'Cancel'}
@@ -532,9 +555,12 @@ export default function ScanHistoryPage() {
                         {isCompleted && (
                           <button
                             onClick={e => { e.stopPropagation(); setActiveScan(sid, scan.domain); navigate('/dashboard'); }}
-                            className="flex items-center gap-1 px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold hover:bg-emerald-500 hover:text-black transition-colors"
+                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all"
+                            style={{ background: 'rgba(34,197,94,0.10)', color: 'var(--status-safe)', border: '1px solid rgba(34,197,94,0.28)' }}
+                            onMouseEnter={e => { e.currentTarget.style.background = 'var(--status-safe)'; e.currentTarget.style.color = '#000'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(34,197,94,0.10)'; e.currentTarget.style.color = 'var(--status-safe)'; }}
                           >
-                            <Eye size={10} /> Results
+                            <Eye size={10} aria-hidden="true" /> Results
                           </button>
                         )}
                         {st === 'FAILED' && scan.error_message && (
@@ -560,7 +586,8 @@ export default function ScanHistoryPage() {
         </div>
 
         {filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-glass-border flex items-center justify-between text-xs text-secondary">
+          <div className="px-5 py-3 border-t flex items-center justify-between text-xs"
+            style={{ borderColor: 'var(--border-divider)', color: 'var(--text-secondary)' }}>
             <span>Showing {filtered.length} of {scans.length} scans</span>
             <span>TRINETRA — Quantum Exposure Intelligence Platform</span>
           </div>

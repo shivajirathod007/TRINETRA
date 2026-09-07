@@ -34,17 +34,18 @@ export default function ScheduledScansPage() {
 
       {/* Loading state */}
       {isLoading && (
-        <div className="glass-card border rounded-xl p-12 flex items-center justify-center gap-3 text-secondary"
-          style={{ borderColor: 'var(--glass-border)' }}>
-          <RefreshCw size={18} className="animate-spin text-indigo-400" />
+        <div className="glass-card border rounded-xl p-12 flex items-center justify-center gap-3"
+          style={{ borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
+          <RefreshCw size={18} className="animate-spin" style={{ color: 'var(--primary-indigo)' }} />
           <span className="text-sm">Loading scheduled scans…</span>
         </div>
       )}
 
       {/* Error state */}
       {isError && (
-        <div className="flex items-center gap-3 px-5 py-4 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 text-sm">
-          <AlertCircle size={16} className="flex-shrink-0" />
+        <div className="flex items-center gap-3 px-5 py-4 rounded-xl text-sm"
+          style={{ background: 'rgba(239,68,68,0.09)', border: '1px solid rgba(239,68,68,0.28)', color: 'var(--status-critical)' }}>
+          <AlertCircle size={16} className="flex-shrink-0" aria-hidden="true" />
           Failed to load scheduled scans. Please try refreshing the page.
         </div>
       )}

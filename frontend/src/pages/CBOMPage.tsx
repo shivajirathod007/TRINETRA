@@ -10,7 +10,7 @@
  */
 import { useMemo, useState, useEffect } from 'react';
 import {
-  Download, Shield, AlertTriangle, CheckCircle2, ChevronDown,
+  Download, Shield, ShieldAlert, AlertTriangle, CheckCircle2, ChevronDown,
   RefreshCw, X, Globe, Lock, Key, Clock, TrendingUp, Award,
   Info, FileText, Wifi
 } from 'lucide-react';
@@ -153,7 +153,7 @@ function ComponentModal({ comp, onClose }: { comp: any; onClose: () => void }) {
         style={{
           background: 'var(--glass-bg)',
           border: '1px solid rgba(99,102,241,0.3)',
-          boxShadow: '0 0 60px rgba(99,102,241,0.2), 0 24px 48px rgba(0,0,0,0.4)',
+          boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
         }}
         onClick={e => e.stopPropagation()}>
 
@@ -298,7 +298,10 @@ function CertificatesPanel({ scanId, allScans, orgSummary }: { scanId: string; a
           <button
             onClick={loadAllCerts}
             disabled={loadingAll}
-            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${view === 'all' ? 'bg-primary-indigo text-white border-primary-indigo' : 'border-glass-border text-secondary hover:text-primary'}`}>
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5`}
+            style={view === 'all'
+              ? { background: 'var(--primary-indigo)', color: '#fff', borderColor: 'var(--primary-indigo)' }
+              : { borderColor: 'var(--glass-border)', color: 'var(--text-secondary)' }}>
             {loadingAll ? <RefreshCw size={11} className="animate-spin" /> : <FileText size={11} />}
             All Scans
           </button>
@@ -306,7 +309,8 @@ function CertificatesPanel({ scanId, allScans, orgSummary }: { scanId: string; a
       </div>
 
       {/* Summary strip */}
-      <div className="grid grid-cols-3 divide-x divide-glass-border border-b border-glass-border">
+      <div className="grid grid-cols-3 divide-x border-b"
+        style={{ borderColor: 'var(--border-divider)' }}>
         {[
           { label: 'Quantum Vulnerable', count: vulnCount, color: '#ef4444' },
           { label: 'PQC Ready',          count: readyCount, color: '#f97316' },
@@ -358,7 +362,7 @@ export default function CBOMPage() {
   useEffect(() => {
     if (activeScanId && !selectedScanId) setSelectedScanId(activeScanId);
     else if (!selectedScanId && scans.length > 0) {
-      const best = scans.find(s => s.status === 'completed') ?? scans[0];
+      const best = scans.find(s => String(s.status || '').toLowerCase() === 'completed') ?? scans[0];
       if (best) setSelectedScanId(best.scan_id || best.id);
     }
   }, [activeScanId, scans, selectedScanId]);
@@ -494,7 +498,7 @@ export default function CBOMPage() {
       {/* ── Shadow Alert ─────────────────────────────────────────────── */}
       {shadowAssets.length > 0 && (
         <div className="border rounded-xl p-4 flex items-start gap-3" style={{ background: 'rgba(239,68,68,0.07)', borderColor: 'rgba(239,68,68,0.2)' }}>
-          <AlertTriangle size={18} className="text-red-400 mt-0.5 shrink-0" />
+          <AlertTriangle size={18} style={{ color: 'var(--status-critical)' }} className="mt-0.5 shrink-0" aria-hidden="true" />
           <div>
             <div className="font-bold text-sm mb-1" style={{ color: 'var(--status-critical)' }}>SHADOW ASSETS DETECTED ({shadowAssets.length})</div>
             <div className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
@@ -507,13 +511,16 @@ export default function CBOMPage() {
       )}
 
       {/* ── PQC Readiness Columns ────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl p-6" style={{ borderColor: 'rgba(99,102,241,0.2)' }}>
-        <div className="mb-5 pb-4 border-b border-glass-border flex items-center justify-between">
+      <div className="eterna-phase-card border rounded-2xl p-6" style={{ borderColor: 'var(--glass-border)' }}>
+        <div className="mb-5 pb-4 border-b flex items-center justify-between"
+          style={{ borderColor: 'var(--border-divider)' }}>
           <div>
-            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>PQC Readiness Certificates</h2>
-            <div className="text-xs mt-1" style={{ color: 'var(--text-secondary)' }}>Domain: <span className="font-mono" style={{ color: 'var(--text-primary)' }}>{currentDomain}</span></div>
+            <h2 className="font-bold text-lg font-outfit" style={{ color: 'var(--text-primary)' }}>PQC Transition Readiness Spectrum</h2>
+            <div className="text-xs mt-1 font-mono" style={{ color: 'var(--text-secondary)' }}>Target Zone: <span className="font-bold text-amber-500">{currentDomain}</span></div>
           </div>
-          <div className="text-xs text-secondary font-mono">{allComponents.length} assets classified</div>
+          <div className="text-xs font-mono px-3 py-1 rounded-full border text-secondary" style={{ background: 'var(--surface-card)', borderColor: 'var(--glass-border)' }}>
+            {allComponents.length} assets audited
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -522,51 +529,51 @@ export default function CBOMPage() {
               key: 'QUANTUM_VULNERABLE',
               label: 'Quantum Vulnerable',
               sublabel: 'RSA/ECDSA/ECDHE — broken by CRQC via Shor\'s algorithm',
-              color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.18)',
-              icon: <AlertTriangle size={20} className="text-red-400" />,
+              color: '#ef4444', bg: 'rgba(239,68,68,0.06)', border: 'rgba(239,68,68,0.25)',
+              icon: <AlertTriangle size={20} style={{ color: 'var(--status-critical)' }} />,
               count: stats.vulnCount,
             },
             {
               key: 'PQC_READY',
-              label: 'PQC Ready',
-              sublabel: 'Hybrid or transitional mode — partially protected',
-              color: '#f97316', bg: 'rgba(249,115,22,0.06)', border: 'rgba(249,115,22,0.18)',
-              icon: <Shield size={20} className="text-orange-400" />,
+              label: 'PQC Hybrid / Ready',
+              sublabel: 'Hybrid mode (X25519Kyber768) — transitional state',
+              color: '#f59e0b', bg: 'rgba(245,158,11,0.06)', border: 'rgba(245,158,11,0.25)',
+              icon: <Shield size={20} style={{ color: 'var(--accent-amber)' }} />,
               count: stats.readyCount,
             },
             {
               key: 'FULLY_QUANTUM_SAFE',
-              label: 'Quantum Safe',
-              sublabel: 'NIST FIPS 203/204/205 — fully post-quantum protected',
-              color: '#22c55e', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.18)',
-              icon: <CheckCircle2 size={20} className="text-green-400" />,
+              label: 'Fully Quantum Safe',
+              sublabel: 'NIST FIPS 203/204/205 (ML-KEM / ML-DSA) compliant',
+              color: '#10b981', bg: 'rgba(16,185,129,0.06)', border: 'rgba(16,185,129,0.25)',
+              icon: <CheckCircle2 size={20} style={{ color: 'var(--status-safe)' }} />,
               count: stats.safeCount,
             },
           ].map(col => (
-            <div key={col.key} className="rounded-xl border p-5 flex flex-col"
+            <div key={col.key} className="eterna-phase-card rounded-2xl border p-5 flex flex-col"
               style={{ background: col.bg, borderColor: col.border }}>
               <div className="flex flex-col items-center text-center mb-4 pb-4 border-b" style={{ borderColor: col.border }}>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center border-2 mb-3" style={{ borderColor: col.color }}>
+                <div className="w-11 h-11 rounded-2xl flex items-center justify-center border mb-3" style={{ borderColor: col.color, background: `${col.color}15` }}>
                   {col.icon}
                 </div>
-                <div className="text-[11px] font-black tracking-widest uppercase mb-1" style={{ color: col.color }}>{col.label}</div>
-                <div className="text-[9px] leading-relaxed mb-2" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>{col.sublabel}</div>
-                <div><span className="text-2xl font-black" style={{ color: col.color }}>{col.count}</span> <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>assets</span></div>
+                <div className="text-[11px] font-black tracking-widest uppercase mb-1 font-outfit" style={{ color: col.color }}>{col.label}</div>
+                <div className="text-[9.5px] leading-relaxed mb-2" style={{ color: 'var(--text-secondary)', opacity: 0.8 }}>{col.sublabel}</div>
+                <div><span className="text-3xl font-black font-mono" style={{ color: col.color }}>{col.count}</span> <span className="text-xs font-mono text-secondary">assets</span></div>
               </div>
-              <div className="flex flex-col gap-1 overflow-y-auto pr-1" style={{ maxHeight: 240, scrollbarWidth: 'thin' }}>
+              <div className="flex flex-col gap-1 overflow-y-auto pr-1" style={{ maxHeight: 220, scrollbarWidth: 'thin' }}>
                 {allComponents.filter(c => c.status === col.key).map((c, i) => (
                   <button key={i} onClick={() => setSelectedComp(c)}
-                    className="flex items-start justify-between text-left group transition-colors rounded-lg px-2 py-1.5"
-                    style={{ color: 'var(--primary-indigo)' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(99,102,241,0.08)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = '')}
+                    className="flex items-start justify-between text-left group transition-colors rounded-lg px-2.5 py-1.5 cursor-pointer border"
+                    style={{ color: 'var(--text-primary)', borderColor: 'transparent' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--surface-card-hover)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = ''; e.currentTarget.style.borderColor = 'transparent'; }}
                     title={c.url}>
-                    <span className="font-mono text-[10px] leading-relaxed break-all text-left">{c.url}</span>
-                    <ChevronDown size={10} className="opacity-0 group-hover:opacity-60 -rotate-90 shrink-0 ml-1 mt-0.5 transition-opacity" />
+                    <span className="font-mono text-[10px] leading-relaxed break-all text-left truncate">{c.url}</span>
+                    <ChevronDown size={10} className="opacity-0 group-hover:opacity-80 -rotate-90 shrink-0 ml-1 mt-0.5 transition-opacity text-amber-500" />
                   </button>
                 ))}
                 {col.count === 0 && (
-                  <div className="text-xs text-center italic py-8" style={{ color: 'var(--text-secondary)', opacity: 0.5 }}>No assets in this category yet.</div>
+                  <div className="text-xs text-center italic py-8 text-secondary opacity-60 font-mono">No assets in this category.</div>
                 )}
               </div>
             </div>
@@ -577,17 +584,18 @@ export default function CBOMPage() {
       {/* ── KPI Tiles ────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: 'ORG RISK SCORE', value: stats.orgScore, unit: '/100', color: stats.orgScore > 70 ? '#ef4444' : stats.orgScore > 40 ? '#f97316' : '#22c55e', icon: <TrendingUp size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'TOTAL ASSETS',   value: stats.total,    unit: '',     color: 'var(--text-primary)', icon: <Globe size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'VULNERABLE',     value: stats.vulnCount, unit: '',   color: '#ef4444', icon: <AlertTriangle size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'PQC READY',      value: stats.readyCount, unit: '',  color: '#8b5cf6', icon: <Shield size={40} className="absolute right-0 bottom-0 opacity-10" /> },
-          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',   color: '#22c55e', icon: <CheckCircle2 size={40} className="absolute right-0 bottom-0 opacity-10" /> },
+          { label: 'ORG RISK SCORE', value: stats.orgScore, unit: '/100', color: stats.orgScore > 70 ? '#ef4444' : stats.orgScore > 40 ? '#f97316' : '#10b981', icon: <ShieldAlert size={38} className="absolute right-3.5 bottom-3 opacity-20 pointer-events-none" style={{ color: stats.orgScore > 70 ? '#ef4444' : stats.orgScore > 40 ? '#f97316' : '#10b981' }} /> },
+          { label: 'TOTAL ASSETS',   value: stats.total,    unit: '',     color: 'var(--text-primary)', icon: <Globe size={38} className="absolute right-3.5 bottom-3 opacity-20 pointer-events-none" style={{ color: 'var(--text-secondary)' }} /> },
+          { label: 'VULNERABLE',     value: stats.vulnCount, unit: '',   color: '#ef4444', icon: <AlertTriangle size={38} className="absolute right-3.5 bottom-3 opacity-20 pointer-events-none" style={{ color: '#ef4444' }} /> },
+          { label: 'PQC READY',      value: stats.readyCount, unit: '',  color: '#f59e0b', icon: <Shield size={38} className="absolute right-3.5 bottom-3 opacity-20 pointer-events-none" style={{ color: '#f59e0b' }} /> },
+          { label: 'FULLY SAFE',     value: stats.safeCount, unit: '',   color: '#10b981', icon: <CheckCircle2 size={38} className="absolute right-3.5 bottom-3 opacity-20 pointer-events-none" style={{ color: '#10b981' }} /> },
         ].map(t => (
-          <div key={t.label} className="glass-card border rounded-xl p-5 relative overflow-hidden flex flex-col justify-center">
-            <div className="text-[9px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-secondary)' }}>{t.label}</div>
+          <div key={t.label} className="eterna-phase-card border rounded-2xl p-5 relative overflow-hidden flex flex-col justify-center cursor-default"
+            style={{ borderColor: 'var(--glass-border)' }}>
+            <div className="text-[9.5px] font-mono font-bold uppercase tracking-widest mb-1 text-secondary">{t.label}</div>
             <div className="flex items-end gap-1">
-              <span className="text-2xl font-black" style={{ color: t.color }}>{t.value}</span>
-              {t.unit && <span className="text-xs mb-0.5" style={{ color: 'var(--text-secondary)' }}>{t.unit}</span>}
+              <span className="text-3xl font-black font-mono" style={{ color: t.color }}>{t.value}</span>
+              {t.unit && <span className="text-xs mb-1 font-mono text-secondary">{t.unit}</span>}
             </div>
             {t.icon}
           </div>
@@ -598,7 +606,7 @@ export default function CBOMPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* Asset Table */}
-        <div className="lg:col-span-2 glass-card border rounded-xl overflow-hidden flex flex-col">
+        <div className="lg:col-span-2 eterna-phase-card border rounded-2xl overflow-hidden flex flex-col" style={{ borderColor: 'var(--glass-border)' }}>
           <div className="px-5 py-3 border-b flex items-center justify-between flex-wrap gap-3"
             style={{ borderColor: 'var(--border-divider)', background: 'var(--surface-card)' }}>
             <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>Cryptographic Asset Map</span>

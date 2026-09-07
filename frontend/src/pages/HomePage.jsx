@@ -4,353 +4,153 @@ import {
   LayoutDashboard, Search, FileJson, ShieldCheck,
   Star, BarChart2, ArrowRight, Activity, Zap, Lock,
   Globe, Cpu, TrendingUp, AlertTriangle, CheckCircle2,
-  MessageCircle, Rocket, Brain, Clock, Shield, Building, BarChart3
+  Rocket, Clock, Shield, Building, ChevronRight, Sparkles
 } from 'lucide-react';
 import { useScanStore } from '../store';
 import { useAuth } from '../context/AuthContext';
-import { trinetraApi } from '../api/trinetra';
+import { dashboardApi } from '../api/index';
+import { SilkWaveHero } from '../components/visuals/SilkWaveHero';
 
+// ─── Nav cards ────────────────────────────────────────────────────────────────
 const NAV_CARDS = [
   {
-    name: 'Asset Inventory',
-    path: '/dashboard',
-    icon: LayoutDashboard,
-    color: '#6366f1',
-    bg: 'rgba(99,102,241,0.08)',
-    border: 'rgba(99,102,241,0.2)',
-    desc: 'Full risk dashboard — KPIs, charts, and the cryptographic asset map.',
+    phase: '01', name: 'Asset Inventory',      path: '/inventory',  icon: LayoutDashboard,
+    color: '#f59e0b', glowColor: 'rgba(245,158,11,0.14)', border: 'rgba(245,158,11,0.28)', tag: 'Telemetry',
+    desc: 'Full risk dashboard — KPIs, cryptographic asset map, and algorithm inventory.',
   },
   {
-    name: 'Asset Discovery',
-    path: '/discovery',
-    icon: Search,
-    color: '#06b6d4',
-    bg: 'rgba(6,182,212,0.08)',
-    border: 'rgba(6,182,212,0.2)',
-    desc: 'Discover domains, SSL certs, IPs, and software across your network.',
+    phase: '02', name: 'Asset Discovery',      path: '/discovery',  icon: Search,
+    color: '#06b6d4', glowColor: 'rgba(6,182,212,0.14)',  border: 'rgba(6,182,212,0.28)',  tag: 'Recon',
+    desc: 'Continuous CT log discovery, DNS tree tracing, SSL/TLS handshakes, and port probing.',
   },
   {
-    name: 'CBOM',
-    path: '/cbom',
-    icon: FileJson,
-    color: '#8b5cf6',
-    bg: 'rgba(139,92,246,0.08)',
-    border: 'rgba(139,92,246,0.2)',
-    desc: 'CycloneDX 1.6 Cryptographic Bill of Materials — export and analyse.',
+    phase: '03', name: 'CBOM Intelligence',    path: '/cbom',       icon: FileJson,
+    color: '#8b5cf6', glowColor: 'rgba(139,92,246,0.14)', border: 'rgba(139,92,246,0.28)', tag: 'Audit',
+    desc: 'CycloneDX 1.6 Cryptographic Bill of Materials — export, audit, and component breakdown.',
   },
   {
-    name: 'Posture of PQC',
-    path: '/posture',
-    icon: ShieldCheck,
-    color: '#22c55e',
-    bg: 'rgba(34,197,94,0.08)',
-    border: 'rgba(34,197,94,0.2)',
-    desc: 'Quantum-safe readiness breakdown across all scanned assets.',
+    phase: '04', name: 'Posture of PQC',       path: '/posture',    icon: ShieldCheck,
+    color: '#10b981', glowColor: 'rgba(16,185,129,0.14)', border: 'rgba(16,185,129,0.28)', tag: 'Compliance',
+    desc: 'NIST FIPS 203/204/205 quantum-safe readiness breakdown across active cryptography.',
   },
   {
-    name: 'Cyber Rating',
-    path: '/rating',
-    icon: Star,
-    color: '#f59e0b',
-    bg: 'rgba(245,158,11,0.08)',
-    border: 'rgba(245,158,11,0.2)',
-    desc: 'Enterprise threat scoring across network, crypto, and surfaces.',
+    phase: '05', name: 'Cyber Rating & QARS',  path: '/rating',     icon: Star,
+    color: '#ec4899', glowColor: 'rgba(236,72,153,0.14)', border: 'rgba(236,72,153,0.28)', tag: 'Risk',
+    desc: 'Quantum Asset Risk Score (QARS) with Mosca migration urgency and exposure factors.',
   },
   {
-    name: 'Reporting',
-    path: '/reporting',
-    icon: BarChart2,
-    color: '#f97316',
-    bg: 'rgba(249,115,22,0.08)',
-    border: 'rgba(249,115,22,0.2)',
-    desc: 'Executive summaries, scan history, and compliance exports.',
+    phase: '06', name: 'Reporting & Compliance', path: '/reporting', icon: BarChart2,
+    color: '#3b82f6', glowColor: 'rgba(59,130,246,0.14)', border: 'rgba(59,130,246,0.28)', tag: 'Export',
+    desc: 'Executive summaries, compliance scorecards, audit evidence, and PDF/JSON generation.',
   },
 ];
 
+// ─── Platform benefits ────────────────────────────────────────────────────────
 const PLATFORM_BENEFITS = [
-  {
-    title: 'Quantum-Safe Readiness',
-    desc: 'Identify cryptographic vulnerabilities before quantum computers threaten your data.',
-    icon: Cpu,
-    color: '#6366f1',
-  },
-  {
-    title: 'Comprehensive Discovery',
-    desc: 'Auto-discover 30-40% more shadow assets via CT logs, DNS chains, and port scanning.',
-    icon: Globe,
-    color: '#06b6d4',
-  },
-  {
-    title: 'Risk Scoring (QARS)',
-    desc: 'Data sensitivity + algorithm risk + exposure timeline = actionable priority matrix.',
-    icon: TrendingUp,
-    color: '#f59e0b',
-  },
-  {
-    title: 'HNDL-Based Deadlines',
-    desc: 'Mosca\'s theorem + data retention mandates = migration timelines you can trust.',
-    icon: Clock,
-    color: '#8b5cf6',
-  },
+  { title: 'Quantum-Safe Readiness',  icon: Cpu,       color: '#f59e0b', desc: 'Identify vulnerable RSA & ECC keys before cryptanalytically relevant quantum computers emerge.' },
+  { title: 'Shadow Asset Discovery',  icon: Globe,     color: '#06b6d4', desc: 'Auto-discover unmanaged endpoints via Certificate Transparency logs and multi-depth DNS trees.' },
+  { title: 'QARS Risk Quantification',icon: TrendingUp,color: '#8b5cf6', desc: 'Algorithm weakness + data shelf-life + exposure surface = prioritized migration queue.' },
+  { title: 'Mosca-HNDL Timelines',    icon: Clock,     color: '#10b981', desc: 'Actionable migration deadlines calibrated against Harvest Now, Decrypt Later attack scenarios.' },
 ];
 
+// ─── HomePage ─────────────────────────────────────────────────────────────────
 export default function HomePage() {
   const { activeDomain, activeScanId } = useScanStore();
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState({
-    totalAssets: 0,
-    activeModules: 7,
-    securityLevel: 'Loading...',
-    systemStatus: 'Online'
+    totalAssets: 0, activeModules: 6, securityLevel: 'Protected', systemStatus: 'Optimal',
   });
-  const [loading, setLoading] = useState(false);
 
-  // Fetch dashboard summary when domain changes
   useEffect(() => {
-    if (activeDomain) {
-      setLoading(true);
-      trinetraApi.getDashboardSummary(activeDomain)
-        .then(response => {
-          setDashboardData({
-            totalAssets: response.data?.total_assets || 0,
-            activeModules: response.data?.active_modules || 7,
-            securityLevel: response.data?.security_level || 'Unassessed',
-            systemStatus: response.data?.system_status || 'Online'
-          });
-        })
-        .catch(error => {
-          console.error('Failed to fetch dashboard summary:', error);
-          setDashboardData({
-            totalAssets: 0,
-            activeModules: 7,
-            securityLevel: 'Unassessed',
-            systemStatus: 'Online'
-          });
-        })
-        .finally(() => setLoading(false));
-    }
+    if (!activeDomain) return;
+    dashboardApi.getStats(activeDomain)
+      .then(res => {
+        const score = res.exposure_score ?? 0;
+        const securityLevel =
+          score >= 75 ? 'Critical' : score >= 50 ? 'Elevated' : score >= 25 ? 'Guarded' : 'Protected';
+        setDashboardData({
+          totalAssets:   res.total_assets || 0,
+          activeModules: 6,
+          securityLevel,
+          systemStatus:  (res.total_assets || 0) > 0 ? 'Online' : 'Optimal',
+        });
+      })
+      .catch(() => {}); // silent — fallback to defaults
   }, [activeDomain]);
 
+  const displayName = user ? user.split('@')[0] : 'Analyst';
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
 
-      {/* ── WELCOME HERO BANNER ──────────────────────────────────────────── */}
-      <div
-        className="relative rounded-2xl overflow-hidden p-8 border backdrop-blur-xl"
-        style={{
-          background: 'linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(139,92,246,0.1) 50%, rgba(6,182,212,0.08) 100%)',
-          borderColor: 'rgba(99,102,241,0.3)',
-          boxShadow: '0 8px 40px rgba(99,102,241,0.15), 0 0 60px rgba(99,102,241,0.08)',
-        }}
-      >
-        <div className="absolute top-0 right-0 w-64 h-64 opacity-5 pointer-events-none">
-          <Lock size={256} />
-        </div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between gap-4 mb-3 flex-wrap">
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 rounded-full bg-status-safe animate-pulse"></span>
-              <span className="text-xs text-secondary font-bold uppercase tracking-widest">System Status: Active</span>
-            </div>
-            <span className="text-xs text-secondary font-mono">{new Date().toLocaleString('en-US', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+      {/* ── WELCOME HERO ──────────────────────────────────────── */}
+      <div className="relative rounded-3xl overflow-hidden border eterna-phase-card"
+        style={{ minHeight: 220 }}>
+        <div className="relative z-10 p-7 md:p-10">
+          <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+            <span className="eterna-pill flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block" aria-hidden="true" />
+              <span className="font-mono text-xs font-semibold uppercase tracking-wider">
+                System Grid: Nominal
+              </span>
+            </span>
+            <span className="text-xs font-mono tracking-wider" style={{ color: 'var(--text-secondary)', opacity: 0.7 }}>
+              {new Date().toLocaleString('en-US', {
+                year: 'numeric', month: 'short', day: '2-digit',
+                hour: '2-digit', minute: '2-digit',
+              })}
+            </span>
           </div>
-          <h1 className="text-4xl font-black font-outfit text-primary mb-2 uppercase tracking-wider">
-            Welcome back, <span style={{ color: '#6366f1' }}>{user?.split('@')[0] || 'Analyst'}</span>!
-          </h1>
-          <p className="text-secondary text-sm max-w-2xl mb-6 leading-relaxed font-medium">
-            TRINETRA — Quantum Cryptography Exposure Intelligence Platform. Discover shadow assets, assess quantum risk, and plan migration. Your defence starts here.
-          </p>
 
-          {/* Quick stats */}
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
-              style={{ 
-                background: `rgba(99,102,241,0.08)`, 
-                borderColor: 'rgba(99,102,241,0.3)', 
-                color: '#6366f1',
-                boxShadow: `0 4px 12px #6366f130`
-              }}>
-              <Zap size={18} /> <span className="text-primary">Active Modules:</span> <span className="font-bold">{dashboardData.activeModules}</span>
-            </div>
+          <div className="max-w-3xl mb-7">
+            <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-3 font-outfit">
+              Command Nexus,{' '}
+              <span className="eterna-headline-dual">{displayName}</span>
+            </h1>
+            <p className="text-sm md:text-base leading-relaxed font-normal"
+              style={{ color: 'var(--text-secondary)', maxWidth: '52ch' }}>
+              Continuous quantum exposure intelligence, cryptographic telemetry, and transition path orchestration.
+            </p>
+          </div>
 
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
-              style={{ 
-                background: `rgba(34,197,94,0.08)`, 
-                borderColor: 'rgba(34,197,94,0.3)', 
-                color: '#22c55e',
-                boxShadow: `0 4px 12px #22c55e30`
-              }}>
-              <Activity size={18} /> <span className="text-primary">System Status:</span> <span className="font-bold">{dashboardData.systemStatus}</span>
-            </div>
-
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold transition-all duration-300 hover:shadow-lg"
-              style={{ 
-                background: `rgba(168,85,247,0.08)`, 
-                borderColor: 'rgba(168,85,247,0.3)', 
-                color: '#a78bfa',
-                boxShadow: `0 4px 12px #a78bfa30`
-              }}>
-              <Shield size={18} /> <span className="text-primary">Security Level:</span> <span className="font-bold">{dashboardData.securityLevel}</span>
-            </div>
-
-            {activeDomain && (
-              <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-bold animate-pulse"
-                style={{ 
-                  background: 'rgba(99,102,241,0.12)', 
-                  borderColor: 'rgba(99,102,241,0.4)', 
-                  color: '#818cf8',
-                  boxShadow: '0 4px 16px rgba(129,140,248,0.3)'
-                }}>
-                <Building size={18} /> <span>Enterprise:</span> <span className="font-bold text-primary-indigo">{activeDomain}</span>
+          {/* Quick metrics pills */}
+          <div className="flex flex-wrap items-center gap-3">
+            {[
+              { icon: Zap,      label: 'Active Modules',     value: String(dashboardData.activeModules), color: '#f59e0b' },
+              { icon: Activity, label: 'Grid Status',        value: dashboardData.systemStatus,           color: '#10b981' },
+              { icon: Shield,   label: 'Security Level',     value: dashboardData.securityLevel,          color: '#8b5cf6' },
+              ...(activeDomain ? [{ icon: Building, label: 'Monitored Target', value: activeDomain, color: '#3b82f6' }] : []),
+            ].map(({ icon: Icon, label, value, color }) => (
+              <div key={label}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border text-xs font-semibold backdrop-blur-md"
+                style={{ background: `${color}0d`, borderColor: `${color}28`, color }}>
+                <Icon size={14} aria-hidden="true" />
+                <span style={{ color: 'var(--text-primary)', opacity: 0.8 }}>{label}:</span>
+                <span className="font-bold font-mono">{value}</span>
               </div>
-            )}
+            ))}
           </div>
         </div>
       </div>
 
-      {/* ── WHY TRINETRA ──────────────────────────────────────────── */}
-      <div>
-        <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-3 uppercase tracking-wider">
-          <span className="w-1 h-6 bg-gradient-to-b from-cyan-400 to-blue-500 rounded"></span>
-          Why TRINETRA?
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {PLATFORM_BENEFITS.map((benefit, idx) => {
-            const Icon = benefit.icon;
-            return (
-              <div key={idx} 
-                className="rounded-lg p-5 border backdrop-blur-sm group transition-all duration-300 hover:scale-105 hover:shadow-lg"
-                style={{ 
-                  background: `linear-gradient(135deg, ${benefit.color}12 0%, ${benefit.color}06 100%)`,
-                  borderColor: `${benefit.color}30`,
-                  boxShadow: `0 4px 12px ${benefit.color}10`
-                }}>
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="p-2.5 rounded-lg transition-all duration-300 group-hover:scale-110" style={{ background: `${benefit.color}20` }}>
-                    <Icon size={20} style={{ color: benefit.color }} />
-                  </div>
-                </div>
-                <h3 className="font-bold text-sm text-primary mb-2">{benefit.title}</h3>
-                <p className="text-xs text-secondary leading-relaxed">{benefit.desc}</p>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ── JARSH AI ASSISTANT ──────────────────────────────────────────── */}
-      <div
-        className="relative rounded-2xl overflow-hidden p-8 border backdrop-blur-xl"
-        style={{
-          background: 'linear-gradient(135deg, rgba(168,85,247,0.12) 0%, rgba(139,92,246,0.08) 50%, rgba(99,102,241,0.08) 100%)',
-          borderColor: 'rgba(168,85,247,0.3)',
-          boxShadow: '0 8px 32px rgba(168,85,247,0.12), 0 0 50px rgba(168,85,247,0.06)',
-        }}
-      >
-        <div className="absolute top-0 left-0 w-48 h-48 opacity-5 pointer-events-none">
-          <Brain size={192} style={{ color: '#a855f7' }} />
-        </div>
-        <div className="absolute bottom-0 right-0 w-72 h-72 opacity-5 pointer-events-none rounded-full blur-3xl"
-          style={{ background: 'linear-gradient(135deg, #a855f7, #6366f1)', filter: 'blur(60px)' }}></div>
-
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-lg" style={{ background: 'linear-gradient(135deg, #a855f7 0%, #8b5cf6 100%)' }}>
-              <Brain size={20} style={{ color: '#fff' }} />
+      {/* ── PLATFORM MODULES ──────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="text-xs font-mono tracking-widest uppercase mb-1" style={{ color: 'var(--accent-amber)' }}>
+              Architecture
             </div>
-            <span className="text-sm font-bold uppercase tracking-wider" style={{ color: '#7c3aed' }}>Advanced AI Assistant</span>
+            <h2 className="text-xl md:text-2xl font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>
+              Core Operations Grid
+            </h2>
           </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Left: Text content */}
-            <div className="lg:col-span-2">
-              <h2 className="text-3xl font-black text-primary mb-3 uppercase tracking-wider">
-                Meet <span style={{ color: '#a855f7' }}>JARSH</span>
-              </h2>
-              <p className="text-secondary text-sm leading-relaxed mb-4 font-medium">
-                <span className="font-bold" style={{ color: '#7c3aed' }}>J</span>arvis <span className="font-bold" style={{ color: '#7c3aed' }}>A</span>dvanced <span className="font-bold" style={{ color: '#7c3aed' }}>R</span>esearch <span className="font-bold" style={{ color: '#7c3aed' }}>S</span>ecurity <span className="font-bold" style={{ color: '#7c3aed' }}>H</span>elper — Your AI-powered security companion.
-              </p>
-              <div className="space-y-3 mb-6">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={18} style={{ color: '#a855f7', marginTop: '2px' }} className="flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-primary">Real-Time Analysis</div>
-                    <div className="text-xs text-secondary">Get instant insights on vulnerabilities and risk scores</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={18} style={{ color: '#a855f7', marginTop: '2px' }} className="flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-primary">Mitigation Planning</div>
-                    <div className="text-xs text-secondary">AI-guided migration strategies with step-by-step guidance</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={18} style={{ color: '#a855f7', marginTop: '2px' }} className="flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-primary">Compliance Guidance</div>
-                    <div className="text-xs text-secondary">Context-aware PQC readiness recommendations</div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 size={18} style={{ color: '#a855f7', marginTop: '2px' }} className="flex-shrink-0" />
-                  <div>
-                    <div className="text-sm font-bold text-primary">24/7 Support</div>
-                    <div className="text-xs text-secondary">Always available to answer security questions</div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs font-medium mb-4 p-3 rounded-lg" style={{ background: 'rgba(168,85,247,0.2)', color: '#6d28d9', borderLeft: '3px solid #6d28d9' }}>💬 Chat with JARSH anytime using the floating button in the bottom-right corner.</p>
-            </div>
-
-            {/* Right: Feature showcase */}
-            <div className="lg:col-span-1">
-              <div className="space-y-3">
-                <div className="rounded-xl p-4 border transition-all duration-300 hover:scale-105 cursor-pointer"
-                  style={{ 
-                    background: 'rgba(168,85,247,0.1)',
-                    borderColor: 'rgba(168,85,247,0.3)',
-                  }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle size={16} style={{ color: '#f59e0b' }} />
-                    <span className="text-xs font-bold text-primary">Threat Detection</span>
-                  </div>
-                  <p className="text-xs text-secondary">Quantum vulnerabilities in your assets</p>
-                </div>
-                <div className="rounded-xl p-4 border transition-all duration-300 hover:scale-105 cursor-pointer"
-                  style={{ 
-                    background: 'rgba(168,85,247,0.1)',
-                    borderColor: 'rgba(168,85,247,0.3)',
-                  }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Rocket size={16} style={{ color: '#06b6d4' }} />
-                    <span className="text-xs font-bold text-primary">PQC Migration</span>
-                  </div>
-                  <p className="text-xs text-secondary">Post-quantum readiness plans</p>
-                </div>
-                <div className="rounded-xl p-4 border transition-all duration-300 hover:scale-105 cursor-pointer"
-                  style={{ 
-                    background: 'rgba(168,85,247,0.1)',
-                    borderColor: 'rgba(168,85,247,0.3)',
-                  }}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Shield size={16} style={{ color: '#22c55e' }} />
-                    <span className="text-xs font-bold text-primary">Compliance Check</span>
-                  </div>
-                  <p className="text-xs text-secondary">Regulatory alignment + certifications</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <Link to="/discovery" className="eterna-pill flex items-center gap-1.5 text-xs no-underline"
+            style={{ color: 'var(--text-secondary)' }}>
+            <span>Launch Diagnostics</span>
+            <ArrowRight size={12} aria-hidden="true" />
+          </Link>
         </div>
-      </div>
 
-      {/* ── PLATFORM MODULES ──────────────────────────────────────── */}
-      <div>
-        <h2 className="text-lg font-bold text-primary mb-5 flex items-center gap-3 uppercase tracking-wider">
-          <span className="w-1 h-6 bg-gradient-to-b from-primary-indigo to-primary-indigo-hover rounded"></span>
-          Platform Modules
-        </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {NAV_CARDS.map(card => {
             const Icon = card.icon;
@@ -358,55 +158,187 @@ export default function HomePage() {
               <Link
                 key={card.path}
                 to={card.path}
-                className="group relative rounded-xl border p-6 flex flex-col gap-3 transition-all duration-300 hover:scale-105 no-underline overflow-hidden"
-                style={{ 
-                  background: 'linear-gradient(135deg, ' + card.bg + ' 0%, ' + card.bg + ' 100%)',
-                  borderColor: card.border,
-                  boxShadow: `0 8px 20px ${card.color}15, inset 0 1px 1px rgba(255,255,255,0.1)`
+                className="eterna-phase-card group flex flex-col justify-between no-underline rounded-2xl"
+                style={{
+                  padding: '1.25rem',
+                  minHeight: 190,
+                  transition: 'transform 0.22s ease, box-shadow 0.22s ease',
                 }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-3px)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
               >
-                {/* Hover glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-0 group-hover:opacity-10 translate-x-full group-hover:translate-x-0 transition-all duration-500"></div>
-                
-                <div className="flex items-start justify-between relative z-10">
-                  <div className="p-3 rounded-xl transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg" style={{ background: `${card.color}20`, boxShadow: `0 4px 12px ${card.color}30` }}>
-                    <Icon size={24} style={{ color: card.color }} />
+                <div>
+                  <div className="flex items-center justify-between mb-3.5">
+                    <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-full border"
+                      style={{ background: `${card.color}14`, borderColor: `${card.color}30`, color: card.color }}>
+                      {card.phase} · {card.tag}
+                    </span>
+                    <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                      style={{ background: 'var(--surface-card-hover)', border: '1px solid var(--glass-border)' }}>
+                      <ArrowRight size={13} style={{ color: card.color }} aria-hidden="true" />
+                    </div>
                   </div>
-                  <ArrowRight size={18} className="text-secondary opacity-30 group-hover:opacity-100 transition-all duration-300 group-hover:translate-x-1 mt-1" style={{ color: card.color }} />
+
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: `${card.color}16`, border: `1px solid ${card.color}28` }}>
+                      <Icon size={18} style={{ color: card.color }} aria-hidden="true" />
+                    </div>
+                    <h3 className="font-bold text-sm font-outfit transition-colors"
+                      style={{ color: 'var(--text-primary)' }}
+                      onMouseEnter={e => (e.currentTarget.style.color = card.color)}
+                      onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-primary)')}>
+                      {card.name}
+                    </h3>
+                  </div>
+
+                  <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                    {card.desc}
+                  </p>
                 </div>
-                <div className="relative z-10">
-                  <div className="font-bold text-base text-primary group-hover:text-white transition-colors" style={{ color: card.color }}>
-                    {card.name}
-                  </div>
-                  <div className="text-xs text-secondary mt-2 leading-relaxed font-medium">{card.desc}</div>
+
+                <div className="pt-3.5 mt-3.5 flex items-center justify-between text-[11px] font-mono"
+                  style={{ borderTop: '1px solid var(--border-divider)', color: 'var(--text-secondary)' }}>
+                  <span>Status: Verified</span>
+                  <span className="flex items-center gap-1 group-hover:text-primary transition-colors">
+                    Access <ChevronRight size={11} aria-hidden="true" />
+                  </span>
                 </div>
               </Link>
             );
           })}
         </div>
-      </div>
+      </section>
 
-      {/* ── QUICK ACTIONS ─────────────────────────────────────────── */}
-      <div className="glass-card border rounded-xl p-6 backdrop-blur-xl" style={{ borderColor: 'rgba(99,102,241,0.25)', background: 'linear-gradient(135deg, rgba(99,102,241,0.08) 0%, rgba(99,102,241,0.04) 100%)', boxShadow: '0 8px 20px rgba(99,102,241,0.1)' }}>
-        <h2 className="text-sm font-bold text-secondary uppercase tracking-widest mb-5 flex items-center gap-2">
-          <Zap size={16} className="text-primary-indigo" />
-          Quick Actions
+      {/* ── PLATFORM ADVANTAGES ───────────────────────────────── */}
+      <section>
+        <div className="text-xs font-mono tracking-widest uppercase mb-1" style={{ color: 'var(--status-pqc)' }}>
+          Defense Foundation
+        </div>
+        <h2 className="text-xl md:text-2xl font-bold font-outfit mb-5" style={{ color: 'var(--text-primary)' }}>
+          Quantum Defense Principles
         </h2>
-        <div className="flex flex-wrap gap-3">
-          <Link to="/discovery" className="action-btn group flex items-center gap-2 text-sm px-5 py-3 rounded-lg font-bold bg-gradient-to-r from-primary-indigo to-primary-indigo-hover text-white hover:shadow-lg hover:shadow-primary-indigo/40 transition-all duration-300 hover:scale-105">
-            <Search size={16} className="transition-transform group-hover:rotate-12" /> New Scan
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {PLATFORM_BENEFITS.map((benefit, idx) => {
+            const Icon = benefit.icon;
+            return (
+              <div key={idx} className="eterna-phase-card p-5 rounded-2xl"
+                style={{ transition: 'transform 0.2s ease' }}
+                onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
+                onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}>
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center mb-3.5"
+                  style={{ background: `${benefit.color}16`, border: `1px solid ${benefit.color}28` }}>
+                  <Icon size={17} style={{ color: benefit.color }} aria-hidden="true" />
+                </div>
+                <h3 className="font-bold text-sm font-outfit mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                  {benefit.title}
+                </h3>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                  {benefit.desc}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ── JARSH AI COPILOT ──────────────────────────────────── */}
+      <section className="relative rounded-3xl overflow-hidden border eterna-phase-card p-7 md:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center">
+          <div className="lg:col-span-2">
+            <span className="eterna-pill inline-flex items-center gap-2 mb-3">
+              <Sparkles size={12} style={{ color: 'var(--status-pqc)' }} aria-hidden="true" />
+              <span className="text-xs font-mono font-semibold uppercase tracking-wider"
+                style={{ color: 'var(--status-pqc)' }}>
+                Cognitive Co-Pilot
+              </span>
+            </span>
+            <h2 className="text-2xl md:text-3xl font-extrabold font-outfit mb-3"
+              style={{ color: 'var(--text-primary)' }}>
+              Meet{' '}
+              <span className="eterna-headline-violet">JARSH AI</span>
+            </h2>
+            <p className="text-xs md:text-sm leading-relaxed mb-6 font-medium max-w-xl"
+              style={{ color: 'var(--text-secondary)' }}>
+              <strong style={{ color: 'var(--text-primary)' }}>J</strong>arvis{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>A</strong>dvanced{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>R</strong>esearch{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>S</strong>ecurity{' '}
+              <strong style={{ color: 'var(--text-primary)' }}>H</strong>elper.
+              Instant telemetry synthesis, Mosca timeline modeling, and context-aware PQC migration recipes.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {[
+                'Automated CBOM risk correlation',
+                'NIST FIPS 203/204 parameter checks',
+                'Real-time remediation roadmaps',
+                'Natural language security queries',
+              ].map(item => (
+                <div key={item} className="flex items-center gap-2.5 text-xs font-medium"
+                  style={{ color: 'var(--text-secondary)' }}>
+                  <CheckCircle2 size={14} style={{ color: 'var(--status-pqc)', flexShrink: 0 }} aria-hidden="true" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <div className="p-4 rounded-xl border"
+              style={{ background: 'var(--surface-card)', borderColor: 'var(--glass-border)' }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <AlertTriangle size={14} style={{ color: 'var(--accent-amber)' }} aria-hidden="true" />
+                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Threat Diagnostics</span>
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                Quantum-compromised asymmetric keys detected in current zone.
+              </p>
+            </div>
+            <div className="p-4 rounded-xl border"
+              style={{ background: 'var(--surface-card)', borderColor: 'var(--glass-border)' }}>
+              <div className="flex items-center gap-2 mb-1.5">
+                <Rocket size={14} style={{ color: '#60a5fa' }} aria-hidden="true" />
+                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>Migration Orchestration</span>
+              </div>
+              <p className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                Algorithmic migration blueprints for ML-KEM and ML-DSA transition.
+              </p>
+            </div>
+            <Link to="/discovery" className="eterna-btn-primary text-xs font-bold text-center no-underline mt-1">
+              <Search size={13} aria-hidden="true" />
+              Launch Reconnaissance
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── QUICK ACTIONS ─────────────────────────────────────── */}
+      <div className="eterna-phase-card rounded-2xl p-5 border flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div className="text-xs font-mono uppercase tracking-wider mb-0.5" style={{ color: 'var(--text-secondary)' }}>
+            Execution Hub
+          </div>
+          <div className="text-sm font-bold font-outfit" style={{ color: 'var(--text-primary)' }}>
+            Swift Platform Actions
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link to="/discovery" className="eterna-btn-primary text-xs py-2 px-4 font-bold no-underline">
+            <Search size={13} aria-hidden="true" />
+            New Enterprise Scan
           </Link>
-          <Link to="/reporting" className="action-btn group flex items-center gap-2 text-sm px-5 py-3 rounded-lg font-bold border-2 border-primary-indigo text-primary-indigo hover:bg-primary-indigo hover:text-white transition-all duration-300 hover:shadow-lg">
-            <BarChart2 size={16} className="transition-transform group-hover:scale-110" /> View Reports
+          <Link to="/reporting" className="eterna-btn-secondary text-xs py-2 px-4 font-semibold no-underline">
+            <BarChart2 size={13} aria-hidden="true" />
+            Audit Reports
           </Link>
           {activeScanId && (
-            <Link to="/dashboard" className="action-btn group flex items-center gap-2 text-sm px-5 py-3 rounded-lg font-bold border-2 border-purple-500 text-purple-400 hover:bg-purple-500/20 transition-all duration-300 hover:shadow-lg">
-              <LayoutDashboard size={16} className="transition-transform group-hover:scale-110" /> Active Scan
+            <Link to="/dashboard"
+              className="eterna-pill flex items-center gap-2 text-xs py-2 px-3 font-semibold no-underline"
+              style={{ color: 'var(--status-pqc)', borderColor: 'rgba(167,139,250,0.35)' }}>
+              <LayoutDashboard size={13} aria-hidden="true" />
+              Active Scan Telemetry
             </Link>
           )}
-          <button className="action-btn group flex items-center gap-2 text-sm px-5 py-3 rounded-lg font-bold border-2 border-purple-500/50 text-purple-300 hover:border-purple-500 hover:bg-purple-500/10 transition-all duration-300 hover:shadow-lg">
-            <MessageCircle size={16} className="transition-transform group-hover:scale-110" /> Chat with JARVIS
-          </button>
         </div>
       </div>
     </div>
