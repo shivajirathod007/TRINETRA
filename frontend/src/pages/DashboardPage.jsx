@@ -145,6 +145,7 @@ const DashboardPage = () => {
                 for (const ep of endpoints) {
                     result.push({
                         ...a,
+                        original_id: a.id,
                         id: `${a.id}-${ep}`,
                         url: `${a.url}${ep}`,
                         type: 'api_route',
@@ -163,13 +164,11 @@ const DashboardPage = () => {
         if (assetSearch && !a.url?.toLowerCase().includes(assetSearch.toLowerCase())) {
             return false;
         }
-        // Filter by asset type
+        // Filter by risk or discovery
         if (assetFilter !== 'ALL') {
-            if (assetFilter === 'web' && !WEB_APP_TYPES.has(a.type)) return false;
-            // Include `api_route` in the 'api' filter
-            if (assetFilter === 'api' && !API_TYPES.has(a.type) && a.type !== 'api_route') return false;
-            if (assetFilter === 'server' && !SERVER_TYPES.has(a.type)) return false;
-            if (assetFilter === 'shadow' && a.discovery !== 'Shadow') return false;
+            if (assetFilter === 'CRITICAL' && a.risk_level !== 'CRITICAL') return false;
+            if (assetFilter === 'HIGH' && a.risk_level !== 'HIGH') return false;
+            if (assetFilter === 'SHADOW' && a.discovery !== 'Shadow') return false;
         }
         return true;
     });
@@ -667,7 +666,7 @@ const DashboardPage = () => {
                                                 onMouseLeave={e => (e.currentTarget.style.background = '')}>
                                                 <td className="font-mono font-medium cursor-pointer transition-colors"
                                                     style={{ color: '#818cf8', maxWidth: 240 }}
-                                                    onClick={() => navigate(`/asset/${asset.id}`)}
+                                                    onClick={() => navigate(`/asset/${asset.original_id || asset.id}`)}
                                                     title={asset.url}>
                                                     <span className="block truncate">{asset.url}</span>
                                                 </td>
@@ -695,11 +694,11 @@ const DashboardPage = () => {
                                                             <AlertTriangle size={11} /> Shadow
                                                         </span>
                                                     ) : (
-                                                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>Known</span>
+                                                        <span className="text-xs" style={{ color: 'var(--text-secondary)' }}>{asset.discovery || 'Known'}</span>
                                                     )}
                                                 </td>
                                                 <td className="text-right">
-                                                    <button onClick={() => navigate(`/asset/${asset.id}`)} style={{ color: 'var(--text-secondary)' }}>
+                                                    <button onClick={() => navigate(`/asset/${asset.original_id || asset.id}`)} style={{ color: 'var(--text-secondary)' }}>
                                                         <ChevronRight size={16} />
                                                     </button>
                                                 </td>

@@ -324,7 +324,18 @@ async def get_dashboard_summary(domain: str, scan_id: Optional[str] = None, db: 
         elif ip.startswith(("1.", "14.", "27.", "36.", "42.", "58.", "59.", "60.", "61.", "101.", "106.", "111.", "112.", "113.", "114.", "115.", "116.", "118.", "119.", "120.", "121.", "123.", "124.")):
             country_counts["Asia-Pacific"] += 1
         else:
-            country_counts["Other"] += 1
+            # Fallback to TLD parsing for better accuracy on unknown IPs
+            fqdn = (a.fqdn or "").lower()
+            if fqdn.endswith(".in") or fqdn.endswith(".bharat"):
+                country_counts["India"] += 1
+            elif fqdn.endswith((".uk", ".de", ".fr", ".eu", ".nl", ".es", ".it")):
+                country_counts["Europe"] += 1
+            elif fqdn.endswith((".us", ".gov", ".edu")):
+                country_counts["USA"] += 1
+            elif fqdn.endswith((".au", ".jp", ".cn", ".sg")):
+                country_counts["Asia-Pacific"] += 1
+            else:
+                country_counts["Other"] += 1
 
     # If no IPs resolved, fall back to showing India (the scanned domain's likely location)
     if not country_counts:
