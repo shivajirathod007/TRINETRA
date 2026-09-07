@@ -754,9 +754,10 @@ export default function DiscoveryPage() {
           <button key={cat} onClick={() => setCategory(cat)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs md:text-sm transition-all border cursor-pointer font-outfit"
             style={category === cat ? {
-              background: 'linear-gradient(135deg, #d97706, #7c3aed)',
+              background: 'linear-gradient(135deg, #4f46e5, #2563eb)',
               borderColor: 'transparent',
               color: 'white',
+              boxShadow: '0 2px 8px rgba(79,70,229,0.25)',
             } : {
               background: 'var(--surface-card)',
               borderColor: 'var(--glass-border)',

@@ -608,7 +608,7 @@ const DashboardPage = () => {
                                         <button key={f} onClick={() => setAssetFilter(f)}
                                             className="px-2.5 py-1 text-[10px] font-mono font-bold rounded-lg border transition-all"
                                             style={assetFilter === f
-                                                ? { background: 'linear-gradient(135deg, #d97706, #7c3aed)', color: 'white', borderColor: 'transparent', boxShadow: '0 2px 8px rgba(217,119,6,0.25)' }
+                                                ? { background: 'linear-gradient(135deg, #4f46e5, #2563eb)', color: 'white', borderColor: 'transparent', boxShadow: '0 2px 8px rgba(79,70,229,0.25)' }
                                                 : { background: 'var(--surface-card)', color: 'var(--text-secondary)', borderColor: 'var(--glass-border)' }}>
                                             {f}
                                         </button>
