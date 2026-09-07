@@ -196,6 +196,12 @@ class AssetClassifier:
                         "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
                         "Accept": "text/html,application/xhtml+xml,application/json",
                     })
+                    # Fallback to GET if HEAD is not allowed (common on APIs)
+                    if resp.status_code == 405:
+                        resp = await client.get(url, headers={
+                            "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
+                            "Accept": "text/html,application/xhtml+xml,application/json",
+                        })
                 except (httpx.RemoteProtocolError, httpx.ReadError):
                     resp = await client.get(url, headers={
                         "User-Agent": "Mozilla/5.0 (compatible; TRINETRA-Scanner/1.0)",
