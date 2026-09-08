@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     ai_confidence_threshold: float = 0.60
     distilbert_model_path: str = "./models/crypto_classifier"
+    # Directory under engine/ai/loaded_model/ to load the classifier from.
+    # v1 (crypto_classifier) is kept on disk for rollback.
+    ai_model_dir: str = "crypto_classifier_v2"
     llm_model: str = "claude-3-5-sonnet-20240620"   # Anthropic model for LLM fallback
     llm_max_tokens: int = 1024                        # Max tokens in LLM response
     llm_fallback_enabled: bool = True                 # Ops kill-switch for the LLM fallback

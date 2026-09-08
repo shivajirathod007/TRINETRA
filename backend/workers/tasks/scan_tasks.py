@@ -273,7 +273,10 @@ async def _run_scanners_inner(scan_id: str, asset_data: dict) -> dict:
                 asset_url=asset_url,
                 asset_type=asset_type,
                 status_code=api_result.http_status or 200,
-                response_headers=str(api_result.response_headers_raw or ""),
+                response_headers={
+                    str(k): str(v)
+                    for k, v in dict(api_result.response_headers_raw or {}).items()
+                },
                 response_body=api_result.response_body_preview or "",
                 request_method="GET",
                 request_url=asset_url,

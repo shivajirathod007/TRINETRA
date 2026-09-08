@@ -17,11 +17,23 @@ def _warm_up_ai_classifier() -> None:
     ~67MB model is resident before the first real request, instead of adding
     its load time to whichever user happens to arrive first.
     """
-    from engine.ai.classifier import AIClassifier
+    from engine.ai.classifier import MODEL_DIR, AIClassifier
 
     classifier = AIClassifier()
     classifier.predict("warm-up: TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384")
-    log.info("ai_classifier_warmed_up", model_loaded=classifier.is_loaded)
+    log.info(
+        "ai_classifier_warmed_up",
+        model_loaded=classifier.is_loaded,
+        model_dir=settings.ai_model_dir,
+        path=MODEL_DIR,
+        labels=list(classifier.id2label.values()) if classifier.is_loaded else [],
+    )
+    if not classifier.is_loaded:
+        log.warning(
+            "ai_classifier_not_loaded",
+            model_dir=settings.ai_model_dir,
+            detail="regex pre-pass only; DistilBERT inference is unavailable",
+        )
 
 
 @asynccontextmanager
